@@ -1,419 +1,196 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { Footer } from "@/components/footer"
 import {
   Video,
   FileText,
-  Download,
-  Play,
-  BookOpen,
   CheckCircle2,
   Clock,
-  TrendingUp,
   Calendar,
+  Play,
+  BookOpen,
+  TrendingUp,
   Award,
+  ArrowLeft,
+  LogOut,
+  User,
 } from "lucide-react"
 
 export default function PortalPage() {
+  const router = useRouter()
   const [selectedSubject, setSelectedSubject] = useState("mathematics")
 
-  // Mock student data
+  // ✅ Student info
   const studentData = {
-    name: "Student Demo",
-    level: "O-Level",
-    subjects: ["Mathematics", "English", "Computer Science", "Geography"],
-    overallProgress: 75,
+    name: "John Daka",
+    level: "A-Level",
+    subjects: ["Pure Mathematics", "Computer Science", "Geography"],
+    overallProgress: 82,
   }
 
-  // Mock lessons data
+  // ✅ Mock data
   const lessons = {
     mathematics: [
-      {
-        id: 1,
-        title: "Algebra Fundamentals",
-        type: "video",
-        duration: "45 min",
-        completed: true,
-        date: "2025-01-10",
-      },
-      {
-        id: 2,
-        title: "Quadratic Equations",
-        type: "video",
-        duration: "50 min",
-        completed: true,
-        date: "2025-01-17",
-      },
-      {
-        id: 3,
-        title: "Trigonometry Basics",
-        type: "video",
-        duration: "40 min",
-        completed: false,
-        date: "2025-01-24",
-      },
-      {
-        id: 4,
-        title: "Statistics and Probability",
-        type: "video",
-        duration: "55 min",
-        completed: false,
-        date: "2025-01-31",
-      },
-    ],
-    english: [
-      {
-        id: 1,
-        title: "Essay Writing Techniques",
-        type: "video",
-        duration: "40 min",
-        completed: true,
-        date: "2025-01-12",
-      },
-      {
-        id: 2,
-        title: "Grammar Essentials",
-        type: "video",
-        duration: "35 min",
-        completed: false,
-        date: "2025-01-19",
-      },
+      { id: 1, title: "Differentiation Basics", duration: "45 min", completed: true, date: "2025-01-05" },
+      { id: 2, title: "Integration Techniques", duration: "40 min", completed: false, date: "2025-01-12" },
     ],
   }
 
-  // Mock notes data
   const notes = [
-    { id: 1, title: "Algebra Complete Notes", subject: "Mathematics", pages: 24, date: "2025-01-10" },
-    { id: 2, title: "Trigonometry Formulas", subject: "Mathematics", pages: 12, date: "2025-01-15" },
-    { id: 3, title: "Essay Writing Guide", subject: "English", pages: 18, date: "2025-01-12" },
-    { id: 4, title: "Programming Basics", subject: "Computer Science", pages: 30, date: "2025-01-08" },
+    { id: 1, title: "Pure Maths Notes", subject: "Mathematics", pages: 22, date: "2025-01-07" },
+    { id: 2, title: "Geography Climate Notes", subject: "Geography", pages: 16, date: "2025-01-10" },
   ]
 
-  // Mock assignments data
-  const assignments = [
-    {
-      id: 1,
-      title: "Algebra Problem Set 1",
-      subject: "Mathematics",
-      dueDate: "2025-02-05",
-      status: "pending",
-      score: null,
-    },
-    {
-      id: 2,
-      title: "Essay: Climate Change",
-      subject: "English",
-      dueDate: "2025-02-08",
-      status: "pending",
-      score: null,
-    },
-    {
-      id: 3,
-      title: "Quadratic Equations Test",
-      subject: "Mathematics",
-      dueDate: "2025-01-20",
-      status: "graded",
-      score: 85,
-    },
+  const progress = [
+    { subject: "Mathematics", progress: 85, grade: "A" },
+    { subject: "Computer Science", progress: 88, grade: "A" },
+    { subject: "Geography", progress: 70, grade: "B" },
   ]
 
-  // Mock progress data
-  const subjectProgress = [
-    { subject: "Mathematics", progress: 80, grade: "A" },
-    { subject: "English", progress: 70, grade: "B" },
-    { subject: "Computer Science", progress: 85, grade: "A" },
-    { subject: "Geography", progress: 65, grade: "B" },
-  ]
+  // ✅ Handle back + logout
+  const handleBack = () => router.push("/")
+  const handleLogout = () => router.push("/login")
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navigation />
+      {/* 🌍 Header / Navigation */}
+      <header className="flex items-center justify-between bg-primary text-primary-foreground px-6 py-4 shadow-md">
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" size="sm" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+          <h1 className="text-lg font-semibold">Student Portal</h1>
+        </div>
 
-      {/* Hero Section */}
-      <section className="bg-primary text-primary-foreground py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Welcome back, {studentData.name}!</h1>
-              <p className="text-primary-foreground/90">Continue your learning journey</p>
+        <Button variant="secondary" size="sm" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-1" /> Logout
+        </Button>
+      </header>
+
+      {/* 🧠 Student Info Section */}
+      <section className="bg-muted py-10 px-6 md:px-10">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
+              {studentData.name.charAt(0)}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{studentData.subjects.length}</div>
-                <div className="text-sm text-primary-foreground/80">Subjects</div>
-              </div>
-              <div className="h-12 w-px bg-primary-foreground/20" />
-              <div className="text-center">
-                <div className="text-2xl font-bold">{studentData.overallProgress}%</div>
-                <div className="text-sm text-primary-foreground/80">Progress</div>
-              </div>
+            <div>
+              <h2 className="text-2xl font-bold">{studentData.name}</h2>
+              <p className="text-sm text-muted-foreground">{studentData.level} Student</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{studentData.subjects.length}</div>
+              <div className="text-sm text-muted-foreground">Subjects</div>
+            </div>
+            <div className="h-10 w-px bg-border" />
+            <div className="text-center">
+              <div className="text-2xl font-bold">{studentData.overallProgress}%</div>
+              <div className="text-sm text-muted-foreground">Progress</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="py-12">
-        <div className="container mx-auto px-4">
+      {/* 🧩 Tabs Section */}
+      <section className="py-10 px-6 md:px-10 flex-1">
+        <div className="max-w-5xl mx-auto">
           <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto">
-              <TabsTrigger value="dashboard" className="text-sm">
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="lessons" className="text-sm">
-                Lessons
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="text-sm">
-                Notes
-              </TabsTrigger>
-              <TabsTrigger value="assignments" className="text-sm">
-                Assignments
-              </TabsTrigger>
-              <TabsTrigger value="progress" className="text-sm">
-                Progress
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="lessons">Lessons</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="progress">Progress</TabsTrigger>
             </TabsList>
 
-            {/* Dashboard Tab */}
+            {/* 🏠 Dashboard Tab */}
             <TabsContent value="dashboard" className="space-y-6">
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="border-border">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Classes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-1">3</div>
-                    <p className="text-sm text-muted-foreground">This weekend</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Pending Assignments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-1">2</div>
-                    <p className="text-sm text-muted-foreground">Due this week</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Overall Grade</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-1">B+</div>
-                    <p className="text-sm text-muted-foreground">Keep it up!</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Recent Activity */}
-              <Card className="border-border">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Your latest learning activities</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    {
-                      icon: Video,
-                      title: "Completed: Quadratic Equations",
-                      subject: "Mathematics",
-                      time: "2 hours ago",
-                    },
-                    {
-                      icon: FileText,
-                      title: "Downloaded: Algebra Notes",
-                      subject: "Mathematics",
-                      time: "1 day ago",
-                    },
-                    {
-                      icon: CheckCircle2,
-                      title: "Submitted: Essay Assignment",
-                      subject: "English",
-                      time: "2 days ago",
-                    },
-                  ].map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 pb-4 border-b border-border last:border-0">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <activity.icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{activity.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <span>{activity.subject}</span>
-                          <span>•</span>
-                          <span>{activity.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Lessons Tab */}
-            <TabsContent value="lessons" className="space-y-6">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Video Lessons</CardTitle>
-                  <CardDescription>Access recorded lessons and live class recordings</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {lessons.mathematics.map((lesson) => (
-                    <div
-                      key={lesson.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Video className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{lesson.title}</h3>
-                            {lesson.completed && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{lesson.duration}</span>
-                            </div>
-                            <span>•</span>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{lesson.date}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <Button size="sm" variant={lesson.completed ? "outline" : "default"}>
-                        <Play className="h-4 w-4 mr-2" />
-                        {lesson.completed ? "Rewatch" : "Watch"}
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Notes Tab */}
-            <TabsContent value="notes" className="space-y-6">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Study Notes</CardTitle>
-                  <CardDescription>Download comprehensive notes for all your subjects</CardDescription>
+                  <CardTitle>Welcome back, {studentData.name} 👋</CardTitle>
+                  <CardDescription>Continue learning and track your activities</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {notes.map((note) => (
-                      <div
-                        key={note.id}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-secondary" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-sm">{note.title}</h3>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <span>{note.subject}</span>
-                              <span>•</span>
-                              <span>{note.pages} pages</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="ghost">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    You are currently enrolled in <strong>{studentData.subjects.length}</strong> subjects.
+                    Keep up your performance to reach your target goals!
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Assignments Tab */}
-            <TabsContent value="assignments" className="space-y-6">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Assignments & Tests</CardTitle>
-                  <CardDescription>View and submit your assignments</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {assignments.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold">{assignment.title}</h3>
-                          <Badge
-                            variant={assignment.status === "graded" ? "default" : "secondary"}
-                            className={assignment.status === "graded" ? "bg-green-600" : ""}
-                          >
-                            {assignment.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{assignment.subject}</span>
-                          <span>•</span>
-                          <span>Due: {assignment.dueDate}</span>
-                          {assignment.score && (
-                            <>
-                              <span>•</span>
-                              <span className="font-semibold text-foreground">Score: {assignment.score}%</span>
-                            </>
-                          )}
-                        </div>
+            {/* 🎥 Lessons Tab */}
+            <TabsContent value="lessons" className="space-y-4">
+              {lessons.mathematics.map((lesson) => (
+                <Card key={lesson.id}>
+                  <CardContent className="flex items-center justify-between py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
-                      {assignment.status === "pending" && (
-                        <Button size="sm" variant="outline">
-                          Submit
-                        </Button>
-                      )}
-                      {assignment.status === "graded" && (
-                        <Button size="sm" variant="ghost">
-                          View Feedback
-                        </Button>
-                      )}
+                      <div>
+                        <p className="font-semibold">{lesson.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {lesson.duration} • {lesson.date}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
+                    <Button size="sm" variant={lesson.completed ? "outline" : "default"}>
+                      <Play className="h-4 w-4 mr-2" />
+                      {lesson.completed ? "Rewatch" : "Watch"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </TabsContent>
 
-            {/* Progress Tab */}
+            {/* 📘 Notes Tab */}
+            <TabsContent value="notes" className="grid md:grid-cols-2 gap-4">
+              {notes.map((note) => (
+                <Card key={note.id}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{note.title}</CardTitle>
+                    <CardDescription>{note.subject}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>{note.pages} pages</span>
+                      <span>{note.date}</span>
+                    </div>
+                    <Button size="sm" className="mt-3 w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      View Notes
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+
+            {/* 📊 Progress Tab */}
             <TabsContent value="progress" className="space-y-6">
-              <Card className="border-border">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Subject Progress</CardTitle>
-                  <CardDescription>Track your performance across all subjects</CardDescription>
+                  <CardTitle>Subject Performance</CardTitle>
+                  <CardDescription>Track your performance by subject</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {subjectProgress.map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <BookOpen className="h-5 w-5 text-primary" />
-                          <span className="font-semibold">{item.subject}</span>
+                <CardContent className="space-y-5">
+                  {progress.map((item, i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-primary" />
+                          <span className="font-medium">{item.subject}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="font-semibold">
-                            Grade: {item.grade}
-                          </Badge>
-                          <span className="text-sm font-medium">{item.progress}%</span>
-                        </div>
+                        <span className="text-sm font-medium">{item.grade}</span>
                       </div>
                       <Progress value={item.progress} className="h-2" />
                     </div>
@@ -421,29 +198,23 @@ export default function PortalPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-border">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Performance Insights</CardTitle>
+                  <CardTitle>Insights</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
-                    <TrendingUp className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-green-900 dark:text-green-100">Strong Performance</h4>
-                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        You're excelling in Computer Science and Mathematics. Keep up the great work!
-                      </p>
-                    </div>
+                  <div className="flex items-start gap-3 p-4 rounded-lg border border-green-300 bg-green-50">
+                    <TrendingUp className="h-5 w-5 text-green-700" />
+                    <p className="text-sm">
+                      Great work! You’re showing excellent improvement in <strong>Computer Science</strong>.
+                    </p>
                   </div>
 
-                  <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-                    <Award className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-amber-900 dark:text-amber-100">Areas for Improvement</h4>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                        Focus more on Geography revision. Consider attending extra study sessions.
-                      </p>
-                    </div>
+                  <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50">
+                    <Award className="h-5 w-5 text-amber-700" />
+                    <p className="text-sm">
+                      Try revising more on <strong>Geography</strong> to boost your grade.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

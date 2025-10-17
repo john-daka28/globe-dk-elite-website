@@ -13,9 +13,9 @@ export function Navigation() {
     { href: "/about", label: "About" },
     { href: "/subjects", label: "Subjects" },
     { href: "/timetable", label: "Timetable" },
-    { href: "/portal", label: "Student Portal" },
+
     { href: "/testimonials", label: "Testimonials" },
-    { href: "/resources", label: "Resources" },
+ 
     { href: "/contact", label: "Contact" },
   ]
 
@@ -43,7 +43,7 @@ export function Navigation() {
               </Link>
             ))}
             <Button asChild size="sm" className="ml-2">
-              <Link href="/portal">Enroll Now</Link>
+              <Link href="/login">Enroll Now</Link>
             </Button>
           </div>
 
