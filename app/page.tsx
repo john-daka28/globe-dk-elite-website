@@ -38,7 +38,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button asChild size="lg" variant="secondary" className="text-base">
-                <Link href="/portal">
+                <Link href="/enroll">
                   Enroll Now <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
