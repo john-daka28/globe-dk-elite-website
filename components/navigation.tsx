@@ -2,22 +2,27 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Menu, X, GraduationCap } from "lucide-react"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
 
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/about", label: "About" },
     { href: "/subjects", label: "Subjects" },
     { href: "/timetable", label: "Timetable" },
-
     { href: "/testimonials", label: "Testimonials" },
- 
     { href: "/contact", label: "Contact" },
   ]
+
+  // Navigate user to enroll page
+  const handleEnrollClick = () => {
+    router.push("/enroll")
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -42,13 +47,18 @@ export function Navigation() {
                 {link.label}
               </Link>
             ))}
-            <Button asChild size="sm" className="ml-2">
-              <Link href="/login">Enroll Now</Link>
+
+            <Button onClick={handleEnrollClick} size="sm" className="ml-2">
+              Enroll Now
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
-          <button onClick={() => setIsOpen(!isOpen)} className="md:hidden p-2 text-foreground" aria-label="Toggle menu">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 text-foreground"
+            aria-label="Toggle menu"
+          >
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
@@ -66,10 +76,15 @@ export function Navigation() {
                 {link.label}
               </Link>
             ))}
-            <Button asChild className="w-full">
-              <Link href="/portal" onClick={() => setIsOpen(false)}>
-                Enroll Now
-              </Link>
+
+            <Button
+              onClick={() => {
+                setIsOpen(false)
+                handleEnrollClick()
+              }}
+              className="w-full"
+            >
+              Enroll Now
             </Button>
           </div>
         )}
