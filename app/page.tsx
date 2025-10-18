@@ -60,10 +60,10 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { icon: Users, label: "Students Taught", value: "100+" },
+              { icon: Users, label: "Students Taught", value: "20+" },
               { icon: Award, label: "Pass Rate", value: "95%" },
               { icon: BookOpen, label: "Subjects Covered", value: "7" },
-              { icon: GraduationCap, label: "Experience", value: "10+ Years" },
+              { icon: GraduationCap, label: "Experience", value: "5+ Years" },
             ].map((stat, index) => (
               <div key={index} className="text-center space-y-2">
                 <div className="flex justify-center">
