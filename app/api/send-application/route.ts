@@ -1,56 +1,85 @@
-// /pages/api/send-application.ts
-import type { NextApiRequest, NextApiResponse } from "next"
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 import nodemailer from "nodemailer"
+import type { EnrollmentData } from "@/types/enrollment"
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" })
-  }
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function POST(req: Request) {
+  console.log("📩 Received enrollment request...")
 
   try {
-    const { userEmail, recipient, subject, message } = req.body
+    const body: EnrollmentData = await req.json()
+    console.log("📦 Incoming data:", body)
 
-    // Basic validation
-    if (!userEmail) return res.status(400).json({ error: "userEmail is required" })
-    if (!recipient) return res.status(400).json({ error: "Recipient email is required" })
-    if (!subject) return res.status(400).json({ error: "Email subject is required" })
-    if (!message) return res.status(400).json({ error: "Email message is required" })
+    const { email, phone, level, subjects } = body
 
-    // Check environment variables for sender credentials
-    const senderEmail = process.env.EMAIL_USER
-    const senderPass = process.env.EMAIL_PASS
-
-    if (!senderEmail || !senderPass) {
-      console.error("[SEND_EMAIL_ERROR] Missing EMAIL_USER or EMAIL_PASS in .env")
-      return res.status(500).json({ error: "Server email credentials not configured" })
+    if (!email || !phone || !level || !subjects?.length) {
+      console.error("❌ Missing required fields")
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create Nodemailer transporter
+    // === 1️⃣ Insert into Supabase ===
+    const { data, error } = await supabase
+      .from("enrollments")
+      .insert([{ email, phone, level, subjects }])
+      .select()
+
+    if (error) {
+      console.error("💥 Supabase insert failed:", error)
+      return NextResponse.json({ error: "Database insert failed" }, { status: 500 })
+    }
+
+    console.log("✅ Enrollment inserted:", data)
+
+    // === 2️⃣ Create Application Letter ===
+    const applicationLetter = `
+Dear GlobeDk Elite Team,
+
+A new student has applied for enrollment:
+
+📧 Email: ${email}
+📞 Phone: ${phone}
+🎓 Level: ${level}
+📚 Subjects: ${subjects.join(", ")}
+
+Please reach out to confirm registration and share lesson details.
+
+Kind regards,  
+Your Enrollment System
+`
+
+    // === 3️⃣ Send Email via Nodemailer ===
     const transporter = nodemailer.createTransport({
-      service: "gmail", // or your email service
+      service: "gmail",
       auth: {
-        user: senderEmail,
-        pass: senderPass,
+        user: process.env.SMTP_EMAIL,
+        pass: process.env.SMTP_PASS,
       },
     })
 
-    // Construct email
     const mailOptions = {
-      from: senderEmail,
-      to: recipient,
-      subject,
-      text: `Application received from: ${userEmail}\n\nMessage:\n${message}`,
+      from: `"GlobeDk Elite Enrollments" <${process.env.SMTP_EMAIL}>`,
+      to: "johnariphiosd@gmail.com",
+      subject: `New Enrollment Application from ${email}`,
+      text: applicationLetter,
     }
 
-    console.log("[SEND_EMAIL] Sending email:", mailOptions)
+    console.log("📤 Sending email to admin...")
 
-    // Send email
-    const info = await transporter.sendMail(mailOptions)
-    console.log("[SEND_EMAIL_SUCCESS] Email sent:", info.response)
+    await transporter.sendMail(mailOptions)
 
-    res.status(200).json({ message: "Application email sent successfully" })
+    console.log("✅ Email sent successfully!")
+
+    return NextResponse.json({
+      message: "Enrollment received and emailed successfully!",
+      data,
+    })
   } catch (err: any) {
-    console.error("[SEND_EMAIL_ERROR]", err)
-    res.status(500).json({ error: err.message || "Unknown error sending email" })
+    console.error("🔥 Enrollment API failed:", err)
+    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 })
   }
 }
