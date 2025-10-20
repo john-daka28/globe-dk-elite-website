@@ -133,7 +133,7 @@ export default function AboutPage() {
           <Card className="border-border">
             <CardContent className="pt-8 space-y-4">
               <Avatar className="h-35 w-35 mx-auto">
-                <AvatarImage src="/john-ariphios.jpg.JPG" alt="John Ariphios" />
+                <AvatarImage src="/john-ariphios.jpg.JPG" alt="John Ariphios Daka" />
                 {/* <AvatarFallback className="text-3xl bg-primary text-primary-foreground">JA</AvatarFallback> */}
               </Avatar>
               <div>

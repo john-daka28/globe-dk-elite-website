@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://globedk.co.zw
+
+# Sitemaps
+Sitemap: https://globedk.co.zw/sitemap.xml
