@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Calendar, Clock, MapPin, Video, Bell, Download } from "lucide-react"
+import { Navigation } from "@/components/navigation";
+import { Footer } from "@/components/footer";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Calendar, Clock, MapPin, Video, Bell, Download } from "lucide-react";
 
 export default function TimetablePage() {
   const weekendSchedule = [
@@ -33,14 +33,14 @@ export default function TimetablePage() {
           subject: "O-Level Computer Science",
           level: "O-Level",
           mode: "Physical & Online",
-          room: "Room B",
+          room: "Room A",
         },
         {
           time: "15:30 - 17:30",
           subject: "A-Level Computer Science",
           level: "A-Level",
           mode: "Physical & Online",
-          room: "Room B",
+          room: "Room A",
         },
       ],
     },
@@ -59,36 +59,42 @@ export default function TimetablePage() {
           subject: "O-Level Geography",
           level: "O-Level",
           mode: "Physical & Online",
-          room: "Room B",
+          room: "Room A",
         },
         {
           time: "13:00 - 15:00",
           subject: "A-Level Geography",
           level: "A-Level",
           mode: "Physical & Online",
-          room: "Room B",
+          room: "Room A",
         },
       ],
     },
-  ]
+  ];
 
   const announcements = [
     {
       title: "Mid-Term Assessments",
-      date: "March 15–17, 2025",
-      description: "All students will take mid-term assessments to track progress.",
+      date: "November 15–17, 2025",
+      description:
+        "All students will take mid-term assessments to track progress.",
     },
     {
       title: "Mock Examinations",
-      date: "April 20–25, 2025",
-      description: "Full mock exams under exam conditions for all students.",
+      date: "Dec 1–4, 2025",
+      description:
+        "Full mock exams under exam conditions for all students.",
     },
-    {
-      title: "Parent Consultations",
-      date: "May 5, 2025",
-      description: "Meetings to discuss student progress and improvement areas.",
-    },
-  ]
+  ];
+
+  // Handle PDF download
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = "/GlobeDK-Weekend-Timetable-Updated.pdf"; // must match your public folder file name
+    link.download = "GlobeDK-Weekend-Timetable-Updated.pdf";
+    link.target = "_blank";
+    link.click();
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/40">
@@ -97,7 +103,9 @@ export default function TimetablePage() {
       {/* Hero Section */}
       <section className="bg-primary text-primary-foreground py-16 md:py-20">
         <div className="container mx-auto px-4 text-center space-y-5">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Weekend Class Timetable</h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            Weekend Class Timetable
+          </h1>
           <p className="text-lg opacity-90 max-w-2xl mx-auto">
             Extra lessons by <span className="font-semibold">Tutor John Ariphios</span> — 
             offering O & A Level Mathematics, Computer Science, Geography, and English.
@@ -157,12 +165,20 @@ export default function TimetablePage() {
                           <Clock className="h-4 w-4" />
                           <span>{classItem.time}</span>
                         </div>
-                        <Badge variant={classItem.level === "O-Level" ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            classItem.level === "O-Level"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
                           {classItem.level}
                         </Badge>
                       </div>
 
-                      <h3 className="text-lg font-bold">{classItem.subject}</h3>
+                      <h3 className="text-lg font-bold">
+                        {classItem.subject}
+                      </h3>
 
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                         <span>👨‍🏫 Tutor: John Ariphios</span>
@@ -172,8 +188,13 @@ export default function TimetablePage() {
                         </span>
                       </div>
 
-                      <Button asChild size="sm" variant="outline" className="mt-2 hover:scale-105 transition-transform">
-                        <Link href="/portal">Join Class</Link>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 hover:scale-105 transition-transform"
+                      >
+                        <Link href="/enroll">Join Class</Link>
                       </Button>
                     </CardContent>
                   </Card>
@@ -189,7 +210,9 @@ export default function TimetablePage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="flex items-center gap-3 mb-8">
             <Bell className="h-6 w-6 text-primary" />
-            <h2 className="text-3xl font-bold">Upcoming Events & Announcements</h2>
+            <h2 className="text-3xl font-bold">
+              Upcoming Events & Announcements
+            </h2>
           </div>
 
           <div className="space-y-4">
@@ -198,8 +221,12 @@ export default function TimetablePage() {
                 <AlertDescription>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
-                      <h3 className="font-semibold text-foreground">{announcement.title}</h3>
-                      <p className="text-sm text-muted-foreground">{announcement.description}</p>
+                      <h3 className="font-semibold text-foreground">
+                        {announcement.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {announcement.description}
+                      </p>
                     </div>
                     <Badge variant="outline">{announcement.date}</Badge>
                   </div>
@@ -213,11 +240,19 @@ export default function TimetablePage() {
       {/* Download Section */}
       <section className="py-16 bg-primary text-primary-foreground text-center">
         <div className="container mx-auto px-4 max-w-2xl space-y-6">
-          <h2 className="text-3xl md:text-4xl font-bold">Need a Copy of the Timetable?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold">
+            Need a Copy of the Timetable?
+          </h2>
           <p className="text-lg opacity-90">
             Download the complete timetable PDF to stay updated on all classes and key events.
           </p>
-          <Button size="lg" variant="secondary" className="hover:scale-105 transition-transform">
+
+          <Button
+            onClick={handleDownload}
+            size="lg"
+            variant="secondary"
+            className="hover:scale-105 transition-transform"
+          >
             <Download className="mr-2 h-5 w-5" />
             Download Timetable PDF
           </Button>
@@ -226,5 +261,5 @@ export default function TimetablePage() {
 
       <Footer />
     </div>
-  )
+  );
 }

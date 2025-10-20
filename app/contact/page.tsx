@@ -6,7 +6,7 @@ import { Footer } from "@/components/footer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone, Mail, MapPin, Clock, MessageSquare } from "lucide-react"
-
+ import Image from "next/image"
 export default function ContactPage() {
   // Contact info for cards
   const contactInfo = [
@@ -58,10 +58,16 @@ export default function ContactPage() {
       <section className="py-12 bg-muted/20">
         <div className="container mx-auto px-4 max-w-4xl">
           <Card className="border-border flex flex-col md:flex-row items-center gap-6 p-6 hover:shadow-lg transition-shadow">
-            {/* Placeholder for profile image */}
-            <div className="h-32 w-32 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
-              JD
-            </div>
+      
+<Image
+  src="/image.jpg"  
+  alt="Globe Dk lessons"
+  width={160}       
+  height={5}
+  className="rounded-full border-4 border-primary shadow-md object-cover hover:scale-105 transition-transform duration-300"
+/>
+
+
             <div className="flex-1">
               <CardHeader className="p-0">
                 <CardTitle className="text-2xl">John Ariphios Daka</CardTitle>

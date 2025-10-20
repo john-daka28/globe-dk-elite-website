@@ -63,7 +63,7 @@ export default function HomePage() {
               { icon: Users, label: "Students Taught", value: "25+" },
               { icon: Award, label: "Pass Rate", value: "95%" },
               { icon: BookOpen, label: "Subjects Covered", value: "7" },
-              { icon: GraduationCap, label: "Experience", value: "5+ Years" },
+              { icon: GraduationCap, label: "Experience", value: "2+ Years" },
             ].map((stat, index) => (
               <div key={index} className="text-center space-y-2">
                 <div className="flex justify-center">

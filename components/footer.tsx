@@ -39,16 +39,16 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/portal" className="text-muted-foreground hover:text-foreground transition-colors">
+                {/* <Link href="/portal" className="text-muted-foreground hover:text-foreground transition-colors">
                   Student Portal
-                </Link>
+                </Link> */}
               </li>
             </ul>
           </div>
 
           {/* Resources */}
           <div>
-            <h3 className="font-semibold mb-4">Resources</h3>
+            {/* <h3 className="font-semibold mb-4">Resources</h3> */}
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/testimonials" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -56,14 +56,14 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/resources" className="text-muted-foreground hover:text-foreground transition-colors">
+               {/* <Link href="/resources" className="text-muted-foreground hover:text-foreground transition-colors">
                   Study Materials
-                </Link>
+                </Link> */}
               </li>
               <li>
-                <Link href="/payment" className="text-muted-foreground hover:text-foreground transition-colors">
+                {/* <Link href="/payment" className="text-muted-foreground hover:text-foreground transition-colors">
                   Payment
-                </Link>
+                </Link> */}
               </li>
               <li>
                 <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -83,7 +83,7 @@ export function Footer() {
                   <a
                     href="tel:+263786053315"
                     className="text-muted-foreground hover:text-foreground transition-colors block"
-                  >
+                  > 
                     +263 78 605 3315
                   </a>
                   <a

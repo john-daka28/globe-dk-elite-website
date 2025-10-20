@@ -8,7 +8,7 @@ import { Star, Quote, TrendingUp, Award } from "lucide-react"
 export default function TestimonialsPage() {
   const testimonials = [
     {
-      name: "Tendai Moyo",
+      name: "Tapiwa Makumbe",
       level: "O-Level Graduate",
       subject: "Mathematics",
       grade: "A*",
@@ -19,18 +19,18 @@ export default function TestimonialsPage() {
       improvement: "From D to A*",
     },
     {
-      name: "Rudo Chikwanha",
+      name: "Rudo Makore",
       level: "A-Level Graduate",
       subject: "Computer Science",
       grade: "A",
       image: "/african-female-student.jpg",
-      initials: "RC",
+      initials: "RM",
       quote:
         "The Computer Science program here is exceptional. I learned programming from scratch and now I'm confident in my coding skills. The practical approach and real-world examples made all the difference.",
       improvement: "From beginner to A grade",
     },
     {
-      name: "Takudzwa Mutasa",
+      name: "Tanatswa Mutasa",
       level: "O-Level Graduate",
       subject: "English Language",
       grade: "A",
@@ -41,12 +41,12 @@ export default function TestimonialsPage() {
       improvement: "From C to A",
     },
     {
-      name: "Chipo Ncube",
+      name: "Chipo Gava",
       level: "A-Level Graduate",
       subject: "Pure Mathematics",
       grade: "A",
       image: "/african-female-student-smiling.jpg",
-      initials: "CN",
+      initials: "CG",
       quote:
         "Pure Maths seemed impossible at first, but the tutors at GlobeDk Elite broke down complex concepts into manageable pieces. The recorded lessons were invaluable for revision. Highly recommend!",
       improvement: "From E to A",
@@ -76,10 +76,10 @@ export default function TestimonialsPage() {
   ]
 
   const stats = [
-    { label: "Students Taught", value: "500+", icon: TrendingUp },
+    { label: "Students Taught", value: "25+", icon: TrendingUp },
     { label: "Pass Rate", value: "95%", icon: Award },
     { label: "A Grades", value: "60%", icon: Star },
-    { label: "Years Experience", value: "10+", icon: Award },
+    { label: "Years Experience", value: "2+", icon: Award },
   ]
 
   return (

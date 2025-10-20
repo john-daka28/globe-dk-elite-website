@@ -132,9 +132,9 @@ export default function AboutPage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Meet Your Tutor</h2>
           <Card className="border-border">
             <CardContent className="pt-8 space-y-4">
-              <Avatar className="h-28 w-28 mx-auto">
-                <AvatarImage src="/john-ariphios.jpg" alt="John Ariphios" />
-                <AvatarFallback className="text-3xl bg-primary text-primary-foreground">JA</AvatarFallback>
+              <Avatar className="h-35 w-35 mx-auto">
+                <AvatarImage src="/john-ariphios.jpg.JPG" alt="John Ariphios" />
+                {/* <AvatarFallback className="text-3xl bg-primary text-primary-foreground">JA</AvatarFallback> */}
               </Avatar>
               <div>
                 <h3 className="font-bold text-xl">John Ariphios</h3>
