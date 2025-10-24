@@ -1,229 +1,144 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { Footer } from "@/components/footer"
-import {
-  Video,
-  FileText,
-  CheckCircle2,
-  Clock,
-  Calendar,
-  Play,
-  BookOpen,
-  TrendingUp,
-  Award,
-  ArrowLeft,
-  LogOut,
-  User,
-} from "lucide-react"
+import { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
-export default function PortalPage() {
-  const router = useRouter()
-  const [selectedSubject, setSelectedSubject] = useState("mathematics")
+// Initialize Supabase client with anon key
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // safe to use in frontend
+);
 
-  // ✅ Student info
-  const studentData = {
-    name: "John Daka",
-    level: "A-Level",
-    subjects: ["Pure Mathematics", "Computer Science", "Geography"],
-    overallProgress: 82,
-  }
+export default function EnrollPage() {
+  const [level, setLevel] = useState("");
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // ✅ Mock data
-  const lessons = {
-    mathematics: [
-      { id: 1, title: "Differentiation Basics", duration: "45 min", completed: true, date: "2025-01-05" },
-      { id: 2, title: "Integration Techniques", duration: "40 min", completed: false, date: "2025-01-12" },
-    ],
-  }
+  const availableSubjects = {
+    "O Level": ["English", "Maths", "Geography", "Computer Science"],
+    "A Level": ["Computer Science", "Pure Maths", "Geography"],
+  };
 
-  const notes = [
-    { id: 1, title: "Pure Maths Notes", subject: "Mathematics", pages: 22, date: "2025-01-07" },
-    { id: 2, title: "Geography Climate Notes", subject: "Geography", pages: 16, date: "2025-01-10" },
-  ]
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const progress = [
-    { subject: "Mathematics", progress: 85, grade: "A" },
-    { subject: "Computer Science", progress: 88, grade: "A" },
-    { subject: "Geography", progress: 70, grade: "B" },
-  ]
+    try {
+      // Direct insert using Supabase client
+      const { error } = await supabase.from("enrollments").insert([
+        { level, subjects, phone, email },
+      ]);
 
-  // ✅ Handle back + logout
-  const handleBack = () => router.push("/")
-  const handleLogout = () => router.push("/login")
+      if (error) {
+        console.error("Supabase insert failed:", error.message);
+        alert("Something went wrong. Please try again.");
+        return;
+      }
+
+      alert("✅ Enrollment submitted successfully!");
+      setLevel("");
+      setSubjects([]);
+      setPhone("");
+      setEmail("");
+    } catch (err) {
+      console.error("Enrollment failed:", err);
+      alert("Something went wrong. Try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* 🌍 Header / Navigation */}
-      <header className="flex items-center justify-between bg-primary text-primary-foreground px-6 py-4 shadow-md">
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <h1 className="text-lg font-semibold">Student Portal</h1>
-        </div>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4 py-8">
+      <Card className="max-w-md w-full shadow-lg rounded-2xl">
+        <CardContent className="p-6 space-y-6">
+          <h2 className="text-2xl font-bold text-center text-primary">
+            Enroll for Lessons
+          </h2>
 
-        <Button variant="secondary" size="sm" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-1" /> Logout
-        </Button>
-      </header>
-
-      {/* 🧠 Student Info Section */}
-      <section className="bg-muted py-10 px-6 md:px-10">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
-              {studentData.name.charAt(0)}
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
             <div>
-              <h2 className="text-2xl font-bold">{studentData.name}</h2>
-              <p className="text-sm text-muted-foreground">{studentData.level} Student</p>
+              <label className="block mb-1 font-medium">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                className="w-full border rounded-lg p-2"
+              />
             </div>
-          </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{studentData.subjects.length}</div>
-              <div className="text-sm text-muted-foreground">Subjects</div>
+            {/* Level */}
+            <div>
+              <label className="block mb-1 font-medium">Select Level</label>
+              <select
+                value={level}
+                onChange={(e) => {
+                  setLevel(e.target.value);
+                  setSubjects([]);
+                }}
+                required
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="">-- Choose Level --</option>
+                <option value="O Level">O Level</option>
+                <option value="A Level">A Level</option>
+              </select>
             </div>
-            <div className="h-10 w-px bg-border" />
-            <div className="text-center">
-              <div className="text-2xl font-bold">{studentData.overallProgress}%</div>
-              <div className="text-sm text-muted-foreground">Progress</div>
+
+            {/* Subjects */}
+            {level && (
+              <div>
+                <label className="block mb-1 font-medium">Select Subjects</label>
+                {availableSubjects[level as keyof typeof availableSubjects].map(
+                  (subject) => (
+                    <div key={subject} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={subjects.includes(subject)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSubjects([...subjects, subject]);
+                          } else {
+                            setSubjects(subjects.filter((s) => s !== subject));
+                          }
+                        }}
+                      />
+                      <span>{subject}</span>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* Phone */}
+            <div>
+              <label className="block mb-1 font-medium">Contact Number</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                placeholder="+2637XXXXXXX"
+                className="w-full border rounded-lg p-2"
+              />
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* 🧩 Tabs Section */}
-      <section className="py-10 px-6 md:px-10 flex-1">
-        <div className="max-w-5xl mx-auto">
-          <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="lessons">Lessons</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="progress">Progress</TabsTrigger>
-            </TabsList>
-
-            {/* 🏠 Dashboard Tab */}
-            <TabsContent value="dashboard" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Welcome back, {studentData.name} 👋</CardTitle>
-                  <CardDescription>Continue learning and track your activities</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">
-                    You are currently enrolled in <strong>{studentData.subjects.length}</strong> subjects.
-                    Keep up your performance to reach your target goals!
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* 🎥 Lessons Tab */}
-            <TabsContent value="lessons" className="space-y-4">
-              {lessons.mathematics.map((lesson) => (
-                <Card key={lesson.id}>
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Video className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">{lesson.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {lesson.duration} • {lesson.date}
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant={lesson.completed ? "outline" : "default"}>
-                      <Play className="h-4 w-4 mr-2" />
-                      {lesson.completed ? "Rewatch" : "Watch"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-
-            {/* 📘 Notes Tab */}
-            <TabsContent value="notes" className="grid md:grid-cols-2 gap-4">
-              {notes.map((note) => (
-                <Card key={note.id}>
-                  <CardHeader>
-                    <CardTitle className="text-base">{note.title}</CardTitle>
-                    <CardDescription>{note.subject}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{note.pages} pages</span>
-                      <span>{note.date}</span>
-                    </div>
-                    <Button size="sm" className="mt-3 w-full">
-                      <FileText className="h-4 w-4 mr-2" />
-                      View Notes
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-
-            {/* 📊 Progress Tab */}
-            <TabsContent value="progress" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Subject Performance</CardTitle>
-                  <CardDescription>Track your performance by subject</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  {progress.map((item, i) => (
-                    <div key={i}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{item.subject}</span>
-                        </div>
-                        <span className="text-sm font-medium">{item.grade}</span>
-                      </div>
-                      <Progress value={item.progress} className="h-2" />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Insights</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 rounded-lg border border-green-300 bg-green-50">
-                    <TrendingUp className="h-5 w-5 text-green-700" />
-                    <p className="text-sm">
-                      Great work! You’re showing excellent improvement in <strong>Computer Science</strong>.
-                    </p>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50">
-                    <Award className="h-5 w-5 text-amber-700" />
-                    <p className="text-sm">
-                      Try revising more on <strong>Geography</strong> to boost your grade.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </section>
-
-      <Footer />
+            {/* Submit Button */}
+            <div className="flex flex-col gap-3">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Submitting..." : "Submit Enrollment"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
