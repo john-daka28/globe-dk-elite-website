@@ -1,12 +1,12 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import Script from "next/script" // ✅ add this
-import "./globals.css"
+import type React from "react";
+import type { Metadata } from "next";
+import { Inter, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
+import "./globals.css";
 
-const _inter = Inter({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const _inter = Inter({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "GlobeDk Elite | Professional O-Level & A-Level Tutoring in Harare",
@@ -41,17 +41,20 @@ export const metadata: Metadata = {
     locale: "en_ZW",
     type: "website",
   },
-}
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <head>
-        {/* ✅ Structured Data (JSON-LD) for Google SEO */}
+        {/* ✅ Favicon */}
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="shortcut icon" href="/favicon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+
+        {/* ✅ Structured Data (JSON-LD) */}
         <Script
           id="structured-data"
           type="application/ld+json"
@@ -62,8 +65,8 @@ export default function RootLayout({
               name: "GlobeDk Elite Tutoring",
               image: "https://www.globedk.co.zw/image1.png",
               url: "https://www.globedk.co.zw",
-              telephone: "+263786053315", 
-              email: "johnariphiosd@gmail.com or jdaka@globedk.co.zw" ,
+              telephone: "+263786053315",
+              email: "johnariphiosd@gmail.com or jdaka@globedk.co.zw",
               address: {
                 "@type": "PostalAddress",
                 streetAddress: "Epworth",
@@ -74,7 +77,6 @@ export default function RootLayout({
                 "Professional O-Level and A-Level tutoring in Mathematics, English, Computer Science, and Geography. Available online and in-person in Harare.",
               sameAs: [
                 "https://www.facebook.com/profile.php?id=61582643098304",
-             
               ],
               openingHours: "Mo-Sa 08:00-18:00",
             }),
@@ -82,10 +84,10 @@ export default function RootLayout({
         />
       </head>
 
-      <body className={`font-sans antialiased`}>
+      <body className="font-sans antialiased">
         {children}
         <Analytics />
       </body>
     </html>
-  )
+  );
 }
