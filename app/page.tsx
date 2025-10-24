@@ -214,7 +214,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button asChild size="lg" variant="secondary">
-                <Link href="/portal">Enroll Now</Link>
+                <Link href="/enroll">Enroll Now</Link>
               </Button>
               <Button
                 asChild

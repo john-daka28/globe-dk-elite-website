@@ -28,8 +28,7 @@ export const metadata: Metadata = {
     title: "GlobeDk Elite – Excel in O-Level & A-Level Studies",
     description:
       "Join GlobeDk Elite for professional tutoring in Mathematics, English, Computer Science, and Geography. Available online and in-person in Harare.",
-    url: "https://www.globedk.co.zw", // replace with your actual domain
-    siteName: "GlobeDk Elite",
+    url: "https://www.globedk.co.zw", 
     images: [
       {
         url: "/image1.png", 
