@@ -49,10 +49,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* ✅ Favicon */}
-        <link rel="icon" type="image/png" href="/favicon.png" />
-        <link rel="shortcut icon" href="/favicon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+   
+  {/* ✅ Favicon */}
+  <link rel="icon" type="image/png" href="/image1.png" />
+  <link rel="shortcut icon" href="/image1.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/image1.png" />
+
 
         {/* ✅ Structured Data (JSON-LD) */}
         <Script
