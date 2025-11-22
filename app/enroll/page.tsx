@@ -58,76 +58,98 @@ export default function ExtraLessonApplication() {
     handleChange("documents", [...formData.documents, { name: "", file: null }]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.level || formData.subjects.length === 0) {
-      alert("Please fill in all required fields and select subjects.");
-      return;
-    }
+  if (!formData.firstName || !formData.lastName || !formData.level || formData.subjects.length === 0) {
+    alert("Please fill in all required fields and select subjects.");
+    return;
+  }
 
-    try {
-      // Upload documents to Supabase Storage
-      const uploadedDocs: DocumentType[] = [];
-      for (const doc of formData.documents) {
-        if (doc.file) {
-          const fileExt = doc.file.name.split(".").pop();
-          const fileName = `${Date.now()}_${doc.name}.${fileExt}`;
-          const { data, error } = await supabase.storage
-            .from("extra-lesson-documents")
-            .upload(fileName, doc.file);
-          if (error) throw error;
+  try {
+    // Upload documents to Supabase Storage
+    const uploadedDocs: DocumentType[] = [];
+    for (const doc of formData.documents) {
+      if (doc.file) {
+        const fileExt = doc.file.name.split(".").pop();
+        const fileName = `${Date.now()}_${doc.name}.${fileExt}`;
+        const { data, error } = await supabase.storage
+          .from("extra-lesson-documents")
+          .upload(fileName, doc.file);
+        if (error) throw error;
 
-          const { publicURL } = supabase.storage
-            .from("extra-lesson-documents")
-            .getPublicUrl(data.path);
+        const { publicURL } = supabase.storage
+          .from("extra-lesson-documents")
+          .getPublicUrl(data.path);
 
-          uploadedDocs.push({ name: doc.name, url: publicURL });
-        } else if (doc.name) {
-          uploadedDocs.push({ name: doc.name });
-        }
+        uploadedDocs.push({ name: doc.name, url: publicURL });
+      } else if (doc.name) {
+        uploadedDocs.push({ name: doc.name });
       }
-
-      // Insert into Supabase table
-      const { error } = await supabase.from("extra_lesson_applications").insert([
-        {
-          level: formData.level,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          gender: formData.gender,
-          dob: formData.dob,
-          subjects: formData.subjects,
-          guardian_name: formData.guardianName,
-          guardian_phone: formData.guardianPhone,
-          guardian_email: formData.guardianEmail,
-          relationship: formData.relationship,
-          documents: uploadedDocs,
-        },
-      ]);
-
-      if (error) throw error;
-
-      alert("Application submitted successfully!");
-
-      // Reset form
-      setFormData({
-        level: "",
-        firstName: "",
-        lastName: "",
-        gender: "",
-        dob: "",
-        subjects: [],
-        guardianName: "",
-        guardianPhone: "",
-        guardianEmail: "",
-        relationship: "",
-        documents: [],
-      });
-    } catch (error: any) {
-      console.error(error);
-      alert("Error submitting application: " + error.message);
     }
-  };
+
+    // Insert into Supabase table
+    const { error } = await supabase.from("extra_lesson_applications").insert([
+      {
+        level: formData.level,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        gender: formData.gender,
+        dob: formData.dob,
+        subjects: formData.subjects,
+        guardian_name: formData.guardianName,
+        guardian_phone: formData.guardianPhone,
+        guardian_email: formData.guardianEmail,
+        relationship: formData.relationship,
+        documents: uploadedDocs,
+      },
+    ]);
+
+    if (error) throw error;
+
+    // ✅ Call email API
+    await fetch("/api/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        level: formData.level,
+        gender: formData.gender,
+        dob: formData.dob,
+        subjects: formData.subjects,
+        guardianName: formData.guardianName,
+        guardianPhone: formData.guardianPhone,
+        guardianEmail: formData.guardianEmail,
+        relationship: formData.relationship,
+      }),
+    });
+
+    alert("Application submitted successfully! Email notification sent.");
+
+    // Reset form
+    setFormData({
+      level: "",
+      firstName: "",
+      lastName: "",
+      gender: "",
+      dob: "",
+      subjects: [],
+      guardianName: "",
+      guardianPhone: "",
+      guardianEmail: "",
+      relationship: "",
+      documents: [],
+    });
+  } catch (error: any) {
+    console.error(error);
+    alert("Error submitting application: " + error.message);
+  }
+};
+
+
 
   return (
     <div className="min-h-screen bg-muted py-12">
