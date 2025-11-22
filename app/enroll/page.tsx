@@ -57,10 +57,10 @@ export default function ExtraLessonApplication() {
   const addDocument = () => {
     handleChange("documents", [...formData.documents, { name: "", file: null }]);
   };
-
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
+  // Basic validation
   if (!formData.firstName || !formData.lastName || !formData.level || formData.subjects.length === 0) {
     alert("Please fill in all required fields and select subjects.");
     return;
@@ -89,7 +89,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     // Insert into Supabase table
-    const { error } = await supabase.from("extra_lesson_applications").insert([
+    const { error: dbError } = await supabase.from("extra_lesson_applications").insert([
       {
         level: formData.level,
         first_name: formData.firstName,
@@ -105,14 +105,12 @@ const handleSubmit = async (e: React.FormEvent) => {
       },
     ]);
 
-    if (error) throw error;
+    if (dbError) throw dbError;
 
-    // ✅ Call email API
-    await fetch("/api/send-email", {
+    // Call email API
+    const res = await fetch("/api/send-email", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -126,6 +124,12 @@ const handleSubmit = async (e: React.FormEvent) => {
         relationship: formData.relationship,
       }),
     });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to send email");
+    }
 
     alert("Application submitted successfully! Email notification sent.");
 
@@ -144,10 +148,11 @@ const handleSubmit = async (e: React.FormEvent) => {
       documents: [],
     });
   } catch (error: any) {
-    console.error(error);
+    console.error("Form submission failed:", error);
     alert("Error submitting application: " + error.message);
   }
 };
+
 
 
 

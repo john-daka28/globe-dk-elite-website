@@ -4,13 +4,36 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    // Validate required fields
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "level",
+      "gender",
+      "dob",
+      "subjects",
+      "guardianName",
+      "guardianPhone",
+      "guardianEmail",
+      "relationship",
+    ];
+
+    for (const field of requiredFields) {
+      if (!body[field] || (Array.isArray(body[field]) && body[field].length === 0)) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Missing or empty field: ${field}` }),
+          { status: 400 }
+        );
+      }
+    }
+
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
-      secure: true, // true for 465
+      secure: Number(process.env.SMTP_PORT) === 465, // auto secure if 465
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        pass: process.env.SMTP_PASS, // App Password for Gmail
       },
     });
 
@@ -24,7 +47,7 @@ export async function POST(req: Request) {
         <p><strong>Level:</strong> ${body.level}</p>
         <p><strong>Gender:</strong> ${body.gender}</p>
         <p><strong>Date of Birth:</strong> ${body.dob}</p>
-        <p><strong>Subjects:</strong> ${body.subjects.join(", ")}</p>
+        <p><strong>Subjects:</strong> ${(body.subjects || []).join(", ")}</p>
         <p><strong>Guardian Name:</strong> ${body.guardianName}</p>
         <p><strong>Guardian Phone:</strong> ${body.guardianPhone}</p>
         <p><strong>Guardian Email:</strong> ${body.guardianEmail}</p>
@@ -32,13 +55,16 @@ export async function POST(req: Request) {
       `,
     });
 
+    console.log("Email sent, messageId:", info.messageId);
+
     return new Response(JSON.stringify({ success: true, messageId: info.messageId }), {
       status: 200,
     });
   } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
-      status: 500,
-    });
+    console.error("Email sending failed:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: (error as Error).message }),
+      { status: 500 }
+    );
   }
 }
