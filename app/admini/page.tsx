@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
       // For simplicity: hardcoded credentials check
       if (email === "johnariphiosd@gmail.com" && password === "mopomopo12") {
         localStorage.setItem("isAdminLoggedIn", "true");
-        router.push("/applicants"); // redirect to applicants page
+        router.push("/applicantss"); // redirect to applicants page
       } else {
         setError("Invalid email or password.");
       }
