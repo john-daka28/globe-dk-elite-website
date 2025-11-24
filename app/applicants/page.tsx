@@ -284,29 +284,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
 
-          {/* Documents Upload */}
-          {/* <div className="space-y-4">
-            <h2 className="font-medium">Documents Upload (Optional)</h2>
-            {formData.documents.map((doc, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <input
-                  type="text"
-                  placeholder="Document Name"
-                  className="w-full border rounded px-3 py-2"
-                  value={doc.name}
-                  onChange={(e) => handleDocumentChange(index, doc.file || null, e.target.value)}
-                />
-                <input
-                  type="file"
-                  className="w-full"
-                  onChange={(e) => handleDocumentChange(index, e.target.files?.[0] || null, doc.name)}
-                />
-              </div>
-            ))}
-            <button type="button" className="text-blue-600 underline mt-2" onClick={addDocument}>
-              + Add Another Document
-            </button>
-          </div> */}
+         
 
           <div className="text-center mt-6">
             <Button type="submit" className="w-full md:w-auto">
