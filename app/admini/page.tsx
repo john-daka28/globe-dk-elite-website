@@ -24,9 +24,16 @@ export default function AdminLoginPage() {
 
     try {
       // For simplicity: hardcoded credentials check
-      if (email === "johnariphiosd@gmail.com" && password === "mopomopo12") {
-        localStorage.setItem("isAdminLoggedIn", "true");
-        router.push("/applicantss"); // redirect to applicants page
+     if (email === "johnariphiosd@gmail.com" && password === "mopomopo12") {
+  // Set cookie for server-side recognition
+  document.cookie = "isAdminLoggedIn=true; path=/; max-age=86400"; // 1 day
+
+  // Optional: also keep localStorage if you want
+  localStorage.setItem("isAdminLoggedIn", "true");
+
+  router.push("/admin/dashboard"); // redirect after login
+
+ // redirect to applicants page
       } else {
         setError("Invalid email or password.");
       }

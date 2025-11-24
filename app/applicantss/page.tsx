@@ -66,7 +66,7 @@ export default function ApplicantsDashboard() {
             <LayoutDashboard className="h-5 w-5" /> Dashboard
           </Link>
 
-          <Link href="/admin/applicants" className="flex items-center gap-2 p-3 rounded bg-primary text-white">
+          <Link href="/applicantss" className="flex items-center gap-2 p-3 rounded bg-primary text-white">
             <Users className="h-5 w-5" /> Applicants
           </Link>
 

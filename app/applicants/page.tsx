@@ -131,7 +131,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error(data.error || "Failed to send email");
     }
 
-    alert("Application submitted successfully! Email notification sent.");
+    alert("Application submitted successfully!.");
 
     // Reset form
     setFormData({
