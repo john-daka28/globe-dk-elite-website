@@ -31,9 +31,9 @@ export default function AdminSettings() {
         <nav className="space-y-3">
           <a href="/admin/dashboard" className="block p-3 rounded hover:bg-gray-100">
             Dashboard
-          </a>
+          </ a>
 
-          <a href="/admin/applicants" className="block p-3 rounded hover:bg-gray-100">
+          <a href="/applicantss" className="block p-3 rounded hover:bg-gray-100">
             Applicants
           </a>
             <a href="/admin/subjects" className="block p-3 rounded hover:bg-gray-100">  

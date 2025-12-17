@@ -1,10 +1,13 @@
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import { Calculator, Globe, Laptop, FileText, CheckCircle2, Clock, DollarSign, User } from "lucide-react"
+"use client";
+
+import { Navigation } from "@/components/navigation";
+import { Footer } from "@/components/footer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Calculator, Globe, Laptop, FileText, CheckCircle2, Clock, DollarSign, User } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function SubjectsPage() {
   const oLevelSubjects = [
@@ -44,7 +47,7 @@ export default function SubjectsPage() {
       duration: "2 hours per week",
       fee: "$7 per subject",
     },
-  ]
+  ];
 
   const aLevelSubjects = [
     {
@@ -74,7 +77,13 @@ export default function SubjectsPage() {
       duration: "3 hours per week",
       fee: "$12 per subject",
     },
-  ]
+  ];
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+    hover: { scale: 1.03, boxShadow: "0px 15px 30px rgba(0,0,0,0.15)" }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -107,38 +116,49 @@ export default function SubjectsPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             {oLevelSubjects.map((subject, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <subject.icon className="h-6 w-6 text-primary" />
+              <motion.div
+                key={index}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover="hover"
+              >
+                <Card className="transition-transform duration-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        whileHover={{ rotate: [0, 15, -10, 0] }}
+                        className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center"
+                      >
+                        <subject.icon className="h-6 w-6 text-primary" />
+                      </motion.div>
+                      <div>
+                        <CardTitle className="text-xl">{subject.name}</CardTitle>
+                        <Badge variant="secondary" className="mt-1">O-Level</Badge>
+                      </div>
                     </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-muted-foreground">{subject.description}</p>
                     <div>
-                      <CardTitle className="text-xl">{subject.name}</CardTitle>
-                      <Badge variant="secondary" className="mt-1">O-Level</Badge>
+                      <h4 className="font-semibold mb-2 text-sm">Topics Covered:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {subject.topics.map((topic, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{topic}</Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-muted-foreground">{subject.description}</p>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Topics Covered:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {subject.topics.map((topic, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">{topic}</Badge>
-                      ))}
+                    <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" /> <span>{subject.duration}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4" /> <span>{subject.fee}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" /> <span>{subject.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" /> <span>{subject.fee}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -161,38 +181,49 @@ export default function SubjectsPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {aLevelSubjects.map((subject, index) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center">
-                      <subject.icon className="h-6 w-6 text-secondary" />
+              <motion.div
+                key={index}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover="hover"
+              >
+                <Card className="transition-transform duration-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        whileHover={{ rotate: [0, 15, -10, 0] }}
+                        className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center"
+                      >
+                        <subject.icon className="h-6 w-6 text-secondary" />
+                      </motion.div>
+                      <div>
+                        <CardTitle className="text-xl">{subject.name}</CardTitle>
+                        <Badge variant="secondary" className="mt-1 bg-secondary text-secondary-foreground">A-Level</Badge>
+                      </div>
                     </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-muted-foreground">{subject.description}</p>
                     <div>
-                      <CardTitle className="text-xl">{subject.name}</CardTitle>
-                      <Badge variant="secondary" className="mt-1 bg-secondary text-secondary-foreground">A-Level</Badge>
+                      <h4 className="font-semibold mb-2 text-sm">Topics Covered:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {subject.topics.map((topic, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{topic}</Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-muted-foreground">{subject.description}</p>
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Topics Covered:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {subject.topics.map((topic, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">{topic}</Badge>
-                      ))}
+                    <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" /> <span>{subject.duration}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4" /> <span>{subject.fee}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" /> <span>{subject.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" /> <span>{subject.fee}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -203,7 +234,7 @@ export default function SubjectsPage() {
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-2xl mx-auto space-y-4">
             <div className="flex justify-center">
-              <User className="h-12 w-12 text-primary" />
+              <User className="h-12 w-12 text-primary animate-bounce-slow" />
             </div>
             <h3 className="text-2xl font-bold">John Ariphios Daka</h3>
             <p className="text-muted-foreground text-lg">
@@ -216,5 +247,5 @@ export default function SubjectsPage() {
 
       <Footer />
     </div>
-  )
+  );
 }

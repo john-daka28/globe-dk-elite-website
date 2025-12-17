@@ -67,7 +67,7 @@ export default function AdminDashboard() {
             Dashboard
           </Link>
 
-          <Link href="/admin/applicants" className="block p-3 rounded hover:bg-gray-100">
+          <Link href="/applicantss" className="block p-3 rounded hover:bg-gray-100">
             Applicants
           </Link>
 
