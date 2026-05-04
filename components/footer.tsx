@@ -100,7 +100,7 @@ export function Footer() {
                   href="mailto:johnariphiosd@gmail.com"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  johnariphiosd@gmail.com
+                 jdaka@globe.co.zw  johnariphiosd@gmail.com 
                 </a>
               </li>
               <li className="flex items-start gap-2">
