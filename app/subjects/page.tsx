@@ -110,7 +110,7 @@ export default function SubjectsPage() {
               <h2 className="text-3xl md:text-4xl font-bold">O-Level Subjects</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed max-w-3xl">
-              Each O-Level subject is only <strong>$10</strong> per month — affordable, effective, and results-driven.
+              Each O-Level subject is  only <strong>$10</strong> per month — affordable, effective, and results-driven.
             </p>
           </div>
 
