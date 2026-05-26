@@ -18,7 +18,7 @@ export default function SubjectsPage() {
         "Comprehensive coverage of algebra, geometry, trigonometry, and statistics to build strong problem-solving skills.",
       topics: ["Algebra", "Geometry", "Trigonometry", "Statistics", "Number Systems"],
       duration: "2 hours per week",
-      fee: "$7 per subject",
+      fee: "$10 per subject",
     },
     {
       name: "English Language",
@@ -27,7 +27,7 @@ export default function SubjectsPage() {
         "Master reading comprehension, writing, grammar, and literature analysis for effective communication.",
       topics: ["Grammar", "Composition", "Comprehension", "Literature", "Oral Skills"],
       duration: "2 hours per week",
-      fee: "$7 per subject",
+      fee: "$10 per subject",
     },
     {
       name: "Computer Science",
@@ -36,7 +36,7 @@ export default function SubjectsPage() {
         "Learn programming fundamentals, algorithms, databases, and computing concepts for the digital world.",
       topics: ["Programming", "Algorithms", "Data Structures", "Databases", "Networks"],
       duration: "2 hours per week",
-      fee: "$7 per subject",
+      fee: "$10 per subject",
     },
     {
       name: "Geography",
@@ -45,7 +45,7 @@ export default function SubjectsPage() {
         "Explore physical and human geography, map skills, environment, and global development patterns.",
       topics: ["Physical Geography", "Human Geography", "Map Skills", "Environment", "Development"],
       duration: "2 hours per week",
-      fee: "$7 per subject",
+      fee: "$10 per subject",
     },
   ];
 
@@ -110,7 +110,7 @@ export default function SubjectsPage() {
               <h2 className="text-3xl md:text-4xl font-bold">O-Level Subjects</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed max-w-3xl">
-              Each O-Level subject is only <strong>$7</strong> per month — affordable, effective, and results-driven.
+              Each O-Level subject is only <strong>$10</strong> per month — affordable, effective, and results-driven.
             </p>
           </div>
 
