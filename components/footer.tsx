@@ -11,16 +11,16 @@ export function Footer() {
           {/* Brand */}
            <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary overflow-hidden">
-                <Image 
-                  src="/Logo.png" 
-                  alt="GlobeDk Elite Academy Logo" 
-                  width={48} 
-                  height={48} 
-                  className="object-contain p-1"
-                  priority
-                />
-              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg overflow-hidden">
+  <Image 
+    src="/Logo.png" 
+    alt="GlobeDk Elite Academy Logo" 
+    width={48} 
+    height={48} 
+    className="object-contain"
+    priority
+  />
+</div>
               <span className="font-bold text-lg">GlobeDk Elite Academy</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
