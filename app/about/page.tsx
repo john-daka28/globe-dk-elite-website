@@ -6,306 +6,701 @@ import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
-import { Target, Eye, Award, Users, BookOpen, TrendingUp } from "lucide-react";
+import {
+  Target,
+  Eye,
+  Award,
+  Users,
+  BookOpen,
+  TrendingUp,
+  Calculator,
+  Globe,
+  Laptop,
+  FileText,
+  Atom,
+  Landmark,
+  Briefcase,
+  GraduationCap,
+} from "lucide-react";
 
 /**
- * Local source file path (for toolchain / uploads)
+ * Local source file path
  */
 export const SOURCE_FILE = "/mnt/data/page.tsx";
 
 const sectionVariant: Variants = {
-  hidden: { opacity: 0, y: 28 },
+  hidden: {
+    opacity: 0,
+    y: 28,
+  },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.12, ease: [0.22, 1, 0.36, 1], duration: 0.6 },
+    transition: {
+      delay: i * 0.12,
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    },
   }),
 };
 
+const subjects = [
+  {
+    icon: Calculator,
+    name: "Mathematics",
+  },
+  {
+    icon: Calculator,
+    name: "Pure Mathematics",
+  },
+  {
+    icon: Calculator,
+    name: "Statistics",
+  },
+  {
+    icon: FileText,
+    name: "English Language",
+  },
+  {
+    icon: Atom,
+    name: "Combined Science",
+  },
+  {
+    icon: Atom,
+    name: "Physics",
+  },
+  {
+    icon: Atom,
+    name: "Chemistry",
+  },
+  {
+    icon: Atom,
+    name: "Biology",
+  },
+  {
+    icon: Laptop,
+    name: "Computer Science",
+  },
+  {
+    icon: Globe,
+    name: "Geography",
+  },
+  {
+    icon: Landmark,
+    name: "History",
+  },
+  {
+    icon: Landmark,
+    name: "Heritage Studies",
+  },
+  {
+    icon: Briefcase,
+    name: "Commerce",
+  },
+  {
+    icon: Briefcase,
+    name: "Business Studies",
+  },
+  {
+    icon: Briefcase,
+    name: "Economics",
+  },
+  {
+    icon: GraduationCap,
+    name: "Principles of Accounts",
+  },
+];
+
 export default function AboutPage() {
-  // Parallax for the carousel
   const ref = useRef<HTMLDivElement | null>(null);
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start end", "end start"],
   });
-  const yParallax = useTransform(scrollYProgress, [0, 1], [30, -30]);
+
+  const yParallax = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [30, -30]
+  );
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-foreground">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navigation />
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-primary text-primary-foreground py-16 md:py-24">
-        {/* animated gradient overlay */}
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-primary text-primary-foreground py-20 md:py-28">
         <motion.div
           aria-hidden
           className="absolute inset-0"
           style={{ mixBlendMode: "overlay" }}
-          animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+          animate={{
+            backgroundPosition: [
+              "0% 50%",
+              "100% 50%",
+              "0% 50%",
+            ],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 12,
+            ease: "linear",
+          }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-rose-500 opacity-70" />
         </motion.div>
 
-        {/* soft floating shapes */}
         <motion.div
           aria-hidden
-          className="absolute -left-16 -top-10 w-56 h-56 rounded-full blur-3xl mix-blend-multiply opacity-30 bg-sky-400"
-          animate={{ x: [-10, 30, -10], y: [0, 20, 0] }}
-          transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+          className="absolute -left-16 -top-10 w-56 h-56 rounded-full blur-3xl bg-sky-400 opacity-30"
+          animate={{
+            x: [-10, 30, -10],
+            y: [0, 20, 0],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 8,
+          }}
         />
+
         <motion.div
           aria-hidden
-          className="absolute right-8 -bottom-14 w-72 h-72 rounded-full blur-3xl mix-blend-multiply opacity-25 bg-indigo-500"
-          animate={{ x: [0, -40, 0], y: [0, -20, 0] }}
-          transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
+          className="absolute right-8 -bottom-14 w-72 h-72 rounded-full blur-3xl bg-indigo-500 opacity-25"
+          animate={{
+            x: [0, -40, 0],
+            y: [0, -20, 0],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 10,
+          }}
         />
 
         <div className="container mx-auto px-4 relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="max-w-3xl mx-auto text-center space-y-4"
+            initial={{
+              opacity: 0,
+              y: -20,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.7,
+            }}
+            className="max-w-4xl mx-auto text-center space-y-6"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-balance">
-              About GlobeDk Elite
+            <h1 className="text-4xl md:text-6xl font-bold">
+              About GlobeDk Elite Academy
             </h1>
-            <p className="text-lg text-primary-foreground/90 leading-relaxed">
-              Founded and led by <strong>John Ariphios</strong> — dedicated to empowering students in Harare and beyond
-              through quality education, mentorship, and modern learning support.
+
+            <p className="text-lg md:text-xl leading-8 text-primary-foreground/90">
+              GlobeDk Elite Academy is a Zimbabwean tutoring academy
+              offering professional <strong>Online Lessons</strong>,
+              <strong> Physical Lessons</strong>,
+              <strong> Home Schooling</strong>,
+              <strong> Live Virtual Classes</strong>,
+              <strong> Weekend Lessons</strong> and
+              <strong> One-on-One Tutoring</strong> for both
+              <strong> ZIMSEC</strong> and
+              <strong> Cambridge</strong> learners.
+            </p>
+
+            <p className="text-primary-foreground/80 leading-8">
+              We provide high-quality learning in Sciences,
+              Commercials, Arts and Technology subjects for
+              O-Level and A-Level students throughout Zimbabwe
+              and internationally, preparing learners for
+              examinations, university and future careers.
             </p>
           </motion.div>
         </div>
       </section>
-
-      {/* Our Story */}
+            {/* Our Story */}
       <motion.section
-        className="py-16 md:py-24"
+        className="py-20 md:py-28"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
 
-              {/* Text Section */}
-              <motion.div custom={0} variants={sectionVariant} className="space-y-6">
-                <h2 className="text-3xl md:text-4xl font-bold">My Story</h2>
-                <div className="space-y-4 text-muted-foreground leading-relaxed">
-                  <p>
-                    Hi, I’m <strong>John Ariphios</strong> — the founder and lead tutor of GlobeDk Elite. 
-                    Based in Epworth, Harare, I started this tutoring platform out of a deep passion 
-                    for helping students unlock their full potential in academics.
-                  </p>
-                  <p>
-                    I specialize in <strong>Mathematics</strong> and <strong>Computer Science</strong> 
-                    for both O-Level and A-Level, combining years of teaching experience 
-                    with modern tools and methods to make learning engaging and effective.
-                  </p>
-                  <p>
-                    Over the years, I’ve helped hundreds of students achieve outstanding results — 
-                    many earning distinctions and developing a stronger love for learning.
-                  </p>
-                </div>
-              </motion.div>
+            {/* Story */}
+            <motion.div
+              custom={0}
+              variants={sectionVariant}
+              className="space-y-6"
+            >
+              <span className="text-primary font-semibold uppercase tracking-wider">
+                Our Story
+              </span>
 
-              {/* Animated Image Carousel Section */}
+              <h2 className="text-3xl md:text-5xl font-bold">
+                Transforming Education Through Innovation & Excellence
+              </h2>
+
+              <p className="text-muted-foreground leading-8">
+                GlobeDk Elite Academy was founded with one vision—to make
+                quality education accessible to every learner regardless of
+                location. We combine traditional classroom excellence with
+                modern technology to deliver engaging online and physical
+                lessons that produce outstanding academic results.
+              </p>
+
+              <p className="text-muted-foreground leading-8">
+                We proudly prepare students for both <strong>ZIMSEC</strong> and
+                <strong> Cambridge</strong> examinations while offering
+                personalized tutoring, homeschooling, revision classes,
+                homework assistance, holiday lessons and live virtual classes.
+              </p>
+
+              <p className="text-muted-foreground leading-8">
+                Our academy now supports learners in Sciences, Commercials,
+                Humanities and Technology subjects from O-Level through
+                A-Level, helping students build confidence, critical thinking
+                and lifelong learning skills.
+              </p>
+            </motion.div>
+
+            {/* Animated Image Section */}
+            <motion.div
+              ref={ref}
+              style={{ y: yParallax }}
+              className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl"
+            >
+              {[
+                "/african-students-learning-in-modern-classroom.jpg",
+                "/african-female-student-smiling.jpg",
+                "/african-female-student.jpg",
+              ].map((src, index) => (
+                <motion.img
+                  key={index}
+                  src={src}
+                  alt={`GlobeDk Elite Student ${index + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  initial={{
+                    opacity: 0,
+                    scale: 0.96,
+                  }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    scale: [0.96, 1, 1, 0.96],
+                  }}
+                  transition={{
+                    duration: 8,
+                    repeat: Infinity,
+                    repeatDelay: 0.5,
+                    delay: index * 2.6,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+
+              {/* Floating Achievement Badge */}
               <motion.div
-                ref={ref}
-                style={{ y: yParallax }}
-                className="relative aspect-square rounded-xl overflow-hidden shadow-2xl"
+                className="absolute top-5 left-5 bg-white rounded-xl shadow-xl p-4"
+                animate={{
+                  y: [0, -8, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 3,
+                }}
               >
-                {[
-                  '/african-students-learning-in-modern-classroom.jpg',
-                  '/african-female-student-smiling.jpg',
-                  '/african-female-student.jpg'
-                ].map((src, index) => (
-                  <motion.img
-                    key={index}
-                    src={src}
-                    // alt={`Students learning ${index + 1}`}
-                    className="absolute w-full h-full object-cover rounded-xl"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: [0, 1, 1, 0], scale: [0.95, 1, 1, 0.95] }}
-                    transition={{
-                      duration: 8,
-                      repeat: Infinity,
-                      repeatDelay: 0.5,
-                      ease: 'easeInOut',
-                      delay: index * 2.5
-                    }}
-                  />
-                ))}
-
-                {/* Floating Badge Top-Left */}
-                <motion.div
-                  className="absolute -top-6 -left-6 bg-white rounded-full p-3 shadow-md"
-                  animate={{ rotate: [0, 10, -8, 0] }}
-                  transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                >
-                  <Users className="h-5 w-5 text-primary" />
-                </motion.div>
-
-                {/* Floating Badge Bottom-Right */}
-                <motion.div
-                  className="absolute -bottom-6 -right-6 bg-white rounded-full p-3 shadow-md"
-                  animate={{ rotate: [0, -10, 8, 0] }}
-                  transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-                >
-                  <Award className="h-5 w-5 text-yellow-500" />
-                </motion.div>
-
-                {/* Orbiting Floating Icons */}
-                {['TrendingUp', 'BookOpen', 'Target'].map((iconName, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute bg-white rounded-full p-2 shadow-md"
-                    style={{ top: '50%', left: '50%', x: 0, y: 0 }}
-                    animate={{ rotate: 360, translateX: 80 + i * 20, translateY: 0 }}
-                    transition={{ repeat: Infinity, duration: 10 + i * 2, ease: 'linear' }}
-                  >
-                    {iconName === 'TrendingUp' && <TrendingUp className="h-4 w-4 text-green-500" />}
-                    {iconName === 'BookOpen' && <BookOpen className="h-4 w-4 text-blue-500" />}
-                    {iconName === 'Target' && <Target className="h-4 w-4 text-red-500" />}
-                  </motion.div>
-                ))}
+                <Award className="h-8 w-8 text-yellow-500" />
               </motion.div>
 
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Mission & Vision */}
-      <motion.section
-        className="py-16 md:py-24 bg-muted/30"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <motion.div custom={0} variants={sectionVariant}>
-              <Card className="border-border hover:shadow-lg transition">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Target className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-2xl font-bold">My Mission</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    To provide accessible, personalized, and high-quality tutoring that empowers students to excel in
-                    their O-Level and A-Level exams — and develop skills for lifelong success.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div custom={1} variants={sectionVariant}>
-              <Card className="border-border hover:shadow-lg transition">
-                <CardContent className="pt-6 space-y-4">
-                  <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center">
-                    <Eye className="h-6 w-6 text-secondary" />
-                  </div>
-                  <h3 className="text-2xl font-bold">My Vision</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    To build one of Zimbabwe’s most trusted and innovative tutoring platforms that blends technology,
-                    passion, and mentorship — shaping confident, future-ready students.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Core Values */}
-      <motion.section
-        className="py-16 md:py-24"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <motion.h2 custom={0} variants={sectionVariant} className="text-3xl md:text-4xl font-bold mb-4">
-              My Core Values
-            </motion.h2>
-            <motion.p custom={1} variants={sectionVariant} className="text-muted-foreground leading-relaxed">
-              These principles guide every lesson and every student interaction at GlobeDk Elite.
-            </motion.p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {[
-              { icon: Award, title: "Excellence", description: "I aim for the highest standards in teaching and results." },
-              { icon: Users, title: "Student-Centered", description: "Every lesson is tailored around your success and understanding." },
-              { icon: BookOpen, title: "Continuous Learning", description: "Learning never stops — for both students and teachers." },
-              { icon: TrendingUp, title: "Growth Mindset", description: "I believe every student can improve with effort and support." },
-              { icon: Target, title: "Integrity", description: "Honesty, professionalism, and dedication in every class." },
-              { icon: Users, title: "Community", description: "Building a supportive environment for students to thrive." },
-            ].map((value, index) => (
+              {/* Floating Students Badge */}
               <motion.div
-                key={index}
+                className="absolute bottom-5 right-5 bg-white rounded-xl shadow-xl p-4"
+                animate={{
+                  y: [0, 8, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 3.5,
+                }}
+              >
+                <Users className="h-8 w-8 text-primary" />
+              </motion.div>
+            </motion.div>
+
+          </div>
+        </div>
+      </motion.section>
+            {/* Subjects We Offer */}
+      <motion.section
+        className="py-20 md:py-28 bg-muted/30"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
+        <div className="container mx-auto px-4">
+
+          <motion.div
+            custom={0}
+            variants={sectionVariant}
+            className="max-w-4xl mx-auto text-center mb-14"
+          >
+            <span className="text-primary font-semibold uppercase tracking-wider">
+              What We Teach
+            </span>
+
+            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+              O-Level & A-Level Subjects We Offer
+            </h2>
+
+            <p className="mt-6 text-muted-foreground leading-8">
+              GlobeDk Elite Academy offers comprehensive tutoring for both
+              <strong> ZIMSEC </strong>
+              and
+              <strong> Cambridge </strong>
+              learners. Our experienced tutors deliver high-quality
+              Online Lessons, Physical Lessons, Homeschooling,
+              Live Virtual Classes, Holiday Lessons,
+              Weekend Lessons, Revision Classes and
+              One-on-One Tutoring across Science,
+              Commercial, Arts and Technology subjects.
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {subjects.map((subject, index) => (
+              <motion.div
+                key={subject.name}
                 custom={index}
                 variants={sectionVariant}
-                className="text-center"
-                whileHover={{ y: -6, boxShadow: "0 10px 30px rgba(2,6,23,0.08)" }}
-                transition={{ type: "spring", stiffness: 200 }}
+                whileHover={{
+                  y: -8,
+                  scale: 1.03,
+                }}
               >
-                <Card className="border-border text-center">
-                  <CardContent className="pt-6 space-y-3">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto">
-                      <value.icon className="h-6 w-6 text-primary" />
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
+                  <CardContent className="flex flex-col items-center text-center py-8 px-5">
+
+                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                      <subject.icon className="h-8 w-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold">{value.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{value.description}</p>
+
+                    <h3 className="font-bold text-lg mb-2">
+                      {subject.name}
+                    </h3>
+
+                    <p className="text-sm text-muted-foreground">
+                      Available for selected O-Level and/or A-Level
+                      programmes through both online and physical
+                      learning options.
+                    </p>
+
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
+
         </div>
       </motion.section>
-
-      {/* Tutor Section */}
+            {/* Mission & Vision */}
       <motion.section
-        className="py-16 md:py-24 bg-muted/30"
+        className="py-20 md:py-28"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
-        <div className="container mx-auto px-4 text-center max-w-2xl">
-          <motion.h2 custom={0} variants={sectionVariant} className="text-3xl md:text-4xl font-bold mb-6">
-            Meet Your Tutor
-          </motion.h2>
+        <div className="container mx-auto px-4">
 
-          <motion.div custom={1} variants={sectionVariant}>
-            <Card className="border-border">
-              <CardContent className="pt-8 space-y-4">
-                <Avatar className="h-35 w-35 mx-auto">
-                  <AvatarImage src="/john-ariphios.jpg.JPG" alt="John Ariphios Daka" />
-                </Avatar>
+          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
 
-                <div>
-                  <h3 className="font-bold text-xl">John Ariphios</h3>
-                  <p className="text-primary font-medium">Founder & Senior Tutor</p>
+            {/* Mission */}
+            <motion.div
+              custom={0}
+              variants={sectionVariant}
+            >
+              <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardContent className="p-8">
+
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                    <Target className="h-8 w-8 text-primary" />
+                  </div>
+
+                  <h2 className="text-3xl font-bold mb-5">
+                    Our Mission
+                  </h2>
+
+                  <p className="text-muted-foreground leading-8">
+                    Our mission is to provide affordable, accessible and
+                    high-quality education through Online Lessons,
+                    Physical Lessons, Live Virtual Classes,
+                    Homeschooling, One-on-One Tutoring,
+                    Holiday Lessons and Weekend Lessons.
+                  </p>
+
+                  <p className="mt-5 text-muted-foreground leading-8">
+                    We are committed to helping every learner master
+                    O-Level and A-Level subjects, improve confidence,
+                    develop problem-solving skills and achieve excellent
+                    results in both ZIMSEC and Cambridge examinations.
+                  </p>
+
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Vision */}
+            <motion.div
+              custom={1}
+              variants={sectionVariant}
+            >
+              <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardContent className="p-8">
+
+                  <div className="h-16 w-16 rounded-full bg-secondary/10 flex items-center justify-center mb-6">
+                    <Eye className="h-8 w-8 text-secondary" />
+                  </div>
+
+                  <h2 className="text-3xl font-bold mb-5">
+                    Our Vision
+                  </h2>
+
+                  <p className="text-muted-foreground leading-8">
+                    To become Zimbabwe's leading digital learning academy,
+                    recognised for academic excellence, innovation,
+                    professionalism and outstanding student success in
+                    Sciences, Commercials, Arts and Technology education.
+                  </p>
+
+                  <p className="mt-5 text-muted-foreground leading-8">
+                    We envision empowering learners across Zimbabwe and
+                    internationally with modern education that prepares
+                    them for university, employment, entrepreneurship
+                    and lifelong learning.
+                  </p>
+
+                </CardContent>
+              </Card>
+            </motion.div>
+
+          </div>
+
+        </div>
+      </motion.section>
+            {/* Why Choose GlobeDk Elite Academy */}
+      <motion.section
+        className="py-20 md:py-28 bg-muted/30"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
+        <div className="container mx-auto px-4">
+
+          <motion.div
+            custom={0}
+            variants={sectionVariant}
+            className="max-w-4xl mx-auto text-center mb-14"
+          >
+            <span className="text-primary font-semibold uppercase tracking-wider">
+              Why Choose Us
+            </span>
+
+            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+              Why Students & Parents Choose GlobeDk Elite Academy
+            </h2>
+
+            <p className="mt-6 text-muted-foreground leading-8">
+              GlobeDk Elite Academy combines experienced tutoring,
+              modern teaching methods and flexible learning options
+              to help every learner achieve academic excellence.
+              Whether you need Online Lessons, Physical Lessons,
+              Homeschooling, Live Virtual Classes or personalised
+              One-on-One Tutoring, our academy is committed to
+              delivering quality education for ZIMSEC and Cambridge
+              learners.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            {[
+              {
+                icon: Users,
+                title: "Experienced Tutors",
+                description:
+                  "Dedicated tutors providing professional guidance, mentorship and personalised academic support.",
+              },
+              {
+                icon: BookOpen,
+                title: "Complete Subject Coverage",
+                description:
+                  "Comprehensive O-Level and A-Level learning across Sciences, Commercials, Arts and Technology subjects.",
+              },
+              {
+                icon: TrendingUp,
+                title: "Excellent Results",
+                description:
+                  "Focused exam preparation, revision classes and proven strategies that help students improve performance.",
+              },
+              {
+                icon: Globe,
+                title: "Learn Anywhere",
+                description:
+                  "Attend Online Lessons from anywhere in Zimbabwe or internationally using live virtual classrooms.",
+              },
+              {
+                icon: Laptop,
+                title: "Modern Learning",
+                description:
+                  "Interactive digital resources, practical demonstrations and engaging teaching techniques.",
+              },
+              {
+                icon: Award,
+                title: "Quality Education",
+                description:
+                  "Professional, affordable and student-centred education designed to prepare learners for academic success.",
+              },
+            ].map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                custom={index}
+                variants={sectionVariant}
+                whileHover={{
+                  y: -8,
+                  scale: 1.02,
+                }}
+              >
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
+                  <CardContent className="p-8 text-center">
+
+                    <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                      <feature.icon className="h-8 w-8 text-primary" />
+                    </div>
+
+                    <h3 className="text-xl font-bold mb-4">
+                      {feature.title}
+                    </h3>
+
+                    <p className="text-muted-foreground leading-7">
+                      {feature.description}
+                    </p>
+
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+
+          </div>
+
+        </div>
+      </motion.section>
+            {/* Leadership */}
+      <motion.section
+        className="py-20 md:py-28"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
+        <div className="container mx-auto px-4">
+
+          <motion.div
+            custom={0}
+            variants={sectionVariant}
+            className="max-w-4xl mx-auto text-center mb-14"
+          >
+            <span className="text-primary font-semibold uppercase tracking-wider">
+              Leadership
+            </span>
+
+            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+              Meet Our Founder
+            </h2>
+
+            <p className="mt-6 text-muted-foreground leading-8">
+              GlobeDk Elite Academy is led by passionate educators who
+              believe every learner deserves quality education,
+              professional mentorship and opportunities to succeed.
+            </p>
+          </motion.div>
+
+          <motion.div
+            custom={1}
+            variants={sectionVariant}
+          >
+            <Card className="border-0 shadow-2xl overflow-hidden">
+              <CardContent className="p-8 md:p-12">
+
+                <div className="grid lg:grid-cols-3 gap-10 items-center">
+
+                  <div className="flex justify-center">
+                    <Avatar className="w-56 h-56 border-4 border-primary shadow-xl">
+                      <AvatarImage
+                        src="/founder.jpg"
+                        alt="Founder"
+                      />
+                    </Avatar>
+                  </div>
+
+                  <div className="lg:col-span-2 space-y-6">
+
+                    <h3 className="text-3xl font-bold">
+                      GlobeDk Elite Academy Leadership
+                    </h3>
+
+                    <p className="text-muted-foreground leading-8">
+                      Our leadership team is committed to delivering
+                      world-class education through innovation,
+                      professionalism and student-centred teaching.
+                    </p>
+
+                    <p className="text-muted-foreground leading-8">
+                      Through dedication, integrity and continuous
+                      improvement, GlobeDk Elite Academy has become a
+                      trusted learning institution for students preparing
+                      for both ZIMSEC and Cambridge examinations.
+                    </p>
+
+                  </div>
+
                 </div>
 
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p><strong>Subjects:</strong> Mathematics & Computer Science (O-Level & A-Level)</p>
-                  <p>BSc Mathematics • 2+ Years of Experience</p>
-                  <p>Based in Epworth, Harare • Offering Physical & Online Lessons</p>
-                </div>
               </CardContent>
             </Card>
           </motion.div>
+
         </div>
       </motion.section>
 
-      <Footer />
+      {/* Call To Action */}
+      <motion.section
+        className="py-20 md:py-28 bg-primary text-primary-foreground"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        <div className="container mx-auto px-4">
+
+          <motion.div
+            custom={0}
+            variants={sectionVariant}
+            className="max-w-4xl mx-auto text-center space-y-8"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold">
+              Ready to Begin Your Learning Journey?
+            </h2>
+
+            <p className="text-lg leading-8 text-primary-foreground/90">
+              Join GlobeDk Elite Academy today and experience quality
+              education through Online Lessons, Physical Lessons,
+              Homeschooling, Live Virtual Classes and personalised
+              tutoring designed to help you achieve academic excellence.
+            </p>
+
+          </motion.div>
+
+        </div>
+      </motion.section>
+            <Footer />
     </div>
   );
 }
