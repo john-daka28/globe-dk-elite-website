@@ -267,22 +267,22 @@ export default function AboutPage() {
 
             {/* Animated Image Section */}
             <motion.div
-              ref={ref}
-              style={{
-  y: yParallax,
-  willChange: "transform",
-}}
-              className="
-relative
-w-full
-h-[320px]
-sm:h-[420px]
-lg:aspect-square
-rounded-3xl
-overflow-hidden
-shadow-2xl
-"
-            >
+  ref={ref}
+  style={{ y: yParallax }}
+  className="
+    relative
+    order-1
+    lg:order-2
+    w-full
+    h-[320px]
+    sm:h-[420px]
+    lg:h-auto
+    lg:aspect-square
+    rounded-3xl
+    overflow-hidden
+    shadow-2xl
+  "
+>
               {[
                 "/african-students-learning-in-modern-classroom.jpg",
                 "/african-female-student-smiling.jpg",
