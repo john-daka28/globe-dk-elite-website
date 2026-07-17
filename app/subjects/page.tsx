@@ -17,7 +17,7 @@ export default function SubjectsPage() {
       description:
         "Comprehensive coverage of algebra, geometry, trigonometry, and statistics to build strong problem-solving skills.",
       topics: ["Algebra", "Geometry", "Trigonometry", "Statistics", "Number Systems"],
-      duration: "2 hours per week",
+   //   duration: "2 hours per week",
       fee: "$20 per subject",
     },
     {
@@ -35,7 +35,7 @@ export default function SubjectsPage() {
       description:
         "Learn programming fundamentals, algorithms, databases, and computing concepts for the digital world.",
       topics: ["Programming", "Algorithms", "Data Structures", "Databases", "Networks"],
-      duration: "2 hours per week",
+    //  duration: "2 hours per week",
       fee: "$20 per subject",
     },
     {
@@ -44,7 +44,7 @@ export default function SubjectsPage() {
       description:
         "Explore physical and human geography, map skills, environment, and global development patterns.",
       topics: ["Physical Geography", "Human Geography", "Map Skills", "Environment", "Development"],
-      duration: "2 hours per week",
+  //    duration: "2 hours per week",
       fee: "$20 per subject",
     },
   ];
@@ -56,7 +56,7 @@ export default function SubjectsPage() {
       description:
         "Master advanced topics including calculus, vectors, complex numbers, and differential equations.",
       topics: ["Calculus", "Vectors", "Complex Numbers", "Differential Equations", "Proofs"],
-      duration: "3 hours per week",
+  //    duration: "3 hours per week",
       fee: "$25 per subject",
     },
     {
@@ -65,7 +65,7 @@ export default function SubjectsPage() {
       description:
         "Advanced programming, software engineering, and theoretical computer science for university preparation.",
       topics: ["Programming", "Software Engineering", "Architecture", "Theory", "Projects"],
-      duration: "3 hours per week",
+   //   duration: "3 hours per week",
       fee: "$25 per subject",
     },
     {
@@ -74,7 +74,7 @@ export default function SubjectsPage() {
       description:
         "In-depth study of geographical processes, research, fieldwork, and analysis of global issues.",
       topics: ["Research Methods", "Fieldwork", "Physical Geography", "Human Geography", "Global Issues"],
-      duration: "3 hours per week",
+     // duration: "3 hours per week",
       fee: "$25 per subject",
     },
   ];
