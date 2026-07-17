@@ -218,7 +218,8 @@ export default function AboutPage() {
           </motion.div>
         </div>
       </section>
-            {/* Our Story */}
+      
+      {/* Our Story */}
       <motion.section
         className="py-20 md:py-28"
         initial="hidden"
@@ -226,8 +227,7 @@ export default function AboutPage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"> 
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             {/* Story */}
             <motion.div
               custom={0}
@@ -267,22 +267,22 @@ export default function AboutPage() {
 
             {/* Animated Image Section */}
             <motion.div
-  ref={ref}
-  style={{ y: yParallax }}
-  className="
-    relative
-    order-2
-    lg:order-2
-    w-full
-    h-[320px]
-    sm:h-[420px]
-    lg:h-auto
-    lg:aspect-square
-    rounded-3xl
-    overflow-hidden
-    shadow-2xl
-  "
->
+              ref={ref}
+              style={{ y: yParallax }}
+              className="
+                relative
+                order-2
+                lg:order-2
+                w-full
+                h-[320px]
+                sm:h-[420px]
+                lg:h-auto
+                lg:aspect-square
+                rounded-3xl
+                overflow-hidden
+                shadow-2xl
+              "
+            >
               {[
                 "/african-students-learning-in-modern-classroom.jpg",
                 "/african-female-student-smiling.jpg",
@@ -339,33 +339,33 @@ export default function AboutPage() {
                 <Users className="h-8 w-8 text-primary" />
               </motion.div>
             </motion.div>
-
           </div>
         </div>
       </motion.section>
-            {/* Subjects We Offer */}
+
+      {/* Subjects We Offer */}
       <motion.section
-        className="py-20 md:py-28 bg-muted/30"
+        className="py-16 sm:py-20 md:py-28 bg-muted/30"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-
+          {/* Section Header */}
           <motion.div
             custom={0}
             variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center mb-12 sm:mb-14"
+            className="max-w-4xl mx-auto text-center mb-10 sm:mb-12 md:mb-14"
           >
             <span className="text-primary font-semibold uppercase tracking-wider text-xs sm:text-sm">
               What We Teach
             </span>
 
-            <h2 className="mt-3 text-2xl sm:text-3xl md:text-5xl font-bold">
+            <h2 className="mt-2 sm:mt-3 text-2xl sm:text-3xl md:text-5xl font-bold">
               O-Level & A-Level Subjects We Offer
             </h2>
 
-            <p className="mt-4 sm:mt-6 text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
+            <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-base text-muted-foreground leading-6 sm:leading-7 md:leading-8">
               GlobeDk Elite Academy offers comprehensive tutoring for both
               <strong> ZIMSEC </strong>
               and
@@ -379,7 +379,8 @@ export default function AboutPage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+          {/* Subject Cards Grid */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             {subjects.map((subject, index) => (
               <motion.div
                 key={subject.name}
@@ -390,32 +391,33 @@ export default function AboutPage() {
                   scale: 1.03,
                 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 min-h-[240px] sm:min-h-[260px]">
-                  <CardContent className="flex flex-col items-center justify-center text-center py-6 sm:py-7 md:py-8 px-4 sm:px-5 h-full">
-
-                    <div className="h-14 sm:h-16 w-14 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3 sm:mb-5 flex-shrink-0">
-                      <subject.icon className="h-7 sm:h-8 w-7 sm:w-8 text-primary" />
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 min-h-[220px] xs:min-h-[240px] sm:min-h-[260px] md:min-h-[280px]">
+                  <CardContent className="flex flex-col items-center justify-center text-center p-3 sm:p-4 md:p-5 lg:py-8 lg:px-5 h-full">
+                    {/* Icon Container */}
+                    <div className="h-12 sm:h-14 md:h-16 w-12 sm:w-14 md:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 md:mb-4 lg:mb-5 flex-shrink-0">
+                      <subject.icon className="h-6 sm:h-7 md:h-8 w-6 sm:w-7 md:w-8 text-primary" />
                     </div>
 
-                    <h3 className="font-bold text-base sm:text-lg mb-2">
+                    {/* Title */}
+                    <h3 className="font-bold text-sm sm:text-base md:text-lg mb-1 sm:mb-2 line-clamp-2">
                       {subject.name}
                     </h3>
 
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-6">
+                    {/* Description */}
+                    <p className="text-xs sm:text-sm md:text-sm text-muted-foreground leading-5 sm:leading-6 line-clamp-3">
                       Available for selected O-Level and/or A-Level
                       programmes through both online and physical
                       learning options.
                     </p>
-
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
-
         </div>
       </motion.section>
-            {/* Mission & Vision */}
+
+      {/* Mission & Vision */}
       <motion.section
         className="py-20 md:py-28"
         initial="hidden"
@@ -423,26 +425,23 @@ export default function AboutPage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-
-          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 max-w-6xl mx-auto">
             {/* Mission */}
             <motion.div
               custom={0}
               variants={sectionVariant}
             >
               <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardContent className="p-8">
-
+                <CardContent className="p-6 sm:p-8">
                   <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                     <Target className="h-8 w-8 text-primary" />
                   </div>
 
-                  <h2 className="text-3xl font-bold mb-5">
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-5">
                     Our Mission
                   </h2>
 
-                  <p className="text-muted-foreground leading-8">
+                  <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                     Our mission is to provide affordable, accessible and
                     high-quality education through Online Lessons,
                     Physical Lessons, Live Virtual Classes,
@@ -450,13 +449,12 @@ export default function AboutPage() {
                     Holiday Lessons and Weekend Lessons.
                   </p>
 
-                  <p className="mt-5 text-muted-foreground leading-8">
+                  <p className="mt-4 sm:mt-5 text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                     We are committed to helping every learner master
                     O-Level and A-Level subjects, improve confidence,
                     develop problem-solving skills and achieve excellent
                     results in both ZIMSEC and Cambridge examinations.
                   </p>
-
                 </CardContent>
               </Card>
             </motion.div>
@@ -467,39 +465,36 @@ export default function AboutPage() {
               variants={sectionVariant}
             >
               <Card className="h-full border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardContent className="p-8">
-
+                <CardContent className="p-6 sm:p-8">
                   <div className="h-16 w-16 rounded-full bg-secondary/10 flex items-center justify-center mb-6">
                     <Eye className="h-8 w-8 text-secondary" />
                   </div>
 
-                  <h2 className="text-3xl font-bold mb-5">
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-5">
                     Our Vision
                   </h2>
 
-                  <p className="text-muted-foreground leading-8">
+                  <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                     To become Zimbabwe's leading digital learning academy,
                     recognised for academic excellence, innovation,
                     professionalism and outstanding student success in
                     Sciences, Commercials, Arts and Technology education.
                   </p>
 
-                  <p className="mt-5 text-muted-foreground leading-8">
+                  <p className="mt-4 sm:mt-5 text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                     We envision empowering learners across Zimbabwe and
                     internationally with modern education that prepares
                     them for university, employment, entrepreneurship
                     and lifelong learning.
                   </p>
-
                 </CardContent>
               </Card>
             </motion.div>
-
           </div>
-
         </div>
       </motion.section>
-            {/* Why Choose GlobeDk Elite Academy */}
+
+      {/* Why Choose GlobeDk Elite Academy */}
       <motion.section
         className="py-20 md:py-28 bg-muted/30"
         initial="hidden"
@@ -507,11 +502,10 @@ export default function AboutPage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-
           <motion.div
             custom={0}
             variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center mb-14"
+            className="max-w-4xl mx-auto text-center mb-12 md:mb-14"
           >
             <span className="text-primary font-semibold uppercase tracking-wider">
               Why Choose Us
@@ -521,7 +515,7 @@ export default function AboutPage() {
               Why Students & Parents Choose GlobeDk Elite Academy
             </h2>
 
-            <p className="mt-6 text-muted-foreground leading-8">
+            <p className="mt-6 text-sm md:text-base text-muted-foreground leading-7 md:leading-8">
               GlobeDk Elite Academy combines experienced tutoring,
               modern teaching methods and flexible learning options
               to help every learner achieve academic excellence.
@@ -533,8 +527,7 @@ export default function AboutPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {[
               {
                 icon: Users,
@@ -583,129 +576,117 @@ export default function AboutPage() {
                 }}
               >
                 <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
-                  <CardContent className="p-8 text-center">
-
+                  <CardContent className="p-6 md:p-8 text-center">
                     <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                       <feature.icon className="h-8 w-8 text-primary" />
                     </div>
 
-                    <h3 className="text-xl font-bold mb-4">
+                    <h3 className="text-lg md:text-xl font-bold mb-4">
                       {feature.title}
                     </h3>
 
-                    <p className="text-muted-foreground leading-7">
+                    <p className="text-sm md:text-base text-muted-foreground leading-6 md:leading-7">
                       {feature.description}
                     </p>
-
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
-
           </div>
-
         </div>
       </motion.section>
-            {/* Leadership */}
-      
-{/* Leadership */}
-<motion.section
-  className="py-20 md:py-28"
-  initial="hidden"
-  whileInView="visible"
-  viewport={{ once: true, amount: 0.2 }}
->
-  <div className="container mx-auto px-4">
 
-    <motion.div
-      custom={0}
-      variants={sectionVariant}
-      className="max-w-5xl mx-auto text-center mb-14"
-    >
-      <span className="text-primary font-semibold uppercase tracking-wider">
-        Leadership
-      </span>
+      {/* Leadership */}
+      <motion.section
+        className="py-20 md:py-28"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
+        <div className="container mx-auto px-4">
+          <motion.div
+            custom={0}
+            variants={sectionVariant}
+            className="max-w-5xl mx-auto text-center mb-12 md:mb-14"
+          >
+            <span className="text-primary font-semibold uppercase tracking-wider">
+              Leadership
+            </span>
 
-      <h2 className="mt-3 text-3xl md:text-5xl font-bold">
-        Meet Our CEO, Founder & Principal
-      </h2>
+            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+              Meet Our CEO, Founder & Principal
+            </h2>
 
-      <p className="mt-6 text-muted-foreground leading-8">
-        GlobeDk Elite Academy is proudly led by
-        <strong> Dr John Ariphios Daka</strong>, an accomplished
-        educator, visionary leader and passionate advocate for quality
-        education. His dedication to academic excellence continues to
-        inspire students, parents and educators across Zimbabwe and
-        beyond.
-      </p>
-    </motion.div>
+            <p className="mt-6 text-sm md:text-base text-muted-foreground leading-7 md:leading-8">
+              GlobeDk Elite Academy is proudly led by
+              <strong> Dr John Ariphios Daka</strong>, an accomplished
+              educator, visionary leader and passionate advocate for quality
+              education. His dedication to academic excellence continues to
+              inspire students, parents and educators across Zimbabwe and
+              beyond.
+            </p>
+          </motion.div>
 
-    <motion.div
-      custom={1}
-      variants={sectionVariant}
-    >
-      <Card className="border-0 shadow-2xl overflow-hidden">
-        <CardContent className="p-8 md:p-12">
+          <motion.div
+            custom={1}
+            variants={sectionVariant}
+          >
+            <Card className="border-0 shadow-2xl overflow-hidden">
+              <CardContent className="p-6 sm:p-8 md:p-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10 items-center">
+                  {/* Avatar */}
+                  <div className="flex justify-center">
+                    <Avatar className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 border-4 border-primary shadow-xl">
+                      <AvatarImage
+                        src="/john-ariphios.jpg.JPG"
+                        alt="Dr John Ariphios Daka"
+                        className="object-cover"
+                      />
+                    </Avatar>
+                  </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-center">
+                  {/* Content */}
+                  <div className="lg:col-span-2 space-y-4 md:space-y-6">
+                    <h3 className="text-2xl sm:text-3xl font-bold">
+                      Dr John Ariphios Daka
+                    </h3>
 
-            <div className="flex justify-center">
-              <Avatar className="w-56 h-56 md:w-64 md:h-64 border-4 border-primary shadow-xl">
-                <AvatarImage
-                  src="/john-ariphios.jpg.JPG"
-                  alt="Dr John Ariphios Daka"
-                  className="object-cover"
-                />
-              </Avatar>
-            </div>
+                    <p className="text-base md:text-lg font-semibold text-primary">
+                      CEO • Founder • Principal
+                    </p>
 
-            <div className="lg:col-span-2 space-y-6">
+                    <p className="text-sm md:text-base text-muted-foreground leading-6 md:leading-8">
+                      Dr John Ariphios Daka founded GlobeDk Elite Academy with
+                      the vision of transforming education through innovation,
+                      professionalism and academic excellence. His commitment
+                      to making high-quality education accessible has enabled
+                      learners from Zimbabwe and beyond to excel in both
+                      ZIMSEC and Cambridge examinations.
+                    </p>
 
-              <h3 className="text-3xl font-bold">
-                Dr John Ariphios Daka
-              </h3>
+                    <p className="text-sm md:text-base text-muted-foreground leading-6 md:leading-8">
+                      Under his leadership, GlobeDk Elite Academy has grown
+                      into a trusted institution offering Online Lessons,
+                      Physical Lessons, Live Virtual Classes, Home Schooling,
+                      Weekend Lessons and personalised One-on-One Tutoring
+                      across Sciences, Commercials, Arts and Technology
+                      subjects for both O-Level and A-Level learners.
+                    </p>
 
-              <p className="text-lg font-semibold text-primary">
-                CEO • Founder • Principal
-              </p>
-
-              <p className="text-muted-foreground leading-8">
-                Dr John Ariphios Daka founded GlobeDk Elite Academy with
-                the vision of transforming education through innovation,
-                professionalism and academic excellence. His commitment
-                to making high-quality education accessible has enabled
-                learners from Zimbabwe and beyond to excel in both
-                ZIMSEC and Cambridge examinations.
-              </p>
-
-              <p className="text-muted-foreground leading-8">
-                Under his leadership, GlobeDk Elite Academy has grown
-                into a trusted institution offering Online Lessons,
-                Physical Lessons, Live Virtual Classes, Home Schooling,
-                Weekend Lessons and personalised One-on-One Tutoring
-                across Sciences, Commercials, Arts and Technology
-                subjects for both O-Level and A-Level learners.
-              </p>
-
-              <p className="text-muted-foreground leading-8">
-                His passion for education, integrity, innovation and
-                student success continues to shape the academy's mission
-                of empowering learners with knowledge, confidence and
-                skills that prepare them for university, careers and
-                lifelong achievement.
-              </p>
-
-            </div>
-
-          </div>
-
-        </CardContent>
-      </Card>
-    </motion.div>
-
-  </div>
-</motion.section>
-  
+                    <p className="text-sm md:text-base text-muted-foreground leading-6 md:leading-8">
+                      His passion for education, integrity, innovation and
+                      student success continues to shape the academy's mission
+                      of empowering learners with knowledge, confidence and
+                      skills that prepare them for university, careers and
+                      lifelong achievement.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </motion.section>
 
       {/* Call To Action */}
       <motion.section
@@ -715,28 +696,26 @@ export default function AboutPage() {
         viewport={{ once: true }}
       >
         <div className="container mx-auto px-4">
-
           <motion.div
             custom={0}
             variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center space-y-8"
+            className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8"
           >
             <h2 className="text-3xl md:text-5xl font-bold">
               Ready to Begin Your Learning Journey?
             </h2>
 
-            <p className="text-lg leading-8 text-primary-foreground/90">
+            <p className="text-base md:text-lg leading-7 md:leading-8 text-primary-foreground/90">
               Join GlobeDk Elite Academy today and experience quality
               education through Online Lessons, Physical Lessons,
               Homeschooling, Live Virtual Classes and personalised
               tutoring designed to help you achieve academic excellence.
             </p>
-
           </motion.div>
-
         </div>
       </motion.section>
-            <Footer />
+
+      <Footer />
     </div>
   );
 }
