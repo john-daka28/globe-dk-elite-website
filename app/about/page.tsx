@@ -607,81 +607,105 @@ export default function AboutPage() {
         </div>
       </motion.section>
             {/* Leadership */}
-      <motion.section
-        className="py-20 md:py-28"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="container mx-auto px-4">
+      
+{/* Leadership */}
+<motion.section
+  className="py-20 md:py-28"
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true, amount: 0.2 }}
+>
+  <div className="container mx-auto px-4">
 
-          <motion.div
-            custom={0}
-            variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center mb-14"
-          >
-            <span className="text-primary font-semibold uppercase tracking-wider">
-              Leadership
-            </span>
+    <motion.div
+      custom={0}
+      variants={sectionVariant}
+      className="max-w-5xl mx-auto text-center mb-14"
+    >
+      <span className="text-primary font-semibold uppercase tracking-wider">
+        Leadership
+      </span>
 
-            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
-              Meet Our Founder
-            </h2>
+      <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+        Meet Our CEO, Founder & Principal
+      </h2>
 
-            <p className="mt-6 text-muted-foreground leading-8">
-              GlobeDk Elite Academy is led by passionate educators who
-              believe every learner deserves quality education,
-              professional mentorship and opportunities to succeed.
-            </p>
-          </motion.div>
+      <p className="mt-6 text-muted-foreground leading-8">
+        GlobeDk Elite Academy is proudly led by
+        <strong> Dr John Ariphios Daka</strong>, an accomplished
+        educator, visionary leader and passionate advocate for quality
+        education. His dedication to academic excellence continues to
+        inspire students, parents and educators across Zimbabwe and
+        beyond.
+      </p>
+    </motion.div>
 
-          <motion.div
-            custom={1}
-            variants={sectionVariant}
-          >
-            <Card className="border-0 shadow-2xl overflow-hidden">
-              <CardContent className="p-8 md:p-12">
+    <motion.div
+      custom={1}
+      variants={sectionVariant}
+    >
+      <Card className="border-0 shadow-2xl overflow-hidden">
+        <CardContent className="p-8 md:p-12">
 
-                <div className="grid lg:grid-cols-3 gap-10 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-center">
 
-                  <div className="flex justify-center">
-                    <Avatar className="w-56 h-56 border-4 border-primary shadow-xl">
-                      <AvatarImage
-                        src="/founder.jpg"
-                        alt="Founder"
-                      />
-                    </Avatar>
-                  </div>
+            <div className="flex justify-center">
+              <Avatar className="w-56 h-56 md:w-64 md:h-64 border-4 border-primary shadow-xl">
+                <AvatarImage
+                  src="/john-ariphios.jpg.JPG"
+                  alt="Dr John Ariphios Daka"
+                  className="object-cover"
+                />
+              </Avatar>
+            </div>
 
-                  <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6">
 
-                    <h3 className="text-3xl font-bold">
-                      GlobeDk Elite Academy Leadership
-                    </h3>
+              <h3 className="text-3xl font-bold">
+                Dr John Ariphios Daka
+              </h3>
 
-                    <p className="text-muted-foreground leading-8">
-                      Our leadership team is committed to delivering
-                      world-class education through innovation,
-                      professionalism and student-centred teaching.
-                    </p>
+              <p className="text-lg font-semibold text-primary">
+                CEO • Founder • Principal
+              </p>
 
-                    <p className="text-muted-foreground leading-8">
-                      Through dedication, integrity and continuous
-                      improvement, GlobeDk Elite Academy has become a
-                      trusted learning institution for students preparing
-                      for both ZIMSEC and Cambridge examinations.
-                    </p>
+              <p className="text-muted-foreground leading-8">
+                Dr John Ariphios Daka founded GlobeDk Elite Academy with
+                the vision of transforming education through innovation,
+                professionalism and academic excellence. His commitment
+                to making high-quality education accessible has enabled
+                learners from Zimbabwe and beyond to excel in both
+                ZIMSEC and Cambridge examinations.
+              </p>
 
-                  </div>
+              <p className="text-muted-foreground leading-8">
+                Under his leadership, GlobeDk Elite Academy has grown
+                into a trusted institution offering Online Lessons,
+                Physical Lessons, Live Virtual Classes, Home Schooling,
+                Weekend Lessons and personalised One-on-One Tutoring
+                across Sciences, Commercials, Arts and Technology
+                subjects for both O-Level and A-Level learners.
+              </p>
 
-                </div>
+              <p className="text-muted-foreground leading-8">
+                His passion for education, integrity, innovation and
+                student success continues to shape the academy's mission
+                of empowering learners with knowledge, confidence and
+                skills that prepare them for university, careers and
+                lifelong achievement.
+              </p>
 
-              </CardContent>
-            </Card>
-          </motion.div>
+            </div>
 
-        </div>
-      </motion.section>
+          </div>
+
+        </CardContent>
+      </Card>
+    </motion.div>
+
+  </div>
+</motion.section>
+  
 
       {/* Call To Action */}
       <motion.section
