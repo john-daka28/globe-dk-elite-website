@@ -110,7 +110,7 @@ export default function SubjectsPage() {
               <h2 className="text-3xl md:text-4xl font-bold">O-Level Subjects</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed max-w-3xl">
-              Each O-Level subject is  only <strong>$10</strong> per month — affordable, effective, and results-driven.
+              Each O-Level subject is  only <strong>$20</strong> per month — affordable, effective, and results-driven.
             </p>
           </div>
 
@@ -175,7 +175,7 @@ export default function SubjectsPage() {
               <h2 className="text-3xl md:text-4xl font-bold">A-Level Subjects</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed max-w-3xl">
-              Each A-Level subject costs <strong>$12</strong> per month — led by our Senior Tutor for academic excellence.
+              Each A-Level subject costs <strong>$25</strong> per month — led by our Senior Tutor for academic excellence.
             </p>
           </div>
 
