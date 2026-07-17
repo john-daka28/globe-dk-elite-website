@@ -12,7 +12,7 @@ export function Footer() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <GraduationCap className="h-6 w-6" />
               </div>
-              <span className="font-bold text-lg">GlobeDk Elite</span>
+              <span className="font-bold text-lg">GlobeDk Elite Academy</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Empowering students in Harare to excel in O-Level and A-Level examinations through expert tutoring.
@@ -100,7 +100,7 @@ export function Footer() {
                   href="mailto:johnariphiosd@gmail.com"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                 jdaka@globe.co.zw  johnariphiosd@gmail.com 
+                 admission@globedk.co.zw
                 </a>
               </li>
               <li className="flex items-start gap-2">
