@@ -19,7 +19,7 @@ export default function ContactPage() {
     {
       icon: Mail,
       title: "Official Email",
-      details: ["johnariphiosd@gmail.com","jdaka@globedk.co.zw"],
+      details: ["johnariphiosd@gmail.com","principal@globedk.co.zw"],
       action: "Expect response within 24 hours",
     },
     {
