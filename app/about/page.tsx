@@ -355,17 +355,17 @@ export default function AboutPage() {
           <motion.div
             custom={0}
             variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center mb-14"
+            className="max-w-4xl mx-auto text-center mb-12 sm:mb-14"
           >
-            <span className="text-primary font-semibold uppercase tracking-wider">
+            <span className="text-primary font-semibold uppercase tracking-wider text-xs sm:text-sm">
               What We Teach
             </span>
 
-            <h2 className="mt-3 text-3xl md:text-5xl font-bold">
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-5xl font-bold">
               O-Level & A-Level Subjects We Offer
             </h2>
 
-            <p className="mt-6 text-muted-foreground leading-8">
+            <p className="mt-4 sm:mt-6 text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
               GlobeDk Elite Academy offers comprehensive tutoring for both
               <strong> ZIMSEC </strong>
               and
@@ -379,7 +379,7 @@ export default function AboutPage() {
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             {subjects.map((subject, index) => (
               <motion.div
                 key={subject.name}
@@ -390,18 +390,18 @@ export default function AboutPage() {
                   scale: 1.03,
                 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
-                  <CardContent className="flex flex-col items-center text-center py-8 px-5">
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 min-h-[240px] sm:min-h-[260px]">
+                  <CardContent className="flex flex-col items-center justify-center text-center py-6 sm:py-7 md:py-8 px-4 sm:px-5 h-full">
 
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-                      <subject.icon className="h-8 w-8 text-primary" />
+                    <div className="h-14 sm:h-16 w-14 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3 sm:mb-5 flex-shrink-0">
+                      <subject.icon className="h-7 sm:h-8 w-7 sm:w-8 text-primary" />
                     </div>
 
-                    <h3 className="font-bold text-lg mb-2">
+                    <h3 className="font-bold text-base sm:text-lg mb-2">
                       {subject.name}
                     </h3>
 
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-6">
                       Available for selected O-Level and/or A-Level
                       programmes through both online and physical
                       learning options.
