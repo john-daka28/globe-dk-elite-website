@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { GraduationCap, Phone, Mail, MapPin } from "lucide-react"
+import Image from "next/image" 
+
 
 export function Footer() {
   return (
@@ -7,10 +9,17 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <GraduationCap className="h-6 w-6" />
+           <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary overflow-hidden">
+                <Image 
+                  src="/Logo.png" 
+                  alt="GlobeDk Elite Academy Logo" 
+                  width={48} 
+                  height={48} 
+                  className="object-contain p-1"
+                  priority
+                />
               </div>
               <span className="font-bold text-lg">GlobeDk Elite Academy</span>
             </div>
