@@ -232,7 +232,7 @@ export default function AboutPage() {
             <motion.div
               custom={0}
               variants={sectionVariant}
-              className="space-y-6"
+              className="space-y-6 order-1 lg:order-1"
             >
               <span className="text-primary font-semibold uppercase tracking-wider">
                 Our Story
@@ -271,7 +271,7 @@ export default function AboutPage() {
   style={{ y: yParallax }}
   className="
     relative
-    order-1
+    order-2
     lg:order-2
     w-full
     h-[320px]
