@@ -226,7 +226,7 @@ export default function AboutPage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"> 
 
             {/* Story */}
             <motion.div
@@ -268,8 +268,20 @@ export default function AboutPage() {
             {/* Animated Image Section */}
             <motion.div
               ref={ref}
-              style={{ y: yParallax }}
-              className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl"
+              style={{
+  y: yParallax,
+  willChange: "transform",
+}}
+              className="
+relative
+w-full
+h-[320px]
+sm:h-[420px]
+lg:aspect-square
+rounded-3xl
+overflow-hidden
+shadow-2xl
+"
             >
               {[
                 "/african-students-learning-in-modern-classroom.jpg",
