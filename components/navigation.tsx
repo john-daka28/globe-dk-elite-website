@@ -30,16 +30,16 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
 <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary overflow-hidden">
-    <Image 
-      src="/Logo.png" 
-      alt="GlobeDk Elite Academy Logo" 
-      width={40} 
-      height={40} 
-      className="object-contain p-1"
-      priority
-    />
-  </div>
+  <div className="flex h-12 w-12 items-center justify-center rounded-lg overflow-hidden">
+  <Image 
+    src="/Logo.png" 
+    alt="GlobeDk Elite Academy Logo" 
+    width={48} 
+    height={48} 
+    className="object-contain"
+    priority
+  />
+</div>
   <span className="hidden sm:inline">GlobeDk Elite Academy</span>
 </Link>
 
