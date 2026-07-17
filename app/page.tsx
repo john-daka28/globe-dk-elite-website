@@ -67,7 +67,7 @@ export default function HomePage() {
               Excel in O-Level & A-Level with Professional Tutoring
             </h1>
             <p className="text-lg md:text-xl text-primary-foreground/90 leading-relaxed">
-              Welcome to <strong>GlobeDk Elite</strong> — founded by <strong>John Ariphios</strong>, a professional tutor
+              Welcome to <strong>GlobeDk Elite Academy</strong> — founded by <strong>John Ariphios</strong>, a professional tutor
               with years of proven experience helping students in <strong>Mathematics, Computer Science, English, and
               Geography</strong> achieve their best results.
             </p>
