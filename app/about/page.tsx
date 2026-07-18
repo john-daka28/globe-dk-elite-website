@@ -343,80 +343,79 @@ export default function AboutPage() {
         </div>
       </motion.section>
 
-      {/* Subjects We Offer */}
-      <motion.section
-        className="py-16 sm:py-20 md:py-28 bg-muted/30"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <div className="container mx-auto px-4">
-          {/* Section Header */}
-          <motion.div
-            custom={0}
-            variants={sectionVariant}
-            className="max-w-4xl mx-auto text-center mb-10 sm:mb-12 md:mb-14"
-          >
-            <span className="text-primary font-semibold uppercase tracking-wider text-xs sm:text-sm">
-              What We Teach
-            </span>
+{/* Subjects We Offer */}
+<motion.section
+  className="py-16 sm:py-20 md:py-28 bg-muted/30"
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true, amount: 0.2 }}
+>
+  <div className="container mx-auto px-4">
 
-            <h2 className="mt-2 sm:mt-3 text-2xl sm:text-3xl md:text-5xl font-bold">
-              O-Level & A-Level Subjects We Offer
-            </h2>
+    <motion.div
+      custom={0}
+      variants={sectionVariant}
+      className="max-w-4xl mx-auto text-center mb-10 sm:mb-12 md:mb-14"
+    >
+      <span className="text-primary font-semibold uppercase tracking-wider text-xs sm:text-sm">
+        What We Teach
+      </span>
 
-            <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-base text-muted-foreground leading-6 sm:leading-7 md:leading-8">
-              GlobeDk Elite Academy offers comprehensive tutoring for both
-              <strong> ZIMSEC </strong>
-              and
-              <strong> Cambridge </strong>
-              learners. Our experienced tutors deliver high-quality
-              Online Lessons, Physical Lessons, Homeschooling,
-              Live Virtual Classes, Holiday Lessons,
-              Weekend Lessons, Revision Classes and
-              One-on-One Tutoring across Science,
-              Commercial, Arts and Technology subjects.
-            </p>
-          </motion.div>
+      <h2 className="mt-2 sm:mt-3 text-2xl sm:text-3xl md:text-5xl font-bold">
+        O-Level & A-Level Subjects We Offer
+      </h2>
 
-          {/* Subject Cards Grid */}
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-            {subjects.map((subject, index) => (
-              <motion.div
-                key={subject.name}
-                custom={index}
-                variants={sectionVariant}
-                whileHover={{
-                  y: -8,
-                  scale: 1.03,
-                }}
-              >
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 min-h-[220px] xs:min-h-[240px] sm:min-h-[260px] md:min-h-[280px]">
-                  <CardContent className="flex flex-col items-center justify-center text-center p-3 sm:p-4 md:p-5 lg:py-8 lg:px-5 h-full">
-                    {/* Icon Container */}
-                    <div className="h-12 sm:h-14 md:h-16 w-12 sm:w-14 md:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 md:mb-4 lg:mb-5 flex-shrink-0">
-                      <subject.icon className="h-6 sm:h-7 md:h-8 w-6 sm:w-7 md:w-8 text-primary" />
-                    </div>
+      <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-base text-muted-foreground leading-6 sm:leading-7 md:leading-8">
+        GlobeDk Elite Academy offers comprehensive tutoring for both
+        <strong> ZIMSEC </strong>
+        and
+        <strong> Cambridge </strong>
+        learners. Our experienced tutors deliver high-quality
+        Online Lessons, Physical Lessons, Homeschooling,
+        Live Virtual Classes, Holiday Lessons,
+        Weekend Lessons, Revision Classes and
+        One-on-One Tutoring across Science,
+        Commercial, Arts and Technology subjects.
+      </p>
+    </motion.div>
 
-                    {/* Title */}
-                    <h3 className="font-bold text-sm sm:text-base md:text-lg mb-1 sm:mb-2 line-clamp-2">
-                      {subject.name}
-                    </h3>
+    {/* THIS IS THE FIX - Add grid-cols-1 for mobile */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 auto-rows-max">
+      {subjects.map((subject, index) => (
+        <motion.div
+          key={subject.name}
+          custom={index}
+          variants={sectionVariant}
+          whileHover={{
+            y: -8,
+            scale: 1.03,
+          }}
+        >
+          <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
+            <CardContent className="flex flex-col items-center justify-center text-center p-3 sm:p-4 md:p-5 lg:py-8 lg:px-5 h-full min-h-[220px] sm:min-h-[240px] md:min-h-[260px]">
 
-                    {/* Description */}
-                    <p className="text-xs sm:text-sm md:text-sm text-muted-foreground leading-5 sm:leading-6 line-clamp-3">
-                      Available for selected O-Level and/or A-Level
-                      programmes through both online and physical
-                      learning options.
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.section>
+              <div className="h-12 sm:h-14 md:h-16 w-12 sm:w-14 md:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 md:mb-4 lg:mb-5 flex-shrink-0">
+                <subject.icon className="h-6 sm:h-7 md:h-8 w-6 sm:w-7 md:w-8 text-primary" />
+              </div>
 
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-1 sm:mb-2 line-clamp-2">
+                {subject.name}
+              </h3>
+
+              <p className="text-xs sm:text-sm md:text-sm text-muted-foreground leading-5 sm:leading-6 line-clamp-3">
+                Available for selected O-Level and/or A-Level
+                programmes through both online and physical
+                learning options.
+              </p>
+
+            </CardContent>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+
+  </div>
+</motion.section>
       {/* Mission & Vision */}
       <motion.section
         className="py-20 md:py-28"
