@@ -379,8 +379,8 @@ export default function AboutPage() {
       </p>
     </motion.div>
 
-    {/* THIS IS THE FIX - Add grid-cols-1 for mobile */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 auto-rows-max">
+    {/* FIXED GRID - Better mobile responsiveness */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 lg:gap-6">
       {subjects.map((subject, index) => (
         <motion.div
           key={subject.name}
@@ -390,19 +390,20 @@ export default function AboutPage() {
             y: -8,
             scale: 1.03,
           }}
+          className="h-full"
         >
-          <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300">
-            <CardContent className="flex flex-col items-center justify-center text-center p-3 sm:p-4 md:p-5 lg:py-8 lg:px-5 h-full min-h-[220px] sm:min-h-[240px] md:min-h-[260px]">
+          <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col">
+            <CardContent className="flex flex-col items-center justify-center text-center p-4 sm:p-5 md:p-6 h-full flex-grow">
 
-              <div className="h-12 sm:h-14 md:h-16 w-12 sm:w-14 md:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 md:mb-4 lg:mb-5 flex-shrink-0">
+              <div className="h-12 sm:h-14 md:h-16 w-12 sm:w-14 md:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3 sm:mb-4 md:mb-5 flex-shrink-0">
                 <subject.icon className="h-6 sm:h-7 md:h-8 w-6 sm:w-7 md:w-8 text-primary" />
               </div>
 
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-1 sm:mb-2 line-clamp-2">
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 sm:mb-3 line-clamp-2">
                 {subject.name}
               </h3>
 
-              <p className="text-xs sm:text-sm md:text-sm text-muted-foreground leading-5 sm:leading-6 line-clamp-3">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-5 sm:leading-6">
                 Available for selected O-Level and/or A-Level
                 programmes through both online and physical
                 learning options.
@@ -717,4 +718,4 @@ export default function AboutPage() {
       <Footer />
     </div>
   );
-                }
+}
