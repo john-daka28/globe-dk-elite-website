@@ -5,88 +5,274 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import "./globals.css";
 
-const _inter = Inter({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _inter = Inter({
+  subsets: ["latin"],
+});
+
+const _geistMono = Geist_Mono({
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "GlobeDk Elite | Professional O-Level & A-Level Tutoring in Harare",
+  metadataBase: new URL("https://www.globedk.co.zw"),
+
+  title: {
+    default:
+      "GlobeDk Elite Academy | Online O-Level & A-Level Lessons | ZIMSEC & Cambridge Tutors Zimbabwe",
+    template: "%s | GlobeDk Elite Academy",
+  },
+
   description:
-    "GlobeDk Elite offers expert tutoring in Mathematics, English, Computer Science, and Geography for O-Level and A-Level students in Harare and Epworth. Join online or weekend classes and achieve top grades.",
-  keywords: [
-    "Harare tutoring",
-    "O-Level lessons",
-    "A-Level lessons",
-    "Mathematics tutor",
-    "Computer Science tutoring",
-    "English lessons",
-    "Geography lessons",
-    "Epworth tutor",
-    "academic support",
-    "Zimbabwe tutoring",
-    "private tutor Harare",
+    "GlobeDk Elite Academy provides professional Online Lessons, Physical Lessons, Homeschooling, Live Virtual Classes and One-on-One Tutoring for ZIMSEC and Cambridge O-Level & A-Level students throughout Zimbabwe and internationally.",
+
+  applicationName: "GlobeDk Elite Academy",
+
+  authors: [
+    {
+      name: "Dr John Ariphios Daka",
+    },
   ],
+
+  creator: "Dr John Ariphios Daka",
+
+  publisher: "GlobeDk Elite Academy",
+
+  keywords: [
+    "Online Lessons Zimbabwe",
+    "Online Tutor Zimbabwe",
+    "Online School Zimbabwe",
+    "Online Classes Zimbabwe",
+    "Virtual Classes Zimbabwe",
+    "Homeschooling Zimbabwe",
+    "Home School Zimbabwe",
+    "Private Tutor Zimbabwe",
+    "Tutoring Zimbabwe",
+    "Zimbabwe Tutors",
+    "O Level Tutors",
+    "A Level Tutors",
+    "ZIMSEC Tutors",
+    "Cambridge Tutors",
+    "Online Mathematics Tutor",
+    "Mathematics Tutor Zimbabwe",
+    "English Tutor Zimbabwe",
+    "Computer Science Tutor",
+    "Combined Science Tutor",
+    "Physics Tutor Zimbabwe",
+    "Chemistry Tutor Zimbabwe",
+    "Biology Tutor Zimbabwe",
+    "Geography Tutor Zimbabwe",
+    "History Tutor Zimbabwe",
+    "Heritage Studies Tutor",
+    "Commerce Tutor",
+    "Business Studies Tutor",
+    "Economics Tutor",
+    "Statistics Tutor",
+    "Pure Mathematics Tutor",
+    "Principles of Accounts Tutor",
+    "Exam Preparation Zimbabwe",
+    "Revision Classes",
+    "Holiday Lessons",
+    "Weekend Lessons",
+    "Homework Assistance",
+    "Physical Lessons Harare",
+    "Epworth Tutoring",
+    "Harare Tutoring",
+    "Distance Learning Zimbabwe",
+    "GlobeDk Elite Academy",
+  ],
+
+  alternates: {
+    canonical: "/",
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+      "max-snippet": -1,
+    },
+  },
+
   openGraph: {
-    title: "GlobeDk Elite – Excel in O-Level & A-Level Studies",
+    title:
+      "GlobeDk Elite Academy | Online O-Level & A-Level Lessons",
+
     description:
-      "Join GlobeDk Elite for professional tutoring in Mathematics, English, Computer Science, and Geography. Available online and in-person in Harare.",
+      "Professional Online Lessons, Physical Lessons, Homeschooling and Live Virtual Classes for ZIMSEC & Cambridge students across Zimbabwe.",
+
     url: "https://www.globedk.co.zw",
+
+    siteName: "GlobeDk Elite Academy",
+
+    locale: "en_ZW",
+
+    type: "website",
+
     images: [
       {
         url: "/image1.png",
         width: 1200,
         height: 630,
-        alt: "GlobeDk Elite Tutoring in Harare",
+        alt: "GlobeDk Elite Academy",
       },
     ],
-    locale: "en_ZW",
-    type: "website",
   },
+
+  twitter: {
+    card: "summary_large_image",
+
+    title:
+      "GlobeDk Elite Academy | Online Lessons Zimbabwe",
+
+    description:
+      "Professional Online Lessons, Physical Lessons and Homeschooling for ZIMSEC & Cambridge students.",
+
+    images: ["/image1.png"],
+  },
+
+  icons: {
+    icon: "/image1.png",
+    shortcut: "/image1.png",
+    apple: "/image1.png",
+  },
+
+  category: "Education",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
+    <html lang="en-ZW">
       <head>
-   
-  {/* ✅ Favicon */}
-  <link rel="icon" type="image/png" href="/image1.png" />
-  <link rel="shortcut icon" href="/image1.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/image1.png" />
+        <meta charSet="utf-8" />
 
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
 
-        {/* ✅ Structured Data (JSON-LD) */}
+        <meta
+          name="theme-color"
+          content="#0f172a"
+        />
+
+        <meta
+          name="format-detection"
+          content="telephone=no"
+        />
+
+        <link
+          rel="icon"
+          href="/image1.png"
+        />
+
+        <link
+          rel="apple-touch-icon"
+          href="/image1.png"
+        />
+
+        {/* Educational Organization */}
         <Script
-          id="structured-data"
+          id="organization-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "EducationalOrganization",
+              name: "GlobeDk Elite Academy",
+              url: "https://www.globedk.co.zw",
+              logo: "https://www.globedk.co.zw/image1.png",
+              image: "https://www.globedk.co.zw/image1.png",
+              email: "jdaka@globedk.co.zw",
+              telephone: "+263786053315",
+
+              founder: {
+                "@type": "Person",
+                name: "Dr John Ariphios Daka",
+              },
+
+              description:
+                "Professional Online Lessons, Physical Lessons, Homeschooling, Live Virtual Classes and One-on-One Tutoring for ZIMSEC and Cambridge students.",
+
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: "Epworth",
+                addressLocality: "Harare",
+                addressCountry: "Zimbabwe",
+              },
+
+              areaServed: [
+                "Zimbabwe",
+                "South Africa",
+                "Botswana",
+                "Zambia",
+                "Mozambique",
+                "Worldwide",
+              ],
+
+              sameAs: [
+                "https://www.facebook.com/profile.php?id=61582643098304",
+              ],
+            }),
+          }}
+        />
+
+        {/* Local Business */}
+        <Script
+          id="localbusiness-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "LocalBusiness",
-              name: "GlobeDk Elite Tutoring",
+              name: "GlobeDk Elite Academy",
               image: "https://www.globedk.co.zw/image1.png",
               url: "https://www.globedk.co.zw",
               telephone: "+263786053315",
-              email: "johnariphiosd@gmail.com or jdaka@globedk.co.zw",
+              email: "jdaka@globedk.co.zw",
+
+              openingHours: "Mo-Sa 08:00-18:00",
+
               address: {
                 "@type": "PostalAddress",
                 streetAddress: "Epworth",
                 addressLocality: "Harare",
                 addressCountry: "ZW",
               },
-              description:
-                "Professional O-Level and A-Level tutoring in Mathematics, English, Computer Science, and Geography. Available online and in-person in Harare.",
-              sameAs: [
-                "https://www.facebook.com/profile.php?id=61582643098304",
-              ],
-              openingHours: "Mo-Sa 08:00-18:00",
+            }),
+          }}
+        />
+
+        {/* Search Box */}
+        <Script
+          id="website-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "GlobeDk Elite Academy",
+              url: "https://www.globedk.co.zw",
+              potentialAction: {
+                "@type": "SearchAction",
+                target:
+                  "https://www.globedk.co.zw/search?q={search_term_string}",
+                "query-input": "required name=search_term_string",
+              },
             }),
           }}
         />
       </head>
 
-      <body className="font-sans antialiased">
+      <body className={`${_inter.className} antialiased`}>
         {children}
         <Analytics />
       </body>
