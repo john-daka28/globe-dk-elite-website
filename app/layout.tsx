@@ -115,7 +115,7 @@ export const metadata: Metadata = {
 
     images: [
       {
-        url: "/image1.png",
+        url: "/Logo.png",
         width: 1200,
         height: 630,
         alt: "GlobeDk Elite Academy",
@@ -132,13 +132,13 @@ export const metadata: Metadata = {
     description:
       "Professional Online Lessons, Physical Lessons and Homeschooling for ZIMSEC & Cambridge students.",
 
-    images: ["/image1.png"],
+    images: ["/Logo.png"],
   },
 
   icons: {
-    icon: "/image1.png",
-    shortcut: "/image1.png",
-    apple: "/image1.png",
+    icon: "/Logo.png",
+    shortcut: "/Logo.png",
+    apple: "/Logo.png",
   },
 
   category: "Education",
@@ -171,12 +171,12 @@ export default function RootLayout({
 
         <link
           rel="icon"
-          href="/image1.png"
+          href="/Logo.png"
         />
 
         <link
           rel="apple-touch-icon"
-          href="/image1.png"
+          href="/Logo.png"
         />
 
         {/* Educational Organization */}
