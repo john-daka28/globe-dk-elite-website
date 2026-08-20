@@ -11,6 +11,7 @@ import {
   Sparkles,
   BrainCircuit,
   Construction,
+  Hand,
 } from "lucide-react"
 
 export function Navigation() {
@@ -67,7 +68,7 @@ export function Navigation() {
 
             <Link
               href="/"
-              className="flex items-center gap-2 font-bold text-xl"
+              className="flex items-center gap-2 text-xl font-bold"
               onClick={closeMobileMenu}
             >
               <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg">
@@ -90,28 +91,185 @@ export function Navigation() {
             {/* DESKTOP NAVIGATION */}
             {/* ===================================================== */}
 
-            <div className="hidden md:flex items-center gap-5">
+            <div className="hidden items-center gap-5 md:flex">
               {navLinks.map((link) =>
                 link.comingSoon ? (
                   <button
                     key={link.label}
                     type="button"
                     onClick={handlePredictorClick}
-                    className="group relative flex items-center gap-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
+                    className="group relative flex cursor-pointer items-center gap-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
                   >
-                    {/* Animated hover glow */}
-                    <span className="absolute -inset-2 rounded-lg bg-primary/10 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+                    {/* Animated hover glow behind navigation item */}
+                    <span className="absolute -inset-2 rounded-lg bg-primary/10 opacity-0 blur-md transition-all duration-300 group-hover:opacity-100" />
 
                     <span className="relative flex items-center gap-1.5">
 
-                      {/* Animated AI sparkle */}
-                      <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse transition-transform group-hover:rotate-12" />
+                      {/* ================================================= */}
+                      {/* ANIMATED AI SPARKLE */}
+                      {/* ================================================= */}
 
-                      <span>{link.label}</span>
+                      <Sparkles
+                        className="
+                          h-3.5
+                          w-3.5
+                          animate-pulse
+                          text-primary
+                          transition-all
+                          duration-300
+                          group-hover:rotate-12
+                          group-hover:scale-125
+                        "
+                      />
 
-                      {/* Coming Soon Badge */}
-                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
-                        Soon
+                      {/* Navigation text */}
+                      <span>
+                        {link.label}
+                      </span>
+
+                      {/* ================================================= */}
+                      {/* EYECATCHING SOON BADGE */}
+                      {/* ================================================= */}
+
+                      <span
+                        className="
+                          relative
+                          ml-1
+                          inline-flex
+                          cursor-pointer
+                          items-center
+                          gap-1
+                          overflow-visible
+                          rounded-full
+                          border
+                          border-primary/30
+                          bg-primary/10
+                          px-2
+                          py-0.5
+                          text-[9px]
+                          font-bold
+                          uppercase
+                          tracking-wider
+                          text-primary
+                          shadow-sm
+                          transition-all
+                          duration-300
+                          animate-[pulse_2.5s_ease-in-out_infinite]
+                          group-hover:scale-110
+                          group-hover:bg-primary/20
+                          group-hover:shadow-[0_0_15px_hsl(var(--primary)/0.4)]
+                        "
+                      >
+
+                        {/* ================================================= */}
+                        {/* BLINKING OUTER SHAPE */}
+                        {/* ================================================= */}
+
+                        <span
+                          className="
+                            pointer-events-none
+                            absolute
+                            -inset-1
+                            rounded-full
+                            border
+                            border-primary/40
+                            opacity-70
+                            animate-ping
+                          "
+                        />
+
+                        {/* Second subtle blinking border */}
+                        <span
+                          className="
+                            pointer-events-none
+                            absolute
+                            -inset-0.5
+                            rounded-full
+                            border
+                            border-primary/30
+                            animate-pulse
+                          "
+                        />
+
+                        {/* ================================================= */}
+                        {/* MOVING SHINE */}
+                        {/* ================================================= */}
+
+                        <span
+                          className="
+                            pointer-events-none
+                            absolute
+                            inset-0
+                            overflow-hidden
+                            rounded-full
+                          "
+                        >
+                          <span
+                            className="
+                              absolute
+                              inset-y-0
+                              left-0
+                              w-1/3
+                              -translate-x-full
+                              bg-gradient-to-r
+                              from-transparent
+                              via-white/50
+                              to-transparent
+                              animate-[shimmer_2.5s_infinite]
+                            "
+                          />
+                        </span>
+
+                        {/* ================================================= */}
+                        {/* PULSING STATUS DOT */}
+                        {/* ================================================= */}
+
+                        <span className="relative flex h-1.5 w-1.5 shrink-0">
+
+                          {/* Outer pulse */}
+                          <span
+                            className="
+                              absolute
+                              inline-flex
+                              h-full
+                              w-full
+                              rounded-full
+                              bg-primary
+                              opacity-75
+                              animate-ping
+                            "
+                          />
+
+                          {/* Inner dot */}
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                        </span>
+
+                        {/* ================================================= */}
+                        {/* SOON TEXT */}
+                        {/* ================================================= */}
+
+                        <span className="relative z-10">
+                          Soon
+                        </span>
+
+                        {/* ================================================= */}
+                        {/* CLICKABLE HAND */}
+                        {/* ================================================= */}
+
+                        <Hand
+                          className="
+                            relative
+                            z-10
+                            h-3
+                            w-3
+                            origin-bottom-left
+                            text-primary
+                            animate-bounce
+                            transition-transform
+                            duration-300
+                            group-hover:scale-125
+                          "
+                        />
                       </span>
                     </span>
                   </button>
@@ -130,9 +288,9 @@ export function Navigation() {
                 )
               )}
 
-              {/* =================================================== */}
+              {/* ===================================================== */}
               {/* ENROLLMENT CTA */}
-              {/* =================================================== */}
+              {/* ===================================================== */}
 
               <Button
                 onClick={handleEnrollClick}
@@ -149,7 +307,7 @@ export function Navigation() {
 
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden rounded-md p-2 text-foreground transition-colors hover:bg-muted"
+              className="rounded-md p-2 text-foreground transition-colors hover:bg-muted md:hidden"
               aria-label={isOpen ? "Close menu" : "Open menu"}
               aria-expanded={isOpen}
             >
@@ -166,7 +324,7 @@ export function Navigation() {
           {/* ===================================================== */}
 
           {isOpen && (
-            <div className="md:hidden space-y-2 border-t border-border/40 py-4">
+            <div className="space-y-2 border-t border-border/40 py-4 md:hidden">
 
               {navLinks.map((link) =>
                 link.comingSoon ? (
@@ -174,14 +332,125 @@ export function Navigation() {
                     key={link.label}
                     type="button"
                     onClick={handlePredictorClick}
-                    className="group relative flex w-full items-center gap-2 rounded-md px-3 py-3 text-left text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                    className="group relative flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-3 text-left text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                   >
-                    <Sparkles className="h-4 w-4 text-primary animate-pulse" />
 
-                    <span>{link.label}</span>
+                    {/* Animated AI icon */}
+                    <Sparkles
+                      className="
+                        h-4
+                        w-4
+                        animate-pulse
+                        text-primary
+                        transition-transform
+                        duration-300
+                        group-hover:rotate-12
+                        group-hover:scale-125
+                      "
+                    />
 
-                    <span className="ml-auto rounded-full bg-primary/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-primary">
-                      Coming Soon
+                    {/* Label */}
+                    <span>
+                      {link.label}
+                    </span>
+
+                    {/* ================================================= */}
+                    {/* MOBILE SOON BADGE */}
+                    {/* ================================================= */}
+
+                    <span
+                      className="
+                        relative
+                        ml-auto
+                        inline-flex
+                        cursor-pointer
+                        items-center
+                        gap-1.5
+                        overflow-visible
+                        rounded-full
+                        border
+                        border-primary/30
+                        bg-primary/10
+                        px-2.5
+                        py-1
+                        text-[9px]
+                        font-bold
+                        uppercase
+                        tracking-wider
+                        text-primary
+                        shadow-sm
+                        transition-all
+                        duration-300
+                        animate-[pulse_2.5s_ease-in-out_infinite]
+                        group-hover:scale-110
+                        group-hover:bg-primary/20
+                        group-hover:shadow-[0_0_15px_hsl(var(--primary)/0.4)]
+                      "
+                    >
+
+                      {/* Blinking outer shape */}
+                      <span
+                        className="
+                          pointer-events-none
+                          absolute
+                          -inset-1
+                          rounded-full
+                          border
+                          border-primary/40
+                          opacity-70
+                          animate-ping
+                        "
+                      />
+
+                      {/* Inner blinking border */}
+                      <span
+                        className="
+                          pointer-events-none
+                          absolute
+                          -inset-0.5
+                          rounded-full
+                          border
+                          border-primary/30
+                          animate-pulse
+                        "
+                      />
+
+                      {/* Pulsing status dot */}
+                      <span className="relative flex h-1.5 w-1.5 shrink-0">
+
+                        <span
+                          className="
+                            absolute
+                            inline-flex
+                            h-full
+                            w-full
+                            rounded-full
+                            bg-primary
+                            opacity-75
+                            animate-ping
+                          "
+                        />
+
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                      </span>
+
+                      {/* Soon text */}
+                      <span className="relative z-10">
+                        Soon
+                      </span>
+
+                      {/* Animated hand */}
+                      <Hand
+                        className="
+                          relative
+                          z-10
+                          h-3
+                          w-3
+                          origin-bottom-left
+                          text-primary
+                          animate-bounce
+                        "
+                      />
                     </span>
                   </button>
                 ) : (
@@ -200,9 +469,9 @@ export function Navigation() {
                 )
               )}
 
-              {/* ================================================= */}
+              {/* ===================================================== */}
               {/* MOBILE ENROLLMENT CTA */}
-              {/* ================================================= */}
+              {/* ===================================================== */}
 
               <Button
                 onClick={() => {
@@ -224,7 +493,7 @@ export function Navigation() {
 
       {showPredictorMessage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="predictor-title"
@@ -235,27 +504,45 @@ export function Navigation() {
           {/* ===================================================== */}
 
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            className="absolute inset-0 animate-in bg-black/60 backdrop-blur-sm fade-in duration-300"
             onClick={closePredictorModal}
           />
 
           {/* ===================================================== */}
-          {/* MODAL */}
+          {/* RESPONSIVE MODAL */}
           {/* ===================================================== */}
 
-          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+          <div
+            className="
+              relative
+              my-auto
+              max-h-[90vh]
+              w-full
+              max-w-md
+              overflow-y-auto
+              rounded-2xl
+              border
+              border-border
+              bg-background
+              shadow-2xl
+              animate-in
+              zoom-in-95
+              slide-in-from-bottom-4
+              duration-300
+            "
+          >
 
             {/* =================================================== */}
             {/* ANIMATED AI HEADER */}
             {/* =================================================== */}
 
-            <div className="relative overflow-hidden bg-primary/5 px-6 pb-6 pt-8 text-center">
+            <div className="relative overflow-hidden bg-primary/5 px-5 pb-5 pt-6 text-center sm:px-6 sm:pb-6 sm:pt-7">
 
               {/* Decorative animated glow - top left */}
-              <div className="absolute -left-12 -top-12 h-32 w-32 rounded-full bg-primary/10 blur-2xl animate-pulse" />
+              <div className="absolute -left-12 -top-12 h-28 w-28 animate-pulse rounded-full bg-primary/10 blur-2xl sm:h-32 sm:w-32" />
 
               {/* Decorative animated glow - bottom right */}
-              <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-primary/10 blur-2xl animate-pulse" />
+              <div className="absolute -bottom-12 -right-12 h-28 w-28 animate-pulse rounded-full bg-primary/10 blur-2xl sm:h-32 sm:w-32" />
 
               {/* ================================================= */}
               {/* CLOSE BUTTON */}
@@ -264,7 +551,7 @@ export function Navigation() {
               <button
                 type="button"
                 onClick={closePredictorModal}
-                className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="absolute right-3 top-3 z-10 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:right-4 sm:top-4"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -274,41 +561,40 @@ export function Navigation() {
               {/* ANIMATED AI ICON */}
               {/* ================================================= */}
 
-              <div className="relative mx-auto mb-5 flex h-24 w-24 items-center justify-center">
+              <div className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center sm:mb-5 sm:h-24 sm:w-24">
 
                 {/* Outer rotating ring */}
-                <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-[spin_6s_linear_infinite]" />
+                <div className="absolute inset-0 animate-[spin_6s_linear_infinite] rounded-full border-2 border-primary/20" />
 
                 {/* Dashed rotating ring */}
-                <div className="absolute inset-2 rounded-full border border-dashed border-primary/30 animate-[spin_4s_linear_infinite_reverse]" />
+                <div className="absolute inset-2 animate-[spin_4s_linear_infinite_reverse] rounded-full border border-dashed border-primary/30" />
 
                 {/* Pulsing AI glow */}
-                <div className="absolute inset-4 rounded-2xl bg-primary/10 blur-xl animate-pulse" />
+                <div className="absolute inset-4 animate-pulse rounded-2xl bg-primary/10 blur-xl" />
 
                 {/* Main AI container */}
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 ring-8 ring-primary/5">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-8 ring-primary/5 sm:h-20 sm:w-20">
 
                   {/* AI Brain */}
                   <BrainCircuit
-                    className="h-10 w-10 text-primary animate-[pulse_2s_ease-in-out_infinite]"
+                    className="h-8 w-8 animate-[pulse_2s_ease-in-out_infinite] text-primary sm:h-10 sm:w-10"
                   />
 
                   {/* Top-right sparkle */}
                   <Sparkles
-                    className="absolute -right-2 -top-2 h-5 w-5 text-primary animate-[bounce_1.5s_ease-in-out_infinite]"
+                    className="absolute -right-2 -top-2 h-4 w-4 animate-[bounce_1.5s_ease-in-out_infinite] text-primary sm:h-5 sm:w-5"
                   />
 
                   {/* Bottom-left sparkle */}
                   <Sparkles
-                    className="absolute -bottom-2 -left-2 h-4 w-4 text-primary animate-[pulse_1.8s_ease-in-out_infinite]"
+                    className="absolute -bottom-2 -left-2 h-3.5 w-3.5 animate-[pulse_1.8s_ease-in-out_infinite] text-primary sm:h-4 sm:w-4"
                   />
 
                   {/* Moving dot */}
-                  <span className="absolute -right-3 top-1/2 h-2 w-2 rounded-full bg-primary animate-[ping_2s_ease-in-out_infinite]" />
+                  <span className="absolute -right-3 top-1/2 h-2 w-2 animate-[ping_2s_ease-in-out_infinite] rounded-full bg-primary" />
 
                   {/* Another moving dot */}
-                  <span className="absolute -top-3 left-1/2 h-1.5 w-1.5 rounded-full bg-primary animate-[ping_2.5s_ease-in-out_infinite]" />
-
+                  <span className="absolute -top-3 left-1/2 h-1.5 w-1.5 animate-[ping_2.5s_ease-in-out_infinite] rounded-full bg-primary" />
                 </div>
               </div>
 
@@ -318,7 +604,7 @@ export function Navigation() {
 
               <h2
                 id="predictor-title"
-                className="relative text-2xl font-bold"
+                className="relative text-xl font-bold sm:text-2xl"
               >
                 AI Exam Predictor
               </h2>
@@ -327,9 +613,8 @@ export function Navigation() {
               {/* LIVE DEVELOPMENT INDICATOR */}
               {/* ================================================= */}
 
-              <div className="relative mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <div className="relative mt-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground sm:text-xs">
 
-                {/* Animated status indicator */}
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
 
@@ -345,7 +630,7 @@ export function Navigation() {
               {/* CONSTRUCTION BADGE */}
               {/* ================================================= */}
 
-              <div className="relative mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <div className="relative mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary sm:text-xs">
                 <Construction className="h-3.5 w-3.5 animate-pulse" />
 
                 Currently Under Construction
@@ -356,10 +641,10 @@ export function Navigation() {
             {/* MODAL CONTENT */}
             {/* =================================================== */}
 
-            <div className="px-6 py-6 text-center">
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
 
               {/* Description */}
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-center text-sm leading-relaxed text-muted-foreground">
                 We're building something special for GlobeDk students.
                 The AI Exam Predictor will analyse previous examination
                 papers and help identify important question patterns and
@@ -370,17 +655,17 @@ export function Navigation() {
               {/* FEATURE PREVIEW */}
               {/* ================================================= */}
 
-              <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4 text-left">
+              <div className="mt-4 rounded-xl border border-border bg-muted/30 p-3.5 sm:mt-5 sm:p-4">
 
                 <p className="mb-3 text-sm font-semibold">
                   What we're working on:
                 </p>
 
-                <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="space-y-2.5 text-sm text-muted-foreground">
 
                   {/* Feature 1 */}
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 shrink-0 text-primary animate-pulse" />
+                    <Sparkles className="h-4 w-4 shrink-0 animate-pulse text-primary" />
 
                     <span>
                       Past examination paper analysis
@@ -389,7 +674,7 @@ export function Navigation() {
 
                   {/* Feature 2 */}
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 shrink-0 text-primary animate-pulse [animation-delay:200ms]" />
+                    <Sparkles className="h-4 w-4 shrink-0 animate-pulse text-primary [animation-delay:200ms]" />
 
                     <span>
                       Question pattern detection
@@ -398,7 +683,7 @@ export function Navigation() {
 
                   {/* Feature 3 */}
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 shrink-0 text-primary animate-pulse [animation-delay:400ms]" />
+                    <Sparkles className="h-4 w-4 shrink-0 animate-pulse text-primary [animation-delay:400ms]" />
 
                     <span>
                       Topic and question predictions
@@ -407,7 +692,7 @@ export function Navigation() {
 
                   {/* Feature 4 */}
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 shrink-0 text-primary animate-pulse [animation-delay:600ms]" />
+                    <Sparkles className="h-4 w-4 shrink-0 animate-pulse text-primary [animation-delay:600ms]" />
 
                     <span>
                       AI-powered mock examinations
@@ -420,7 +705,7 @@ export function Navigation() {
               {/* DEVELOPMENT MESSAGE */}
               {/* ================================================= */}
 
-              <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground sm:mt-5">
                 The feature is still being developed and will be
                 available to students once it is ready.
               </p>
@@ -432,7 +717,7 @@ export function Navigation() {
               <Button
                 type="button"
                 onClick={closePredictorModal}
-                className="mt-6 w-full"
+                className="mt-5 w-full sm:mt-6"
               >
                 Got it
               </Button>
