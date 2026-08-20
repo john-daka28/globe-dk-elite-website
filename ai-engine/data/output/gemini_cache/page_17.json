@@ -1,0 +1,12 @@
+{
+  "page_number": 17,
+  "question_starts": [
+    {
+      "question_number": 21,
+      "y_position": 0.173,
+      "x_position": 0.114,
+      "confidence": 0.98,
+      "evidence": "Main question number 21 printed at the start of the question text 'Evaluate'."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "page_number": 10,
+  "question_starts": [
+    {
+      "question_number": 11,
+      "y_position": 0.205,
+      "x_position": 0.164,
+      "confidence": 0.98,
+      "evidence": "Main question number 11 located on the left margin, preceding the geometry question text and diagram."
+    }
+  ]
+}

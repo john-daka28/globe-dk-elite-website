@@ -1,0 +1,12 @@
+{
+  "page_number": 4,
+  "question_starts": [
+    {
+      "question_number": 3,
+      "y_position": 0.216,
+      "x_position": 0.132,
+      "confidence": 0.99,
+      "evidence": "Main question number 3 followed by problem text 'Giving your answer as a decimal...'"
+    }
+  ]
+}

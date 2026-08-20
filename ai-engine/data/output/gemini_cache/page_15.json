@@ -1,0 +1,12 @@
+{
+  "page_number": 15,
+  "question_starts": [
+    {
+      "question_number": 19,
+      "y_position": 0.158,
+      "x_position": 0.145,
+      "confidence": 0.98,
+      "evidence": "Main question number 19 printed on the left margin, preceding the diagram and question text."
+    }
+  ]
+}

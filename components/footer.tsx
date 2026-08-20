@@ -109,7 +109,7 @@ export function Footer() {
                   href="mailto:johnariphiosd@gmail.com"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                 admission@globedk.co.zw
+                 admission@globedk.co.zw || principal@globedk.co.zw
                 </a>
               </li>
               <li className="flex items-start gap-2">

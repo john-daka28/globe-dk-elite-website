@@ -1,0 +1,19 @@
+{
+  "page_number": 5,
+  "question_starts": [
+    {
+      "question_number": 4,
+      "y_position": 0.19,
+      "x_position": 0.12,
+      "confidence": 0.98,
+      "evidence": "Main question label '4' at the start of question 4"
+    },
+    {
+      "question_number": 5,
+      "y_position": 0.53,
+      "x_position": 0.12,
+      "confidence": 0.98,
+      "evidence": "Main question label '5' preceding text 'It is given that'"
+    }
+  ]
+}

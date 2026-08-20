@@ -1,0 +1,19 @@
+{
+  "page_number": 8,
+  "question_starts": [
+    {
+      "question_number": 8,
+      "y_position": 0.2,
+      "x_position": 0.113,
+      "confidence": 0.98,
+      "evidence": "Number 8 printed at the start of 'Solve the simultaneous equations'."
+    },
+    {
+      "question_number": 9,
+      "y_position": 0.569,
+      "x_position": 0.123,
+      "confidence": 0.98,
+      "evidence": "Number 9 printed at the start of 'Given that f(x) = (x - 1)(x + 6)...'."
+    }
+  ]
+}

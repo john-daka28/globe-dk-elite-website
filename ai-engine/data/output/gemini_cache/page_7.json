@@ -1,0 +1,19 @@
+{
+  "page_number": 7,
+  "question_starts": [
+    {
+      "question_number": 6,
+      "y_position": 0.202,
+      "x_position": 0.128,
+      "confidence": 0.98,
+      "evidence": "Main question number 6 printed on the left margin before subquestion (a)."
+    },
+    {
+      "question_number": 7,
+      "y_position": 0.556,
+      "x_position": 0.133,
+      "confidence": 0.98,
+      "evidence": "Main question number 7 printed on the left margin below horizontal separator line."
+    }
+  ]
+}

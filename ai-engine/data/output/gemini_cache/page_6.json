@@ -1,0 +1,12 @@
+{
+  "page_number": null,
+  "question_starts": [
+    {
+      "question_number": 6,
+      "y_position": 0.17,
+      "x_position": 0.52,
+      "confidence": 0.95,
+      "evidence": "Bold main question number 6 centered above question answer space and separating line."
+    }
+  ]
+}

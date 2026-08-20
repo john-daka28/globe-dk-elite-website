@@ -1,0 +1,12 @@
+{
+  "page_number": 2,
+  "question_starts": [
+    {
+      "question_number": 1,
+      "y_position": 0.258,
+      "x_position": 0.111,
+      "confidence": 1.0,
+      "evidence": "Main question number 1 followed by question text 'Express 2046,489 correct to'"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "page_number": 9,
+  "question_starts": [
+    {
+      "question_number": 10,
+      "y_position": 0.186,
+      "x_position": 0.115,
+      "confidence": 0.99,
+      "evidence": "Main question number 10 positioned at the top left of the examination body text."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "page_number": 19,
+  "question_starts": [
+    {
+      "question_number": 23,
+      "y_position": 0.18,
+      "x_position": 0.098,
+      "confidence": 0.98,
+      "evidence": "Main question number 23 positioned on the left margin preceding subquestion (a)."
+    }
+  ]
+}

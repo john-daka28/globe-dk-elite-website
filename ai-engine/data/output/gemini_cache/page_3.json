@@ -1,0 +1,12 @@
+{
+  "page_number": 3,
+  "question_starts": [
+    {
+      "question_number": 2,
+      "y_position": 0.191,
+      "x_position": 0.105,
+      "confidence": 0.99,
+      "evidence": "Main question number 2 preceding the prompt 'Evaluate, giving your answers as common fractions...'"
+    }
+  ]
+}

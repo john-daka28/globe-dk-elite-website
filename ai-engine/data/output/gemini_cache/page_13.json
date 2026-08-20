@@ -1,0 +1,19 @@
+{
+  "page_number": 13,
+  "question_starts": [
+    {
+      "question_number": 16,
+      "y_position": 0.205,
+      "x_position": 0.12,
+      "confidence": 0.98,
+      "evidence": "Main question number 16 placed at the start of 'Solve the equation'"
+    },
+    {
+      "question_number": 17,
+      "y_position": 0.525,
+      "x_position": 0.12,
+      "confidence": 0.98,
+      "evidence": "Main question number 17 placed at the start of '(a) Simplify...'"
+    }
+  ]
+}
