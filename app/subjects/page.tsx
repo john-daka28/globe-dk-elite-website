@@ -32,7 +32,7 @@ export default function SubjectsPage() {
         "Statistics",
         "Number Systems",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "English Language",
@@ -46,7 +46,7 @@ export default function SubjectsPage() {
         "Summary Writing",
         "Oral Skills",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Combined Science",
@@ -60,7 +60,7 @@ export default function SubjectsPage() {
         "Physics",
         "Laboratory Skills",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Physics",
@@ -74,7 +74,7 @@ export default function SubjectsPage() {
         "Thermal Physics",
         "Modern Physics",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Chemistry",
@@ -88,7 +88,7 @@ export default function SubjectsPage() {
         "Acids & Bases",
         "Practical Chemistry",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Biology",
@@ -102,7 +102,7 @@ export default function SubjectsPage() {
         "Human Biology",
         "Classification",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Computer Science",
@@ -116,7 +116,7 @@ export default function SubjectsPage() {
         "Networking",
         "Computer Systems",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Geography",
@@ -130,7 +130,7 @@ export default function SubjectsPage() {
         "Natural Resources",
         "Development",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "History",
@@ -144,7 +144,7 @@ export default function SubjectsPage() {
         "Colonial History",
         "International Relations",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Heritage Studies",
@@ -158,7 +158,7 @@ export default function SubjectsPage() {
         "Traditions",
         "National Heritage",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Commerce",
@@ -172,7 +172,7 @@ export default function SubjectsPage() {
         "International Trade",
         "Consumer Education",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
     {
       name: "Principles of Accounts",
@@ -186,7 +186,7 @@ export default function SubjectsPage() {
         "Financial Statements",
         "Cash Books",
       ],
-      fee: "Physical: US$15/month | Online: US$20-25/month",
+      fee: "ZIMSEC: US$30/month | Cambridge: US$35/month",
     },
   ];
 
@@ -203,7 +203,7 @@ export default function SubjectsPage() {
         "Differential Equations",
         "Proof",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
     {
       name: "Statistics",
@@ -217,7 +217,7 @@ export default function SubjectsPage() {
         "Distributions",
         "Hypothesis Testing",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
     {
       name: "Computer Science",
@@ -231,7 +231,7 @@ export default function SubjectsPage() {
         "Databases",
         "Networks",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
     {
       name: "Geography",
@@ -245,9 +245,9 @@ export default function SubjectsPage() {
         "Human Geography",
         "Global Issues",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
-        {
+    {
       name: "Business Studies",
       icon: FileText,
       description:
@@ -259,7 +259,7 @@ export default function SubjectsPage() {
         "Entrepreneurship",
         "Business Finance",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
     {
       name: "Economics",
@@ -273,7 +273,7 @@ export default function SubjectsPage() {
         "Economic Development",
         "Market Structures",
       ],
-      fee: "Physical: US$20/month | Online: US$25-30/month",
+      fee: "ZIMSEC: US$35/month | Cambridge: US$40/month",
     },
   ];
 
@@ -488,7 +488,7 @@ export default function SubjectsPage() {
               </motion.div>
             ))}
           </div>
-                  </div>
+        </div>
       </section>
 
       {/* A-Level Section */}
@@ -506,13 +506,13 @@ export default function SubjectsPage() {
             </div>
 
             <p className="text-muted-foreground leading-8 max-w-4xl">
-              GlobeDk Elite Academy offers professional A-Level Lessons for both
-              ZIMSEC and Cambridge students through Online Lessons, Physical
-              Lessons, Homeschooling and Live Virtual Classes. Our experienced
-              tutors prepare learners for university entrance and professional
-              careers through personalised tutoring, revision classes, homework
-              assistance and intensive examination preparation in Sciences,
-              Commercials and Technology subjects.
+              GlobeDk Elite Academy offers professional A-Level Lessons for
+              both ZIMSEC and Cambridge students through Online Lessons,
+              Physical Lessons, Homeschooling and Live Virtual Classes. Our
+              experienced tutors prepare learners for university entrance and
+              professional careers through personalised tutoring, revision
+              classes, homework assistance and intensive examination
+              preparation in Sciences, Commercials and Technology subjects.
             </p>
           </div>
 
@@ -563,10 +563,7 @@ export default function SubjectsPage() {
 
                       <div className="flex flex-wrap gap-2">
                         {subject.topics.map((topic, i) => (
-                          <Badge
-                            key={i}
-                            variant="outline"
-                          >
+                          <Badge key={i} variant="outline">
                             {topic}
                           </Badge>
                         ))}
@@ -593,10 +590,7 @@ export default function SubjectsPage() {
       </section>
 
       {/* Pricing */}
-      <section
-        id="pricing"
-        className="py-20 md:py-28"
-      >
+      <section id="pricing" className="py-20 md:py-28">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <Badge className="mb-4">
@@ -609,9 +603,9 @@ export default function SubjectsPage() {
 
             <p className="text-muted-foreground leading-8">
               Whether you prefer learning online from anywhere in Zimbabwe or
-              attending our physical lessons in Epworth StopOver, Harare, GlobeDk
-              Elite Academy provides affordable, high-quality education for
-              every learner.
+              attending our physical lessons in Epworth StopOver, Harare,
+              GlobeDk Elite Academy provides affordable, high-quality education
+              for every learner.
             </p>
           </div>
 
@@ -629,13 +623,23 @@ export default function SubjectsPage() {
 
               <CardContent className="space-y-4">
                 <div className="flex justify-between border-b pb-3">
-                  <span>O-Level</span>
-                  <strong>US$15 / subject / month</strong>
+                  <span>O-Level ZIMSEC</span>
+                  <strong>US$20 / subject / month</strong>
+                </div>
+
+                <div className="flex justify-between border-b pb-3">
+                  <span>O-Level Cambridge</span>
+                  <strong>US$25 / subject / month</strong>
+                </div>
+
+                <div className="flex justify-between border-b pb-3">
+                  <span>A-Level ZIMSEC</span>
+                  <strong>US$25 / subject / month</strong>
                 </div>
 
                 <div className="flex justify-between">
-                  <span>A-Level</span>
-                  <strong>US$20 / subject / month</strong>
+                  <span>A-Level Cambridge</span>
+                  <strong>US$30 / subject / month</strong>
                 </div>
               </CardContent>
             </Card>
@@ -653,27 +657,28 @@ export default function SubjectsPage() {
 
               <CardContent className="space-y-4">
                 <div className="flex justify-between border-b pb-3">
-                  <span>ZIMSEC O-Level</span>
-                  <strong>US$20</strong>
+                  <span>O-Level ZIMSEC</span>
+                  <strong>US$30 / subject / month</strong>
                 </div>
 
                 <div className="flex justify-between border-b pb-3">
-                  <span>Cambridge O-Level</span>
-                  <strong>US$25</strong>
+                  <span>O-Level Cambridge</span>
+                  <strong>US$35 / subject / month</strong>
                 </div>
 
                 <div className="flex justify-between border-b pb-3">
-                  <span>ZIMSEC A-Level</span>
-                  <strong>US$25</strong>
+                  <span>A-Level ZIMSEC</span>
+                  <strong>US$35 / subject / month</strong>
                 </div>
 
                 <div className="flex justify-between">
-                  <span>Cambridge A-Level</span>
-                  <strong>US$30</strong>
+                  <span>A-Level Cambridge</span>
+                  <strong>US$40 / subject / month</strong>
                 </div>
               </CardContent>
             </Card>
-          </div>        </div>
+          </div>
+        </div>
       </section>
 
       {/* Founder Section */}
@@ -713,10 +718,10 @@ export default function SubjectsPage() {
 
                 <p className="text-muted-foreground leading-8 text-lg mt-6">
                   His commitment is to provide accessible Online Lessons,
-                  Physical Lessons, Homeschooling, One-on-One Tutoring, Revision
-                  Classes, Homework Assistance and Exam Preparation that empower
-                  learners across Zimbabwe and internationally to achieve
-                  outstanding academic results.
+                  Physical Lessons, Homeschooling, One-on-One Tutoring,
+                  Revision Classes, Homework Assistance and Exam Preparation
+                  that empower learners across Zimbabwe and internationally to
+                  achieve outstanding academic results.
                 </p>
 
                 <div className="mt-8">
@@ -741,10 +746,7 @@ export default function SubjectsPage() {
           >
             <Card className="border-0 bg-primary text-primary-foreground shadow-2xl">
               <CardContent className="py-14 px-8 text-center">
-                <Badge
-                  variant="secondary"
-                  className="mb-5"
-                >
+                <Badge variant="secondary" className="mb-5">
                   Enrolments Open
                 </Badge>
 
@@ -754,32 +756,20 @@ export default function SubjectsPage() {
 
                 <p className="max-w-3xl mx-auto text-lg leading-8 text-primary-foreground/90 mb-8">
                   Whether you need an Online Tutor Zimbabwe, Home School
-                  Zimbabwe support, ZIMSEC Tutors, Cambridge Tutors, Mathematics
-                  Tutor, English Tutor, Geography Tutor, Computer Science Tutor,
-                  Commerce Tutor, Business Studies Tutor, Economics Tutor or
-                  professional exam preparation, GlobeDk Elite Academy is ready
-                  to help you succeed.
+                  Zimbabwe support, ZIMSEC Tutors, Cambridge Tutors,
+                  Mathematics Tutor, English Tutor, Geography Tutor, Computer
+                  Science Tutor, Commerce Tutor, Business Studies Tutor,
+                  Economics Tutor or professional exam preparation, GlobeDk
+                  Elite Academy is ready to help you succeed.
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-4">
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    asChild
-                  >
-                    <Link href="/contact">
-                      Enrol Now
-                    </Link>
+                  <Button size="lg" variant="secondary" asChild>
+                    <Link href="/contact">Enrol Now</Link>
                   </Button>
 
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    asChild
-                  >
-                    <Link href="/about">
-                      Learn More
-                    </Link>
+                  <Button size="lg" variant="outline" asChild>
+                    <Link href="/about">Learn More</Link>
                   </Button>
                 </div>
               </CardContent>
@@ -787,7 +777,8 @@ export default function SubjectsPage() {
           </motion.div>
         </div>
       </section>
-            <Footer />
+
+      <Footer />
     </div>
   );
 }
