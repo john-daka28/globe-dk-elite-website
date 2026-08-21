@@ -738,11 +738,22 @@ export default function SubjectsPage() {
                   achieve outstanding academic results.
                 </p>
 
-                <div className="mt-8">
-                  <Badge className="text-base px-5 py-2">
-                    Committed to Excellence in Education. Success for Life.
-                  </Badge>
-                </div>
+               <div className="mt-8 flex justify-center">
+  <Badge
+    className="
+      max-w-full
+      px-4 py-2
+      text-center
+      text-sm
+      leading-relaxed
+      whitespace-normal
+      sm:px-5
+      sm:text-base
+    "
+  >
+    Committed to Excellence in Education. Success for Life.
+  </Badge>
+</div>
               </CardContent>
             </Card>
           </motion.div>
