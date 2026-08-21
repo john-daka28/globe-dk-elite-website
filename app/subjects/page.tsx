@@ -15,9 +15,17 @@ import {
   Clock,
   DollarSign,
   User,
+  ArrowRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
+const handleEnrollClick = () => {
+  const message =
+    "Hello GlobeDk Elite Academy. I am interested in your online tutoring services and would like to know more about the available lessons, subjects, fees and class schedules. I would also like to know how I can enrol. Thank you."
 
+  const whatsappUrl = `https://wa.me/263786053315?text=${encodeURIComponent(message)}`
+
+  window.open(whatsappUrl, "_blank")
+}
 export default function SubjectsPage() {
   const oLevelSubjects = [
     {
@@ -344,9 +352,15 @@ export default function SubjectsPage() {
             </div>
 
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg">
-                <Link href="/contact">Enroll Today</Link>
-              </Button>
+               <Button
+  onClick={handleEnrollClick}
+  size="lg"
+  variant="secondary"
+  className="cursor-pointer text-base"
+>
+  Enroll Today
+  <ArrowRight className="ml-2 h-5 w-5" />
+</Button>
 
               <Button variant="secondary" size="lg" asChild>
                 <Link href="#pricing">View Fees</Link>

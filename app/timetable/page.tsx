@@ -16,8 +16,16 @@ import {
   Bell,
   BookOpen,
   Info,
+  ArrowRight,
 } from "lucide-react";
+const handleEnrollClick = () => {
+  const message =
+    "Hello GlobeDk Elite Academy. I am interested in your online tutoring services and would like to know more about the available lessons, subjects, fees and class schedules. I would also like to know how I can enrol. Thank you."
 
+  const whatsappUrl = `https://wa.me/263786053315?text=${encodeURIComponent(message)}`
+
+  window.open(whatsappUrl, "_blank")
+}
 export default function TimetablePage() {
   const lessonInformation = [
     {
@@ -354,14 +362,15 @@ export default function TimetablePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              asChild
-              size="lg"
-              variant="secondary"
-              className="hover:scale-105 transition-transform"
-            >
-              <Link href="/enroll">Enrol Now</Link>
-            </Button>
+           <Button
+  onClick={handleEnrollClick}
+  size="lg"
+  variant="secondary"
+  className="cursor-pointer text-base"
+>
+ Join Class
+  <ArrowRight className="ml-2 h-5 w-5" />
+</Button>
 
             <Button
               asChild

@@ -122,14 +122,14 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
 
                <Button
-                onClick={handleEnrollClick}
-                size="lg"
-                variant="secondary"
-                className="text-base"
-              >
-                Enroll Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+  onClick={handleEnrollClick}
+  size="lg"
+  variant="secondary"
+  className="cursor-pointer text-base"
+>
+  Enroll Now
+  <ArrowRight className="ml-2 h-5 w-5" />
+</Button>
 
               <Button
                 asChild
