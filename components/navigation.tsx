@@ -3,7 +3,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Menu,
@@ -17,8 +16,6 @@ import {
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [showPredictorMessage, setShowPredictorMessage] = useState(false)
-
-  const router = useRouter()
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -35,10 +32,14 @@ export function Navigation() {
     { href: "/contact", label: "Contact" },
   ]
 
-  const handleEnrollClick = () => {
-    router.push("/enroll")
-  }
+const handleEnrollClick = () => {
+  const message =
+    "Hello GlobeDk Elite Academy. I am interested in your online tutoring services and would like to know more about the available lessons, subjects, fees and class schedules. I would also like to know how I can enrol. Thank you."
 
+  const whatsappUrl = `https://wa.me/263786053315?text=${encodeURIComponent(message)}`
+
+  window.open(whatsappUrl, "_blank")
+}
   const closeMobileMenu = () => {
     setIsOpen(false)
   }
