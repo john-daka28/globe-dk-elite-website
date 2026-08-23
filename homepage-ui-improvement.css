@@ -1,0 +1,24 @@
+/* Add to app/globals.css or keep scoped to the homepage shell. */
+
+/* Prevent animated off-canvas decoration from creating horizontal page scroll. */
+.homepage-shell {
+  overflow-x: clip;
+}
+
+/* Use this on navigation and hero wrappers that contain decorative effects. */
+.homepage-viewport-safe {
+  position: relative;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
