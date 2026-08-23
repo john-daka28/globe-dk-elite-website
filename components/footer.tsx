@@ -39,7 +39,6 @@ const footerGroups = [
     links: [
      
      
-      ["AI Exam Predictor", "/exam-predictor"],
       ["Log in", "/login"],
       ["Create an account", "/signup"],
       ["Forgot password", "/forgot-password"],
