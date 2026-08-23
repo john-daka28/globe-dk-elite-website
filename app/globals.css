@@ -124,3 +124,62 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Keep animated hero and navigation decorations inside the viewport. */
+html,
+body {
+  overflow-x: clip;
+}
+
+.homepage-viewport-safe {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+@theme inline {
+  --font-serif: Georgia, "Times New Roman", serif;
+}
+
+::selection {
+  background: oklch(0.65 0.15 45 / 0.28);
+  color: var(--foreground);
+}
+
+.homepage-shell {
+  min-width: 0;
+}
+
+
+/* Responsive layout guardrails for the premium homepage shell. Tailwind's
+   container utility controls width but does not provide page gutters by default. */
+.homepage-shell .container {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .homepage-shell .container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .homepage-shell .container {
+    padding-inline: 2.5rem;
+  }
+}
