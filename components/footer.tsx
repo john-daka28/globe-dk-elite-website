@@ -12,7 +12,16 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { BrandLink } from "@/components/brand"
+function handleEnrollClick() {
+  const message =
+    "Hello GlobeDk Elite Academy. I am interested in your online tutoring services and would like to know more about the available lessons, subjects, fees and class schedules. I would also like to know how I can enrol. Thank you."
 
+  window.open(
+    `https://wa.me/263786053315?text=${encodeURIComponent(message)}`,
+    "_blank",
+    "noopener,noreferrer",
+  )
+}
 const footerGroups = [
   {
     title: "Explore",
@@ -57,9 +66,17 @@ export function Footer() {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#e3a56f]">GlobeDk Elite Academy</p>
             <h2 className="mt-2 max-w-xl font-serif text-2xl leading-tight sm:text-3xl">Excellence in Education. Success for Life.</h2>
           </div>
-          <Button asChild size="lg" className="w-full rounded-full bg-[#d87a3f] px-6 text-white hover:bg-[#c86931] sm:w-auto">
-            <Link href="/enroll">Enroll Now <ArrowUpRight className="ml-2 h-4 w-4" aria-hidden="true" /></Link>
-          </Button>
+<Button
+  onClick={handleEnrollClick}
+  size="sm"
+  className="cursor-pointer rounded-full bg-[#C65D3A] px-5 text-white shadow-lg shadow-[#C65D3A]/20 hover:bg-[#A94B2F]"
+>
+  Enroll Now
+  <ArrowUpRight
+    className="ml-1.5 h-3.5 w-3.5"
+    aria-hidden="true"
+  />
+</Button>        
         </div>
 
         <div className="grid gap-10 md:grid-cols-[1.25fr_0.85fr_0.85fr_1.2fr] md:gap-8">
