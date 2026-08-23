@@ -37,14 +37,13 @@ const footerGroups = [
   {
     title: "Get started",
     links: [
-      ["Enroll Now", "/enroll"],
-      ["Payment", "/payment"],
+     
+     
       ["AI Exam Predictor", "/exam-predictor"],
       ["Log in", "/login"],
       ["Create an account", "/signup"],
       ["Forgot password", "/forgot-password"],
-      ["Student Dashboard", "/student/dashboard"],
-      ["Tutor Dashboard", "/tutor/dashboard"],
+      
     ],
   },
 ] as const
