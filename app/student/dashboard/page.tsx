@@ -42,7 +42,7 @@ export default function StudentDashboard() {
   const navigation = [
     {
       title: "Dashboard",
-      href: "/student",
+      href: "/student/dashboard",
       icon: LayoutDashboard,
       active: true,
     },
