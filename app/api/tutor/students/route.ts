@@ -30,12 +30,15 @@ type CreateStudentBody = {
   school?: string
   guardian_name?: string
   guardian_phone?: string
+  subject_ids?: string[]
 }
 
 function cleanText(
   value: unknown
 ): string {
-  return String(value || "").trim()
+  return String(
+    value || ""
+  ).trim()
 }
 
 function isValidEmail(
@@ -44,6 +47,25 @@ function isValidEmail(
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     email
   )
+}
+
+function cleanSubjectIds(
+  value: unknown
+): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [
+    ...new Set(
+      value
+        .map(
+          (id) =>
+            String(id || "").trim()
+        )
+        .filter(Boolean)
+    ),
+  ]
 }
 
 /*
@@ -60,6 +82,64 @@ export async function GET() {
       await requireRole([
         "tutor",
       ])
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load all active subjects
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: subjects,
+      error: subjectsError,
+    } =
+      await supabaseAdmin
+        .from("subjects")
+        .select(
+          [
+            "id",
+            "name",
+            "code",
+            "description",
+            "level",
+            "is_active",
+            "syllabus",
+            "price",
+          ].join(",")
+        )
+        .eq(
+          "is_active",
+          true
+        )
+        .order(
+          "name",
+          {
+            ascending: true,
+          }
+        )
+
+    if (subjectsError) {
+      console.error(
+        "Load subjects error:",
+        subjectsError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to load subjects.",
+        },
+        {
+          status: 500,
+        }
+      )
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load tutor/student relationships
+    |--------------------------------------------------------------------------
+    */
 
     const {
       data: relationships,
@@ -109,17 +189,26 @@ export async function GET() {
       )
 
     if (
-      studentIds.length === 0
+      studentIds.length ===
+      0
     ) {
       return NextResponse.json(
         {
           students: [],
+          subjects:
+            subjects || [],
         },
         {
           status: 200,
         }
       )
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load students
+    |--------------------------------------------------------------------------
+    */
 
     const {
       data: students,
@@ -170,6 +259,54 @@ export async function GET() {
       )
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Load student-subject relationships
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: studentSubjectRows,
+      error:
+        studentSubjectsError,
+    } =
+      await supabaseAdmin
+        .from("student_subjects")
+        .select(
+          `
+            id,
+            student_id,
+            subject_id,
+            subjects (
+              id,
+              name,
+              code,
+              level
+            )
+          `
+        )
+        .in(
+          "student_id",
+          studentIds
+        )
+
+    if (studentSubjectsError) {
+      console.error(
+        "Load student subjects error:",
+        studentSubjectsError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to load student subjects.",
+        },
+        {
+          status: 500,
+        }
+      )
+    }
+
     type StudentRow = {
       id: string
       email: string | null
@@ -186,8 +323,38 @@ export async function GET() {
       created_at: string
     }
 
+    type StudentSubjectRow = {
+      id: string
+      student_id: string
+      subject_id: string
+      subjects:
+        | {
+            id: string
+            name: string
+            code: string | null
+            level: string | null
+          }
+        | {
+            id: string
+            name: string
+            code: string | null
+            level: string | null
+          }[]
+        | null
+    }
+
     const studentRows =
       (students || []) as unknown as StudentRow[]
+
+    const subjectRows =
+      (studentSubjectRows ||
+        []) as unknown as StudentSubjectRow[]
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create student map
+    |--------------------------------------------------------------------------
+    */
 
     const studentMap =
       new Map(
@@ -200,6 +367,60 @@ export async function GET() {
           ]
         )
       )
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create student subjects map
+    |--------------------------------------------------------------------------
+    */
+
+    const subjectsByStudent =
+      new Map<
+        string,
+        {
+          id: string
+          name: string
+          code: string | null
+          level: string | null
+        }[]
+      >()
+
+    for (
+      const row of subjectRows
+    ) {
+      const relationSubject =
+        Array.isArray(
+          row.subjects
+        )
+          ? row.subjects[0]
+          : row.subjects
+
+      if (
+        !relationSubject
+      ) {
+        continue
+      }
+
+      const existing =
+        subjectsByStudent.get(
+          row.student_id
+        ) || []
+
+      existing.push(
+        relationSubject
+      )
+
+      subjectsByStudent.set(
+        row.student_id,
+        existing
+      )
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Build final result
+    |--------------------------------------------------------------------------
+    */
 
     const result =
       (
@@ -265,6 +486,11 @@ export async function GET() {
 
               assigned_at:
                 relationship.created_at,
+
+              subjects:
+                subjectsByStudent.get(
+                  student.id
+                ) || [],
             }
           }
         )
@@ -272,12 +498,17 @@ export async function GET() {
           (
             student
           ) =>
-            student !== null
+            student !==
+            null
         )
 
     return NextResponse.json(
       {
-        students: result,
+        students:
+          result,
+
+        subjects:
+          subjects || [],
       },
       {
         status: 200,
@@ -361,6 +592,11 @@ export async function POST(
         body.guardian_phone
       )
 
+    const subjectIds =
+      cleanSubjectIds(
+        body.subject_ids
+      )
+
     if (!firstName) {
       return NextResponse.json(
         {
@@ -423,13 +659,102 @@ export async function POST(
 
     /*
     |--------------------------------------------------------------------------
+    | Validate selected subjects
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      subjectIds.length >
+      0
+    ) {
+      const {
+        data: selectedSubjects,
+        error:
+          selectedSubjectsError,
+      } =
+        await supabaseAdmin
+          .from("subjects")
+          .select(
+            "id,level,is_active"
+          )
+          .in(
+            "id",
+            subjectIds
+          )
+
+      if (
+        selectedSubjectsError
+      ) {
+        console.error(
+          "Validate student subjects error:",
+          selectedSubjectsError
+        )
+
+        return NextResponse.json(
+          {
+            error:
+              "Unable to validate selected subjects.",
+          },
+          {
+            status: 500,
+          }
+        )
+      }
+
+      if (
+        !selectedSubjects ||
+        selectedSubjects.length !==
+          subjectIds.length
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "One or more selected subjects are invalid.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      const invalidSubject =
+        selectedSubjects.find(
+          (
+            subject
+          ) =>
+            !subject.is_active ||
+            (
+              subject.level &&
+              subject.level !==
+                level
+            )
+        )
+
+      if (
+        invalidSubject
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "One or more selected subjects are not available for this student level.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Check duplicate email
     |--------------------------------------------------------------------------
     */
 
     const {
       data: existingUser,
-      error: existingUserError,
+      error:
+        existingUserError,
     } =
       await supabaseAdmin
         .from("users")
@@ -442,7 +767,9 @@ export async function POST(
         )
         .maybeSingle()
 
-    if (existingUserError) {
+    if (
+      existingUserError
+    ) {
       console.error(
         "Student existing email check error:",
         existingUserError
@@ -521,10 +848,12 @@ export async function POST(
             school || null,
 
           guardian_name:
-            guardianName || null,
+            guardianName ||
+            null,
 
           guardian_phone:
-            guardianPhone || null,
+            guardianPhone ||
+            null,
 
           role:
             "student",
@@ -584,7 +913,8 @@ export async function POST(
     */
 
     const {
-      error: relationshipError,
+      error:
+        relationshipError,
     } =
       await supabaseAdmin
         .from("tutor_students")
@@ -596,17 +926,13 @@ export async function POST(
             student.id,
         })
 
-    if (relationshipError) {
+    if (
+      relationshipError
+    ) {
       console.error(
         "Create tutor student relationship error:",
         relationshipError
       )
-
-      /*
-      |--------------------------------------------------------------------------
-      | Roll back student if relationship creation fails
-      |--------------------------------------------------------------------------
-      */
 
       await supabaseAdmin
         .from("users")
@@ -629,6 +955,81 @@ export async function POST(
 
     /*
     |--------------------------------------------------------------------------
+    | Connect student to subjects
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      subjectIds.length >
+      0
+    ) {
+      const studentSubjectRows =
+        subjectIds.map(
+          (
+            subjectId
+          ) => ({
+            student_id:
+              student.id,
+
+            subject_id:
+              subjectId,
+          })
+        )
+
+      const {
+        error:
+          studentSubjectsError,
+      } =
+        await supabaseAdmin
+          .from("student_subjects")
+          .insert(
+            studentSubjectRows
+          )
+
+      if (
+        studentSubjectsError
+      ) {
+        console.error(
+          "Create student subjects relationship error:",
+          studentSubjectsError
+        )
+
+        await supabaseAdmin
+          .from(
+            "tutor_students"
+          )
+          .delete()
+          .eq(
+            "tutor_id",
+            tutor.id
+          )
+          .eq(
+            "student_id",
+            student.id
+          )
+
+        await supabaseAdmin
+          .from("users")
+          .delete()
+          .eq(
+            "id",
+            student.id
+          )
+
+        return NextResponse.json(
+          {
+            error:
+              "Unable to assign subjects to student.",
+          },
+          {
+            status: 500,
+          }
+        )
+      }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Send invitation email
     |--------------------------------------------------------------------------
     */
@@ -644,7 +1045,9 @@ export async function POST(
         token:
           rawToken,
       })
-    } catch (emailError) {
+    } catch (
+      emailError
+    ) {
       console.error(
         "Student invitation email error:",
         emailError
@@ -652,12 +1055,30 @@ export async function POST(
 
       /*
       |--------------------------------------------------------------------------
-      | Roll back relationship and account
+      | Roll back subject relationships
       |--------------------------------------------------------------------------
       */
 
       await supabaseAdmin
-        .from("tutor_students")
+        .from(
+          "student_subjects"
+        )
+        .delete()
+        .eq(
+          "student_id",
+          student.id
+        )
+
+      /*
+      |--------------------------------------------------------------------------
+      | Roll back tutor relationship
+      |--------------------------------------------------------------------------
+      */
+
+      await supabaseAdmin
+        .from(
+          "tutor_students"
+        )
         .delete()
         .eq(
           "tutor_id",
@@ -667,6 +1088,12 @@ export async function POST(
           "student_id",
           student.id
         )
+
+      /*
+      |--------------------------------------------------------------------------
+      | Roll back account
+      |--------------------------------------------------------------------------
+      */
 
       await supabaseAdmin
         .from("users")

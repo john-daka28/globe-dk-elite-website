@@ -44,6 +44,24 @@ import {
   Label,
 } from "@/components/ui/label"
 
+type Subject = {
+  id: string
+  name: string
+  code: string | null
+  description: string | null
+  level: string | null
+  is_active: boolean
+  syllabus: string | null
+  price: number | null
+}
+
+type StudentSubject = {
+  id: string
+  name: string
+  code: string | null
+  level: string | null
+}
+
 type Student = {
   id: string
   first_name: string
@@ -61,6 +79,7 @@ type Student = {
   created_at: string
   relationship_id: string
   assigned_at: string
+  subjects: StudentSubject[]
 }
 
 type StudentForm = {
@@ -72,6 +91,7 @@ type StudentForm = {
   school: string
   guardian_name: string
   guardian_phone: string
+  subject_ids: string[]
 }
 
 const emptyForm: StudentForm = {
@@ -83,6 +103,7 @@ const emptyForm: StudentForm = {
   school: "",
   guardian_name: "",
   guardian_phone: "",
+  subject_ids: [],
 }
 
 const levelOptions = [
@@ -95,6 +116,11 @@ export default function TutorStudentsPage() {
     students,
     setStudents,
   ] = useState<Student[]>([])
+
+  const [
+    subjects,
+    setSubjects,
+  ] = useState<Subject[]>([])
 
   const [
     loading,
@@ -190,6 +216,11 @@ export default function TutorStudentsPage() {
           data.students ||
             []
         )
+
+        setSubjects(
+          data.subjects ||
+            []
+        )
       } catch (err) {
         setError(
           err instanceof Error
@@ -241,7 +272,23 @@ export default function TutorStudentsPage() {
               .toLowerCase()
               .includes(
                 query
-              )
+              ) ||
+            student.subjects.some(
+              (subject) =>
+                subject.name
+                  .toLowerCase()
+                  .includes(
+                    query
+                  ) ||
+                (
+                  subject.code ||
+                  ""
+                )
+                  .toLowerCase()
+                  .includes(
+                    query
+                  )
+            )
 
           const matchesStatus =
             statusFilter ===
@@ -256,7 +303,7 @@ export default function TutorStudentsPage() {
                 ? student.account_status ===
                   "invited"
                 : student.account_status !==
-                  "active" &&
+                    "active" &&
                   student.account_status !==
                     "invited"
             )
@@ -304,12 +351,30 @@ export default function TutorStudentsPage() {
           "invited"
     ).length
 
+  const availableFormSubjects =
+    useMemo(() => {
+      return subjects.filter(
+        (subject) =>
+          subject.is_active &&
+          (
+            !subject.level ||
+            subject.level ===
+              form.level
+          )
+      )
+    }, [
+      subjects,
+      form.level,
+    ])
+
   const openAddModal =
     () => {
       setEditingStudent(null)
+
       setForm({
         ...emptyForm,
       })
+
       setError("")
       setSuccess("")
       setShowModal(true)
@@ -355,6 +420,12 @@ export default function TutorStudentsPage() {
         guardian_phone:
           student.guardian_phone ||
           "",
+
+        subject_ids:
+          student.subjects.map(
+            (subject) =>
+              subject.id
+          ),
       })
 
       setError("")
@@ -369,14 +440,60 @@ export default function TutorStudentsPage() {
       }
 
       setShowModal(false)
+
       setEditingStudent(
         null
       )
+
       setForm({
         ...emptyForm,
       })
+
       setError("")
       setSuccess("")
+    }
+
+  const toggleSubject =
+    (
+      subjectId: string
+    ) => {
+      setForm(
+        (current) => {
+          const alreadySelected =
+            current.subject_ids.includes(
+              subjectId
+            )
+
+          return {
+            ...current,
+            subject_ids:
+              alreadySelected
+                ? current.subject_ids.filter(
+                    (id) =>
+                      id !==
+                      subjectId
+                  )
+                : [
+                    ...current.subject_ids,
+                    subjectId,
+                  ],
+          }
+        }
+      )
+    }
+
+  const handleLevelChange =
+    (
+      level: string
+    ) => {
+      setForm(
+        (current) => ({
+          ...current,
+          level,
+          subject_ids:
+            [],
+        })
+      )
     }
 
   const handleSave =
@@ -456,43 +573,49 @@ export default function TutorStudentsPage() {
             : "/api/tutor/students"
 
         const response =
-          await fetch(url, {
-            method:
-              isEditing
-                ? "PATCH"
-                : "POST",
+          await fetch(
+            url,
+            {
+              method:
+                isEditing
+                  ? "PATCH"
+                  : "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-            credentials:
-              "include",
+              credentials:
+                "include",
 
-            body:
-              JSON.stringify({
-                first_name:
-                  firstName,
+              body:
+                JSON.stringify({
+                  first_name:
+                    firstName,
 
-                last_name:
-                  lastName,
+                  last_name:
+                    lastName,
 
-                email,
+                  email,
 
-                phone,
+                  phone,
 
-                level,
+                  level,
 
-                school,
+                  school,
 
-                guardian_name:
-                  guardianName,
+                  guardian_name:
+                    guardianName,
 
-                guardian_phone:
-                  guardianPhone,
-              }),
-          })
+                  guardian_phone:
+                    guardianPhone,
+
+                  subject_ids:
+                    form.subject_ids,
+                }),
+            }
+          )
 
         const data =
           await response.json()
@@ -520,12 +643,15 @@ export default function TutorStudentsPage() {
 
         setTimeout(() => {
           setShowModal(false)
+
           setEditingStudent(
             null
           )
+
           setForm({
             ...emptyForm,
           })
+
           setSuccess("")
         }, 900)
       } catch (err) {
@@ -785,9 +911,7 @@ export default function TutorStudentsPage() {
 
             <Card>
               <CardContent className="p-5">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <p className="text-sm text-muted-foreground">
                       Total Students
@@ -803,17 +927,13 @@ export default function TutorStudentsPage() {
                   <div className="rounded-xl bg-primary/10 p-3 text-primary">
                     <GraduationCap className="h-5 w-5" />
                   </div>
-
                 </div>
-
               </CardContent>
             </Card>
 
             <Card>
               <CardContent className="p-5">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <p className="text-sm text-muted-foreground">
                       Active
@@ -829,17 +949,13 @@ export default function TutorStudentsPage() {
                   <div className="rounded-xl bg-green-500/10 p-3 text-green-600">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
-
                 </div>
-
               </CardContent>
             </Card>
 
             <Card>
               <CardContent className="p-5">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <p className="text-sm text-muted-foreground">
                       Invitations
@@ -855,17 +971,13 @@ export default function TutorStudentsPage() {
                   <div className="rounded-xl bg-primary/10 p-3 text-primary">
                     <Mail className="h-5 w-5" />
                   </div>
-
                 </div>
-
               </CardContent>
             </Card>
 
             <Card>
               <CardContent className="p-5">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <p className="text-sm text-muted-foreground">
                       Inactive
@@ -881,9 +993,7 @@ export default function TutorStudentsPage() {
                   <div className="rounded-xl bg-muted p-3 text-muted-foreground">
                     <XCircle className="h-5 w-5" />
                   </div>
-
                 </div>
-
               </CardContent>
             </Card>
 
@@ -1068,7 +1178,7 @@ export default function TutorStudentsPage() {
 
                 <div className="overflow-x-auto">
 
-                  <table className="w-full min-w-[1100px]">
+                  <table className="w-full min-w-[1250px]">
 
                     <thead>
 
@@ -1084,6 +1194,10 @@ export default function TutorStudentsPage() {
 
                         <th className="px-4 py-3 font-medium">
                           Level
+                        </th>
+
+                        <th className="px-4 py-3 font-medium">
+                          Subjects
                         </th>
 
                         <th className="px-4 py-3 font-medium">
@@ -1183,6 +1297,43 @@ export default function TutorStudentsPage() {
                                   "Not specified"
                                 }
                               </Badge>
+
+                            </td>
+
+                            <td className="px-4 py-4">
+
+                              {student.subjects.length >
+                              0 ? (
+
+                                <div className="flex max-w-[260px] flex-wrap gap-1.5">
+
+                                  {student.subjects.map(
+                                    (
+                                      subject
+                                    ) => (
+                                      <Badge
+                                        key={
+                                          subject.id
+                                        }
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {
+                                          subject.name
+                                        }
+                                      </Badge>
+                                    )
+                                  )}
+
+                                </div>
+
+                              ) : (
+
+                                <span className="text-sm text-muted-foreground">
+                                  No subjects
+                                </span>
+
+                              )}
 
                             </td>
 
@@ -1538,17 +1689,9 @@ export default function TutorStudentsPage() {
                       onChange={(
                         event
                       ) =>
-                        setForm(
-                          (
-                            current
-                          ) => ({
-                            ...current,
-
-                            level:
-                              event
-                                .target
-                                .value,
-                          })
+                        handleLevelChange(
+                          event.target
+                            .value
                         )
                       }
                       disabled={
@@ -1579,6 +1722,115 @@ export default function TutorStudentsPage() {
                     </select>
 
                   </div>
+
+                </div>
+
+                {/* SUBJECTS */}
+
+                <div className="space-y-3">
+
+                  <div>
+
+                    <Label>
+                      Subjects
+                    </Label>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Select all subjects the student is taking. You can select more than one.
+                    </p>
+
+                  </div>
+
+                  {availableFormSubjects.length ===
+                  0 ? (
+
+                    <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                      No active subjects are available for{" "}
+                      {form.level}.
+                    </div>
+
+                  ) : (
+
+                    <div className="grid max-h-64 gap-2 overflow-y-auto rounded-xl border p-3 sm:grid-cols-2">
+
+                      {availableFormSubjects.map(
+                        (
+                          subject
+                        ) => {
+                          const checked =
+                            form.subject_ids.includes(
+                              subject.id
+                            )
+
+                          return (
+                            <label
+                              key={
+                                subject.id
+                              }
+                              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${
+                                checked
+                                  ? "border-primary bg-primary/5"
+                                  : "hover:bg-muted/50"
+                              }`}
+                            >
+
+                              <input
+                                type="checkbox"
+                                checked={
+                                  checked
+                                }
+                                onChange={() =>
+                                  toggleSubject(
+                                    subject.id
+                                  )
+                                }
+                                disabled={
+                                  saving
+                                }
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                              />
+
+                              <div className="min-w-0">
+
+                                <p className="text-sm font-medium">
+                                  {
+                                    subject.name
+                                  }
+                                </p>
+
+                                {subject.code && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {
+                                      subject.code
+                                    }
+                                  </p>
+                                )}
+
+                              </div>
+
+                            </label>
+                          )
+                        }
+                      )}
+
+                    </div>
+
+                  )}
+
+                  {form.subject_ids.length >
+                    0 && (
+                    <p className="text-xs font-medium text-primary">
+                      {
+                        form.subject_ids.length
+                      }{" "}
+                      subject
+                      {form.subject_ids.length ===
+                      1
+                        ? ""
+                        : "s"}{" "}
+                      selected
+                    </p>
+                  )}
 
                 </div>
 
