@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from "next/server"
 
-import { supabaseAdmin } from "@/lib/supabaseAdmin"
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server"
+
+import {
+  supabaseAdmin,
+} from "@/lib/supabaseAdmin"
+
 import {
   requireRole,
 } from "@/lib/auth/session"
@@ -26,20 +33,346 @@ const VALID_CURRICULA = [
 ]
 
 type CreateTutorBody = {
-  firstName?: string
-  lastName?: string
+  name?: string
   email?: string
   phone?: string
-  school?: string
-  subjects?: string[]
-  levels?: string[]
-  curricula?: string[]
+  subject?: string
+  level?: string
+  curriculum?: string
+}
+
+function splitFullName(name: string) {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (parts.length === 0) {
+    return {
+      firstName: "",
+      lastName: "",
+    }
+  }
+
+  if (parts.length === 1) {
+    return {
+      firstName: parts[0],
+      lastName: "",
+    }
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts
+      .slice(1)
+      .join(" "),
+  }
+}
+
+export async function GET(
+  _request: NextRequest
+) {
+  try {
+    await requireRole([
+      "admin",
+      "administrator",
+    ])
+
+    const {
+      data: tutors,
+      error: tutorsError,
+    } = await supabaseAdmin
+      .from("users")
+      .select(
+        `
+          id,
+          email,
+          first_name,
+          last_name,
+          phone,
+          role,
+          email_verified,
+          created_at,
+          updated_at,
+          account_status
+        `
+      )
+      .eq("role", "tutor")
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
+
+    if (tutorsError) {
+      console.error(
+        "GET tutors error:",
+        tutorsError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to retrieve tutors.",
+        },
+        {
+          status: 500,
+        }
+      )
+    }
+
+    const tutorIds =
+      (tutors || []).map(
+        (tutor) => tutor.id
+      )
+
+    let tutorSubjects: Array<{
+      tutor_id: string
+      subject: string
+      level: string
+      curriculum: string
+    }> = []
+
+    if (tutorIds.length > 0) {
+      const {
+        data,
+        error,
+      } = await supabaseAdmin
+        .from("tutor_subjects")
+        .select(
+          `
+            tutor_id,
+            subject,
+            level,
+            curriculum
+          `
+        )
+        .in(
+          "tutor_id",
+          tutorIds
+        )
+
+      if (error) {
+        console.error(
+          "GET tutor subjects error:",
+          error
+        )
+
+        return NextResponse.json(
+          {
+            error:
+              "Unable to retrieve tutor academic assignments.",
+          },
+          {
+            status: 500,
+          }
+        )
+      }
+
+      tutorSubjects =
+        data || []
+    }
+
+    const result =
+      (tutors || []).map(
+        (tutor) => {
+          const assignments =
+            tutorSubjects.filter(
+              (item) =>
+                item.tutor_id ===
+                tutor.id
+            )
+
+          const subjects =
+            Array.from(
+              new Set(
+                assignments.map(
+                  (item) =>
+                    item.subject
+                )
+              )
+            )
+
+          const levels =
+            Array.from(
+              new Set(
+                assignments.map(
+                  (item) =>
+                    item.level
+                )
+              )
+            )
+
+          const curricula =
+            Array.from(
+              new Set(
+                assignments.map(
+                  (item) =>
+                    item.curriculum
+                )
+              )
+            )
+
+          const name =
+            `${tutor.first_name || ""} ${
+              tutor.last_name || ""
+            }`.trim()
+
+          let status:
+            | "Active"
+            | "Pending"
+            | "Inactive"
+
+          if (
+            tutor.account_status ===
+            "active"
+          ) {
+            status = "Active"
+          } else if (
+            tutor.account_status ===
+            "invited"
+          ) {
+            status = "Pending"
+          } else {
+            status = "Inactive"
+          }
+
+          const firstInitial =
+            tutor.first_name
+              ?.trim()
+              .charAt(0) || ""
+
+          const lastInitial =
+            tutor.last_name
+              ?.trim()
+              .charAt(0) || ""
+
+          return {
+            id: tutor.id,
+
+            name:
+              name ||
+              "Unnamed Tutor",
+
+            email:
+              tutor.email || "",
+
+            phone:
+              tutor.phone || "",
+
+            subjects,
+
+            levels,
+
+            curricula,
+
+            /*
+             * Student assignment is not
+             * connected yet.
+             */
+            students: 0,
+
+            status,
+
+            account_status:
+              tutor.account_status,
+
+            email_verified:
+              tutor.email_verified,
+
+            experience:
+              "Not specified",
+
+            joined:
+              tutor.created_at
+                ? new Date(
+                    tutor.created_at
+                  ).toLocaleDateString(
+                    "en-ZW",
+                    {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    }
+                  )
+                : "Not specified",
+
+            initials:
+              `${firstInitial}${lastInitial}`
+                .toUpperCase() ||
+              "TU",
+
+            created_at:
+              tutor.created_at,
+
+            updated_at:
+              tutor.updated_at,
+          }
+        }
+      )
+
+    return NextResponse.json({
+      tutors: result,
+    })
+  } catch (error) {
+    console.error(
+      "GET /api/admin/tutors error:",
+      error
+    )
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "UNAUTHENTICATED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "You must be logged in as an administrator.",
+        },
+        {
+          status: 401,
+        }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "UNAUTHORIZED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Only administrators can view tutors.",
+        },
+        {
+          status: 403,
+        }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        error:
+          "Unable to retrieve tutors.",
+      },
+      {
+        status: 500,
+      }
+    )
+  }
 }
 
 export async function POST(
   request: NextRequest
 ) {
   try {
+    /*
+     * Only administrators can create
+     * tutor accounts.
+     */
     const admin =
       await requireRole([
         "admin",
@@ -55,135 +388,218 @@ export async function POST(
           error:
             "Your administrator account is not active.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
       )
     }
 
     const body =
       (await request.json()) as CreateTutorBody
 
-    const firstName =
-      body.firstName?.trim()
-
-    const lastName =
-      body.lastName?.trim()
+    /*
+     * The frontend sends:
+     *
+     * name
+     * email
+     * phone
+     * subject
+     * level
+     * curriculum
+     */
+    const name =
+      body.name?.trim() || ""
 
     const email =
       body.email
         ?.trim()
-        .toLowerCase()
+        .toLowerCase() || ""
 
     const phone =
       body.phone?.trim() || null
 
-    const school =
-      body.school?.trim() || null
+    const subject =
+      body.subject?.trim() || ""
 
-    const subjects =
-      Array.isArray(body.subjects)
-        ? body.subjects
-        : []
+    const level =
+      body.level?.trim() || ""
 
-    const levels =
-      Array.isArray(body.levels)
-        ? body.levels
-        : []
+    const curriculum =
+      body.curriculum?.trim() || ""
 
-    const curricula =
-      Array.isArray(body.curricula)
-        ? body.curricula
-        : []
+    /*
+     * Basic validation.
+     */
+    if (!name) {
+      return NextResponse.json(
+        {
+          error:
+            "Tutor name is required.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (name.length > 120) {
+      return NextResponse.json(
+        {
+          error:
+            "Tutor name is too long.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (!email) {
+      return NextResponse.json(
+        {
+          error:
+            "Tutor email is required.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     if (
-      !firstName ||
-      !lastName ||
-      !email
+      !emailPattern.test(email)
     ) {
       return NextResponse.json(
         {
           error:
-            "First name, last name and email are required.",
+            "Please provide a valid email address.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
-    if (
-      subjects.length === 0
-    ) {
+    if (!subject) {
       return NextResponse.json(
         {
           error:
-            "At least one subject must be selected.",
+            "A subject must be selected.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
-    if (
-      levels.length === 0
-    ) {
+    if (!level) {
       return NextResponse.json(
         {
           error:
-            "At least one level must be selected.",
+            "A level must be selected.",
         },
-        { status: 400 }
-      )
-    }
-
-    if (
-      curricula.length === 0
-    ) {
-      return NextResponse.json(
         {
-          error:
-            "At least one curriculum must be selected.",
-        },
-        { status: 400 }
+          status: 400,
+        }
       )
     }
 
-    const invalidLevels =
-      levels.filter(
-        (level) =>
-          !VALID_LEVELS.includes(level)
-      )
-
-    const invalidCurricula =
-      curricula.filter(
-        (curriculum) =>
-          !VALID_CURRICULA.includes(
-            curriculum
-          )
-      )
-
     if (
-      invalidLevels.length > 0
+      !VALID_LEVELS.includes(
+        level
+      )
     ) {
       return NextResponse.json(
         {
           error:
             "Invalid level selected.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (!curriculum) {
+      return NextResponse.json(
+        {
+          error:
+            "A curriculum must be selected.",
+        },
+        {
+          status: 400,
+        }
       )
     }
 
     if (
-      invalidCurricula.length > 0
+      !VALID_CURRICULA.includes(
+        curriculum
+      )
     ) {
       return NextResponse.json(
         {
           error:
             "Invalid curriculum selected.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      phone &&
+      phone.length > 40
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Phone number is too long.",
+        },
+        {
+          status: 400,
+        }
       )
     }
 
     /*
-     * Check existing account.
+     * Split the frontend's single
+     * "name" field into the database's
+     * first_name and last_name fields.
+     *
+     * Example:
+     *
+     * John Daka
+     *
+     * becomes:
+     *
+     * first_name = John
+     * last_name  = Daka
+     */
+    const {
+      firstName,
+      lastName,
+    } = splitFullName(name)
+
+    if (!firstName) {
+      return NextResponse.json(
+        {
+          error:
+            "A valid tutor name is required.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    /*
+     * Check whether this email is
+     * already registered.
      */
     const {
       data: existingUser,
@@ -192,7 +608,12 @@ export async function POST(
       await supabaseAdmin
         .from("users")
         .select(
-          "id,email,role,account_status"
+          `
+            id,
+            email,
+            role,
+            account_status
+          `
         )
         .ilike(
           "email",
@@ -202,6 +623,7 @@ export async function POST(
 
     if (existingError) {
       console.error(
+        "Existing user lookup error:",
         existingError
       )
 
@@ -210,7 +632,9 @@ export async function POST(
           error:
             "Could not check the existing user account.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       )
     }
 
@@ -220,24 +644,43 @@ export async function POST(
           error:
             "A user with this email address already exists.",
         },
-        { status: 409 }
+        {
+          status: 409,
+        }
       )
     }
 
     /*
-     * Generate invitation token.
+     * Generate a secure invitation token.
+     *
+     * IMPORTANT:
+     *
+     * The raw token is sent only by email.
+     * Only the SHA-256 hash is stored
+     * in the database.
      */
     const rawToken =
       generateSecureToken()
 
     const tokenHash =
-      hashToken(rawToken)
+      hashToken(
+        rawToken
+      )
 
+    /*
+     * Invitation expires after 24 hours.
+     */
     const tokenExpiry =
       getTokenExpiry(24)
 
     /*
-     * Create user.
+     * Create the tutor account.
+     *
+     * The tutor does NOT receive a password
+     * here.
+     *
+     * They create their password from
+     * the invitation link.
      */
     const {
       data: tutor,
@@ -247,85 +690,115 @@ export async function POST(
         .from("users")
         .insert({
           email,
-          password_hash: null,
-          first_name: firstName,
-          last_name: lastName,
+
+          password_hash:
+            null,
+
+          first_name:
+            firstName,
+
+          last_name:
+            lastName,
+
           phone,
-          school,
-          role: "tutor",
-          email_verified: false,
+
+          role:
+            "tutor",
+
+          email_verified:
+            false,
+
           verification_token:
             tokenHash,
+
           verification_token_expires_at:
             tokenExpiry.toISOString(),
+
           account_status:
             "invited",
         })
         .select(
-          "id,email,first_name,last_name,role,account_status"
+          `
+            id,
+            email,
+            first_name,
+            last_name,
+            role,
+            account_status
+          `
         )
         .single()
 
-    if (userError || !tutor) {
+    if (
+      userError ||
+      !tutor
+    ) {
       console.error(
+        "Create tutor user error:",
         userError
       )
+
+      /*
+       * Handle duplicate email caused
+       * by a race condition.
+       */
+      if (
+        userError?.code ===
+        "23505"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "A user with this email address already exists.",
+          },
+          {
+            status: 409,
+          }
+        )
+      }
 
       return NextResponse.json(
         {
           error:
             "Failed to create tutor account.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       )
     }
 
     /*
-     * Create subject assignments.
+     * Create the academic assignment.
      *
-     * We create every combination:
-     * subject × level × curriculum
+     * The current admin form selects
+     * one subject + one level +
+     * one curriculum.
      */
-    const tutorSubjectRows =
-      []
-
-    for (
-      const subject of subjects
-    ) {
-      for (
-        const level of levels
-      ) {
-        for (
-          const curriculum of curricula
-        ) {
-          tutorSubjectRows.push({
-            tutor_id:
-              tutor.id,
-            subject,
-            level,
-            curriculum,
-          })
-        }
-      }
-    }
-
     const {
       error: subjectError,
     } =
       await supabaseAdmin
         .from("tutor_subjects")
-        .insert(
-          tutorSubjectRows
-        )
+        .insert({
+          tutor_id:
+            tutor.id,
+
+          subject,
+
+          level,
+
+          curriculum,
+        })
 
     if (subjectError) {
       console.error(
+        "Tutor subject creation error:",
         subjectError
       )
 
       /*
-       * Roll back user if subject
-       * creation fails.
+       * Roll back the tutor account.
        */
       await supabaseAdmin
         .from("users")
@@ -338,14 +811,19 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Tutor was not created because academic assignments could not be saved.",
+            "Tutor was not created because the academic assignment could not be saved.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       )
     }
 
     /*
-     * Send invitation email.
+     * Send the invitation email.
+     *
+     * The email contains the RAW token.
+     * The database contains only its hash.
      */
     try {
       await sendTutorInvitation({
@@ -355,13 +833,12 @@ export async function POST(
       })
     } catch (emailError) {
       console.error(
+        "Tutor invitation email error:",
         emailError
       )
 
       /*
-       * Remove the incomplete invitation
-       * so the admin doesn't see a tutor
-       * who never received an email.
+       * Remove the academic assignment.
        */
       await supabaseAdmin
         .from("tutor_subjects")
@@ -371,6 +848,9 @@ export async function POST(
           tutor.id
         )
 
+      /*
+       * Remove the incomplete tutor.
+       */
       await supabaseAdmin
         .from("users")
         .delete()
@@ -384,32 +864,59 @@ export async function POST(
           error:
             "Tutor account could not be completed because the invitation email failed to send.",
         },
-        { status: 502 }
+        {
+          status: 502,
+        }
       )
     }
 
+    /*
+     * Everything succeeded.
+     */
     return NextResponse.json(
       {
         success: true,
+
         message:
           "Tutor account created and invitation email sent.",
+
         tutor: {
-          id: tutor.id,
-          email: tutor.email,
+          id:
+            tutor.id,
+
+          name:
+            `${tutor.first_name} ${tutor.last_name}`
+              .trim(),
+
+          email:
+            tutor.email,
+
           firstName:
             tutor.first_name,
+
           lastName:
             tutor.last_name,
-          role: tutor.role,
+
+          role:
+            tutor.role,
+
           accountStatus:
             tutor.account_status,
+
+          subject,
+
+          level,
+
+          curriculum,
         },
       },
-      { status: 201 }
+      {
+        status: 201,
+      }
     )
   } catch (error) {
     console.error(
-      "Create tutor error:",
+      "POST /api/admin/tutors error:",
       error
     )
 
@@ -423,7 +930,9 @@ export async function POST(
           error:
             "You must be logged in as an administrator.",
         },
-        { status: 401 }
+        {
+          status: 401,
+        }
       )
     }
 
@@ -437,7 +946,9 @@ export async function POST(
           error:
             "Only administrators can create tutor accounts.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
       )
     }
 
@@ -446,7 +957,10 @@ export async function POST(
         error:
           "An unexpected server error occurred.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
+
