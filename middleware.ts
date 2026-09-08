@@ -14,7 +14,7 @@ export async function middleware(
     request.nextUrl.pathname
 
   const protectedRoutes = [
-    "/student",
+    
     "/teacher",
     "/parent",
     "/admin",
@@ -79,8 +79,8 @@ export async function middleware(
     }
 
     if (
-      path.startsWith("/student") &&
-      payload.role !== "student"
+      path.startsWith("/students") &&
+      payload.role !== "students"
     ) {
       return NextResponse.redirect(
         new URL(
@@ -103,7 +103,7 @@ export async function middleware(
 
 export const config = {
   matcher: [
-    "/student/:path*",
+    "/students/:path*",
     "/teacher/:path*",
     "/parent/:path*",
     "/admin/:path*",
