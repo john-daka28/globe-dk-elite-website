@@ -27,6 +27,27 @@ type UpdateStudentBody = {
   guardian_name?: string
   guardian_phone?: string
   account_status?: string
+  subject_ids?: string[]
+}
+
+type ExistingStudent = {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  level: string | null
+  school: string | null
+  guardian_name: string | null
+  guardian_phone: string | null
+  role: string
+  email_verified: boolean
+  account_status: string
+  created_at: string
+}
+
+type ExistingSubjectAssignment = {
+  subject_id: string
 }
 
 function cleanText(
@@ -38,8 +59,8 @@ function cleanText(
 function isValidUUID(
   value: string
 ): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value.trim()
   )
 }
 
@@ -49,6 +70,34 @@ function isValidEmail(
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     email
   )
+}
+
+function normalizeSubjectIds(
+  value: unknown
+): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [
+    ...new Set(
+      value
+        .filter(
+          (
+            subjectId
+          ): subjectId is string =>
+            typeof subjectId ===
+              "string" &&
+            subjectId.trim() !== ""
+        )
+        .map(
+          (
+            subjectId
+          ) =>
+            subjectId.trim()
+        )
+    ),
+  ]
 }
 
 async function verifyTutorOwnsStudent(
@@ -86,6 +135,109 @@ async function verifyTutorOwnsStudent(
   }
 
   return data
+}
+
+async function validateSubjectIds(
+  subjectIds: string[],
+  level: string
+) {
+  if (
+    subjectIds.length ===
+    0
+  ) {
+    return {
+      valid: true,
+      subjects: [],
+      error: null,
+    }
+  }
+
+  const invalidUuid =
+    subjectIds.some(
+      (
+        subjectId
+      ) =>
+        !isValidUUID(
+          subjectId
+        )
+    )
+
+  if (invalidUuid) {
+    return {
+      valid: false,
+      subjects: [],
+      error:
+        "One or more selected subjects have an invalid ID.",
+    }
+  }
+
+  const {
+    data: selectedSubjects,
+    error: subjectError,
+  } =
+    await supabaseAdmin
+      .from("subjects")
+      .select(
+        "id,name,code,level,is_active"
+      )
+      .in(
+        "id",
+        subjectIds
+      )
+
+  if (subjectError) {
+    console.error(
+      "Subject validation error:",
+      subjectError
+    )
+
+    return {
+      valid: false,
+      subjects: [],
+      error:
+        "Unable to validate selected subjects.",
+    }
+  }
+
+  if (
+    !selectedSubjects ||
+    selectedSubjects.length !==
+      subjectIds.length
+  ) {
+    return {
+      valid: false,
+      subjects: [],
+      error:
+        "One or more selected subjects could not be found.",
+    }
+  }
+
+  const invalidSubject =
+    selectedSubjects.find(
+      (subject) =>
+        !subject.is_active ||
+        (
+          subject.level &&
+          subject.level !==
+            level
+        )
+    )
+
+  if (invalidSubject) {
+    return {
+      valid: false,
+      subjects: [],
+      error:
+        "One or more selected subjects are inactive or do not match the student's level.",
+    }
+  }
+
+  return {
+    valid: true,
+    subjects:
+      selectedSubjects,
+    error: null,
+  }
 }
 
 export async function PATCH(
@@ -138,6 +290,9 @@ export async function PATCH(
       )
     }
 
+    /*
+     * Load the existing student.
+     */
     const {
       data: existingStudent,
       error:
@@ -187,6 +342,65 @@ export async function PATCH(
       )
     }
 
+    const typedExistingStudent =
+      existingStudent as ExistingStudent
+
+    /*
+     * Get the student's current subject assignments.
+     *
+     * We keep these so that if updating the student
+     * succeeds but updating subjects fails, we can
+     * restore the previous subject assignments.
+     */
+    const {
+      data:
+        existingAssignments,
+      error:
+        existingAssignmentsError,
+    } =
+      await supabaseAdmin
+        .from("student_subjects")
+        .select(
+          "subject_id"
+        )
+        .eq(
+          "student_id",
+          id
+        )
+
+    if (existingAssignmentsError) {
+      console.error(
+        "Existing student subjects lookup error:",
+        existingAssignmentsError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to load the student's subjects.",
+        },
+        {
+          status: 500,
+        }
+      )
+    }
+
+    const previousSubjectIds =
+      (
+        existingAssignments ||
+        []
+      ).map(
+        (
+          assignment
+        ) =>
+          (
+            assignment as ExistingSubjectAssignment
+          ).subject_id
+      )
+
+    /*
+     * Read request body.
+     */
     const body =
       (await request.json()) as UpdateStudentBody
 
@@ -262,6 +476,35 @@ export async function PATCH(
           )
         : undefined
 
+    /*
+     * IMPORTANT:
+     *
+     * subject_ids is optional.
+     *
+     * This allows status-only updates such as:
+     *
+     * {
+     *   account_status: "disabled"
+     * }
+     *
+     * without requiring subjects.
+     */
+    const hasSubjectUpdate =
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "subject_ids"
+      )
+
+    const subjectIds =
+      hasSubjectUpdate
+        ? normalizeSubjectIds(
+            body.subject_ids
+          )
+        : undefined
+
+    /*
+     * Validate names.
+     */
     if (
       firstName !==
         undefined &&
@@ -294,9 +537,12 @@ export async function PATCH(
       )
     }
 
+    /*
+     * Validate email.
+     */
     if (
       email !==
-        undefined
+      undefined
     ) {
       if (!email) {
         return NextResponse.json(
@@ -310,7 +556,11 @@ export async function PATCH(
         )
       }
 
-      if (!isValidEmail(email)) {
+      if (
+        !isValidEmail(
+          email
+        )
+      ) {
         return NextResponse.json(
           {
             error:
@@ -323,6 +573,9 @@ export async function PATCH(
       }
     }
 
+    /*
+     * Validate level.
+     */
     if (
       level !==
         undefined &&
@@ -340,10 +593,32 @@ export async function PATCH(
     }
 
     /*
-     * Tutors are not allowed to change the role.
+     * Only allow the levels used by the
+     * student management system.
+     */
+    if (
+      level !==
+        undefined &&
+      ![
+        "O-Level",
+        "A-Level",
+      ].includes(level)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid student level.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    /*
+     * Validate account status.
      *
-     * Account status is deliberately restricted
-     * to safe student states.
+     * Tutors cannot change the role.
      */
     if (
       accountStatus !==
@@ -368,14 +643,14 @@ export async function PATCH(
     }
 
     /*
-     * If email changes, make sure another user
-     * does not already have that email.
+     * If email changes, make sure no other
+     * account already uses that email.
      */
     if (
       email !==
         undefined &&
       email.toLowerCase() !==
-        existingStudent.email.toLowerCase()
+        typedExistingStudent.email.toLowerCase()
     ) {
       const {
         data:
@@ -428,6 +703,54 @@ export async function PATCH(
       }
     }
 
+    /*
+     * Determine the final level.
+     *
+     * This is important when subjects are being
+     * updated at the same time as the level.
+     */
+    const finalLevel =
+      level !==
+      undefined
+        ? level
+        : typedExistingStudent.level
+
+    /*
+     * Validate selected subjects.
+     *
+     * If subject_ids was supplied by the frontend,
+     * the submitted list becomes the complete list
+     * of subjects for this student.
+     */
+    if (
+      hasSubjectUpdate
+    ) {
+      const subjectValidation =
+        await validateSubjectIds(
+          subjectIds || [],
+          finalLevel ||
+            ""
+        )
+
+      if (
+        !subjectValidation.valid
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              subjectValidation.error ||
+              "Invalid subjects.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+    }
+
+    /*
+     * Build user update.
+     */
     const updateData: Record<
       string,
       unknown
@@ -507,10 +830,19 @@ export async function PATCH(
         accountStatus
     }
 
+    /*
+     * If nothing was supplied at all,
+     * reject the request.
+     *
+     * subject_ids counts as a valid update
+     * even if the student is being changed to
+     * have zero subjects.
+     */
     if (
       Object.keys(
         updateData
-      ).length === 0
+      ).length === 0 &&
+      !hasSubjectUpdate
     ) {
       return NextResponse.json(
         {
@@ -523,50 +855,284 @@ export async function PATCH(
       )
     }
 
-    const {
-      data: updatedStudent,
-      error: updateError,
-    } =
-      await supabaseAdmin
-        .from("users")
-        .update(
-          updateData
-        )
-        .eq(
-          "id",
-          id
-        )
-        .eq(
-          "role",
-          "student"
-        )
-        .select(
-          "id,email,first_name,last_name,phone,level,school,guardian_name,guardian_phone,role,email_verified,account_status,created_at"
-        )
-        .single()
+    /*
+     * Update student information first.
+     */
+    let updatedStudent:
+      ExistingStudent | null =
+      null
 
-    if (updateError) {
-      console.error(
-        "Update student error:",
-        updateError
-      )
+    if (
+      Object.keys(
+        updateData
+      ).length > 0
+    ) {
+      const {
+        data,
+        error:
+          updateError,
+      } =
+        await supabaseAdmin
+          .from("users")
+          .update(
+            updateData
+          )
+          .eq(
+            "id",
+            id
+          )
+          .eq(
+            "role",
+            "student"
+          )
+          .select(
+            "id,email,first_name,last_name,phone,level,school,guardian_name,guardian_phone,role,email_verified,account_status,created_at"
+          )
+          .single()
 
-      return NextResponse.json(
-        {
-          error:
-            "Unable to update student.",
-        },
-        {
-          status: 500,
-        }
-      )
+      if (updateError) {
+        console.error(
+          "Update student error:",
+          updateError
+        )
+
+        return NextResponse.json(
+          {
+            error:
+              "Unable to update student.",
+          },
+          {
+            status: 500,
+          }
+        )
+      }
+
+      updatedStudent =
+        data as ExistingStudent
+    } else {
+      updatedStudent =
+        typedExistingStudent
     }
 
+    /*
+     * Update subjects only when the frontend
+     * explicitly sends subject_ids.
+     *
+     * Example:
+     *
+     * subject_ids: [
+     *   "uuid-1",
+     *   "uuid-2"
+     * ]
+     *
+     * means those are now the student's
+     * complete subject list.
+     *
+     * subject_ids: []
+     *
+     * means the student takes no subjects.
+     */
+    if (
+      hasSubjectUpdate
+    ) {
+      /*
+       * Delete current assignments first.
+       */
+      const {
+        error:
+          deleteSubjectsError,
+      } =
+        await supabaseAdmin
+          .from("student_subjects")
+          .delete()
+          .eq(
+            "student_id",
+            id
+          )
+
+      if (
+        deleteSubjectsError
+      ) {
+        console.error(
+          "Delete old student subjects error:",
+          deleteSubjectsError
+        )
+
+        /*
+         * Best-effort rollback of the student
+         * information update.
+         */
+        if (
+          Object.keys(
+            updateData
+          ).length > 0
+        ) {
+          await supabaseAdmin
+            .from("users")
+            .update({
+              first_name:
+                typedExistingStudent.first_name,
+              last_name:
+                typedExistingStudent.last_name,
+              email:
+                typedExistingStudent.email,
+              phone:
+                typedExistingStudent.phone,
+              level:
+                typedExistingStudent.level,
+              school:
+                typedExistingStudent.school,
+              guardian_name:
+                typedExistingStudent.guardian_name,
+              guardian_phone:
+                typedExistingStudent.guardian_phone,
+              account_status:
+                typedExistingStudent.account_status,
+            })
+            .eq(
+              "id",
+              id
+            )
+        }
+
+        return NextResponse.json(
+          {
+            error:
+              "Unable to update the student's subjects.",
+          },
+          {
+            status: 500,
+          }
+        )
+      }
+
+      /*
+       * Insert the new subject assignments.
+       */
+      if (
+        subjectIds &&
+        subjectIds.length > 0
+      ) {
+        const subjectRows =
+          subjectIds.map(
+            (
+              subjectId
+            ) => ({
+              student_id:
+                id,
+              subject_id:
+                subjectId,
+            })
+          )
+
+        const {
+          error:
+            insertSubjectsError,
+        } =
+          await supabaseAdmin
+            .from(
+              "student_subjects"
+            )
+            .insert(
+              subjectRows
+            )
+
+        if (
+          insertSubjectsError
+        ) {
+          console.error(
+            "Insert student subjects error:",
+            insertSubjectsError
+          )
+
+          /*
+           * Best-effort restoration
+           * of previous subject assignments.
+           */
+          if (
+            previousSubjectIds.length >
+            0
+          ) {
+            await supabaseAdmin
+              .from(
+                "student_subjects"
+              )
+              .insert(
+                previousSubjectIds.map(
+                  (
+                    subjectId
+                  ) => ({
+                    student_id:
+                      id,
+                    subject_id:
+                      subjectId,
+                  })
+                )
+              )
+          }
+
+          /*
+           * Best-effort rollback of student
+           * information.
+           */
+          if (
+            Object.keys(
+              updateData
+            ).length > 0
+          ) {
+            await supabaseAdmin
+              .from("users")
+              .update({
+                first_name:
+                  typedExistingStudent.first_name,
+                last_name:
+                  typedExistingStudent.last_name,
+                email:
+                  typedExistingStudent.email,
+                phone:
+                  typedExistingStudent.phone,
+                level:
+                  typedExistingStudent.level,
+                school:
+                  typedExistingStudent.school,
+                guardian_name:
+                  typedExistingStudent.guardian_name,
+                guardian_phone:
+                  typedExistingStudent.guardian_phone,
+                account_status:
+                  typedExistingStudent.account_status,
+              })
+              .eq(
+                "id",
+                id
+              )
+          }
+
+          return NextResponse.json(
+            {
+              error:
+                "Unable to save the student's subjects.",
+            },
+            {
+              status: 500,
+            }
+          )
+        }
+      }
+    }
+
+    /*
+     * Return the updated student.
+     */
     return NextResponse.json(
       {
         success: true,
         student:
           updatedStudent,
+        subject_ids:
+          hasSubjectUpdate
+            ? subjectIds
+            : previousSubjectIds,
       },
       {
         status: 200,
@@ -634,8 +1200,9 @@ export async function DELETE(
 
     /*
      * Security:
-     * tutor can only delete their own
-     * student relationship/account.
+     *
+     * The tutor can only delete a student
+     * assigned to that tutor.
      */
     const relationship =
       await verifyTutorOwnsStudent(
@@ -655,6 +1222,10 @@ export async function DELETE(
       )
     }
 
+    /*
+     * Confirm that the account exists
+     * and belongs to a student.
+     */
     const {
       data: student,
       error:
@@ -705,10 +1276,49 @@ export async function DELETE(
     }
 
     /*
-     * Delete only the relationship first.
+     * Delete subject assignments first.
      *
-     * This is safer for the future because a student
-     * may eventually be assigned to multiple tutors.
+     * This is explicit even if the database
+     * foreign key also has ON DELETE CASCADE.
+     *
+     * Therefore the student will not leave
+     * orphaned student_subjects records.
+     */
+    const {
+      error:
+        subjectDeleteError,
+    } =
+      await supabaseAdmin
+        .from("student_subjects")
+        .delete()
+        .eq(
+          "student_id",
+          id
+        )
+
+    if (
+      subjectDeleteError
+    ) {
+      console.error(
+        "Delete student subject assignments error:",
+        subjectDeleteError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to remove the student's subject assignments.",
+        },
+        {
+          status: 500,
+        }
+      )
+    }
+
+    /*
+     * Delete the tutor/student relationship.
+     *
+     * We do this before deleting the account.
      */
     const {
       error:
@@ -752,11 +1362,13 @@ export async function DELETE(
     /*
      * Delete the student account.
      *
-     * This follows the current system design where
-     * the student account belongs to this tutor.
+     * This follows the current system design
+     * where the student account belongs to
+     * this tutor.
      */
     const {
-      error: deleteStudentError,
+      error:
+        deleteStudentError,
     } =
       await supabaseAdmin
         .from("users")
@@ -770,7 +1382,9 @@ export async function DELETE(
           "student"
         )
 
-    if (deleteStudentError) {
+    if (
+      deleteStudentError
+    ) {
       console.error(
         "Delete student account error:",
         deleteStudentError
