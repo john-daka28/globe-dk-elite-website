@@ -1,3 +1,4 @@
+
 import {
   NextRequest,
   NextResponse,
@@ -33,7 +34,7 @@ export async function POST(
       (await request.json()) as ActivateBody
 
     const token =
-      body.token?.trim()
+      body.token?.trim() || ""
 
     const password =
       body.password || ""
@@ -41,28 +42,39 @@ export async function POST(
     const confirmPassword =
       body.confirmPassword || ""
 
+    /*
+     * Validate invitation token.
+     */
     if (!token) {
       return NextResponse.json(
         {
           error:
             "Invitation token is missing.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
-    if (
-      password.length < 8
-    ) {
+    /*
+     * Validate password length.
+     */
+    if (password.length < 8) {
       return NextResponse.json(
         {
           error:
             "Password must contain at least 8 characters.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
+    /*
+     * Make sure both password fields match.
+     */
     if (
       password !==
       confirmPassword
@@ -72,13 +84,23 @@ export async function POST(
           error:
             "Passwords do not match.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
+    /*
+     * Convert the raw invitation token into
+     * the SHA-256 hash stored in the database.
+     */
     const tokenHash =
       hashToken(token)
 
+    /*
+     * Find the tutor whose invitation token
+     * matches the supplied token.
+     */
     const {
       data: tutor,
       error,
@@ -106,10 +128,15 @@ export async function POST(
           "role",
           "tutor"
         )
+        .eq(
+          "account_status",
+          "invited"
+        )
         .maybeSingle()
 
     if (error) {
       console.error(
+        "Tutor lookup error:",
         error
       )
 
@@ -118,49 +145,67 @@ export async function POST(
           error:
             "Unable to validate invitation.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       )
     }
 
+    /*
+     * No matching invitation.
+     */
     if (!tutor) {
       return NextResponse.json(
         {
           error:
             "This invitation link is invalid or has already been used.",
         },
-        { status: 400 }
-      )
-    }
-
-    if (
-      tutor.account_status !==
-      "invited"
-    ) {
-      return NextResponse.json(
         {
-          error:
-            "This tutor account is no longer awaiting activation.",
-        },
-        { status: 400 }
+          status: 400,
+        }
       )
     }
 
+    /*
+     * Verify that the invitation has an expiry date.
+     */
     if (
       !tutor.verification_token_expires_at
     ) {
       return NextResponse.json(
         {
           error:
-            "This invitation has expired.",
+            "This invitation has expired. Please ask the administrator to send a new invitation.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
+    /*
+     * Check invitation expiry.
+     */
     const expiry =
       new Date(
         tutor.verification_token_expires_at
       )
+
+    if (
+      Number.isNaN(
+        expiry.getTime()
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This invitation has an invalid expiry date. Please ask the administrator to send a new invitation.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
     if (
       expiry.getTime() <=
@@ -171,18 +216,38 @@ export async function POST(
           error:
             "This invitation has expired. Please ask the administrator to send a new invitation.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
     /*
-     * Hash password.
+     * IMPORTANT:
+     *
+     * hashPassword() is asynchronous because
+     * bcrypt.hash() is asynchronous.
+     *
+     * We MUST use await here.
+     *
+     * Without await:
+     *
+     * password_hash = {}
+     *
+     * With await:
+     *
+     * password_hash = $2b$12$...
      */
     const passwordHash =
-      hashPassword(password)
+      await hashPassword(
+        password
+      )
 
     /*
-     * Activate account and consume token.
+     * Activate the tutor account.
+     *
+     * The invitation token is consumed by
+     * setting verification_token to NULL.
      */
     const {
       data: updatedTutor,
@@ -217,16 +282,27 @@ export async function POST(
           "verification_token",
           tokenHash
         )
-        .select(
-          "id,email,first_name,last_name,role,account_status"
+        .eq(
+          "account_status",
+          "invited"
         )
-        .single()
+        .select(
+          `
+            id,
+            email,
+            first_name,
+            last_name,
+            role,
+            account_status
+          `
+        )
+        .maybeSingle()
 
     if (
-      updateError ||
-      !updatedTutor
+      updateError
     ) {
       console.error(
+        "Tutor activation update error:",
         updateError
       )
 
@@ -235,29 +311,55 @@ export async function POST(
           error:
             "Your account could not be activated.",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       )
     }
 
     /*
-     * IMPORTANT:
-     * Immediately create an authenticated
-     * session after successful activation.
+     * If no row was updated, the invitation
+     * may have been used at the same time.
+     */
+    if (!updatedTutor) {
+      return NextResponse.json(
+        {
+          error:
+            "This invitation has already been used or is no longer valid.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    /*
+     * Create the authenticated tutor session.
      */
     await createSession(
       updatedTutor.id,
       updatedTutor.role
     )
 
+    /*
+     * Return success.
+     *
+     * The password/hash is NEVER returned
+     * to the browser.
+     */
     return NextResponse.json(
       {
         success: true,
+
         message:
           "Your tutor account has been activated successfully.",
+
         redirect:
           "/tutor",
       },
-      { status: 200 }
+      {
+        status: 200,
+      }
     )
   } catch (error) {
     console.error(
@@ -270,7 +372,10 @@ export async function POST(
         error:
           "An unexpected server error occurred.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
+
