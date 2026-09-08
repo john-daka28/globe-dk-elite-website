@@ -151,9 +151,13 @@ export default function StudentMessagesPage() {
       >
         <div className="flex h-16 items-center justify-between border-b px-5">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-5 w-5" />
-            </div>
+             <image>
+                <img
+                  src="/logo.png"
+                  alt="GlobeDK Elite Academy Logo"
+                  className="h-15 w-15 rounded-lg object-cover"
+                />
+              </image>
 
             <div>
               <p className="text-sm font-bold leading-none">
@@ -184,7 +188,7 @@ export default function StudentMessagesPage() {
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">
-                Student Name
+            Tafadzwa Maurukira
               </p>
 
               <p className="text-xs text-muted-foreground">

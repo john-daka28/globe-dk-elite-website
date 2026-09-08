@@ -273,7 +273,7 @@ export default function RootLayout({
       </head>
 
       <body className={`${_inter.className} antialiased`}>
-        {children}
+        {children}*
         <Analytics />
       </body>
     </html>

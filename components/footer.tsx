@@ -34,17 +34,17 @@ const footerGroups = [
       ["Contact", "/contact"],
     ],
   },
-  {
-    title: "Get started",
-    links: [
+  // {
+  //   title: "Get started",
+  //   links: [
      
      
-      ["Log in", "/login"],
-      ["Create an account", "/signup"],
-      ["Forgot password", "/forgot-password"],
+  //     // ["Log in", "/login"],
+  //     // ["Create an account", "/signup"],
+  //     // ["Forgot password", "/forgot-password"],
       
-    ],
-  },
+  //   ],
+  // },
 ] as const
 
 const socialLinks = [
