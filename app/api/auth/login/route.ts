@@ -155,6 +155,8 @@ export async function POST(
     )
 
     const redirect =
+    user.role === "student"
+    ? "/student" :
       user.role === "tutor"
         ? "/tutor"
         : user.role ===
