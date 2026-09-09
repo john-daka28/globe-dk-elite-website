@@ -1,27 +1,39 @@
 "use client"
 
-import Link from "next/link"
 import {
-  Bell,
   BookOpen,
-  CalendarDays,
-  ClipboardCheck,
-  ClipboardList,
+  CheckCircle2,
+  Download,
+  Edit,
+  ExternalLink,
+  Eye,
   FileText,
-  GraduationCap,
-  LayoutDashboard,
-  LogOut,
-  MessageSquare,
+  Filter,
+  Link as LinkIcon,
+  Loader2,
   Plus,
   Search,
-  User,
-  Users,
-  Download,
-  FolderOpen,
-  BarChart3,
+  Trash2,
+  Upload,
+  Video,
+  X,
 } from "lucide-react"
 
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+
+import {
+  useRouter,
+} from "next/navigation"
+
+import TutorSidebar from "@/components/tutor/TutorSidebar"
+
 import { Button } from "@/components/ui/button"
+
 import {
   Card,
   CardContent,
@@ -29,345 +41,2058 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import { Badge } from "@/components/ui/badge"
+
 import { Input } from "@/components/ui/input"
 
-export default function TutorResourcesPage() {
-  const navigation = [
-    { title: "Dashboard", href: "/tutor/dashboard", icon: LayoutDashboard },
-    { title: "My Students", href: "/tutor/students", icon: Users },
-    { title: "My Subjects", href: "/tutor/subjects", icon: BookOpen },
-    { title: "Timetable", href: "/tutor/timetable", icon: CalendarDays },
-    { title: "Attendance", href: "/tutor/attendance", icon: ClipboardCheck },
-    { title: "Performance", href: "/tutor/performance", icon: BarChart3 },
-    { title: "Assignments", href: "/tutor/assignments", icon: ClipboardList },
-    { title: "Exams & Tests", href: "/tutor/exams", icon: FileText },
-    { title: "Messages", href: "/tutor/messages", icon: MessageSquare },
-    { title: "Announcements", href: "/tutor/announcements", icon: Bell },
-    {
-      title: "Resources",
-      href: "/tutor/resources",
-      icon: BookOpen,
-      active: true,
-    },
-  ]
+import { Label } from "@/components/ui/label"
 
-  const resources = [
-    {
-      title: "Algebra & Factorisation Notes",
-      subject: "Mathematics",
-      type: "PDF",
-      category: "Notes",
-      uploaded: "29 Aug 2026",
-      downloads: 18,
-    },
-    {
-      title: "Quadratic Equations Practice",
-      subject: "Mathematics",
-      type: "Worksheet",
-      category: "Practice",
-      uploaded: "28 Aug 2026",
-      downloads: 15,
-    },
-    {
-      title: "English Composition Guide",
-      subject: "English Language",
-      type: "PDF",
-      category: "Notes",
-      uploaded: "26 Aug 2026",
-      downloads: 11,
-    },
-    {
-      title: "ZIMSEC Mathematics Past Paper 2024",
-      subject: "Mathematics",
-      type: "Past Paper",
-      category: "Examination",
-      uploaded: "24 Aug 2026",
-      downloads: 21,
-    },
-  ]
+import { Textarea } from "@/components/ui/textarea"
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+type Resource = {
+  id: string
+  created_by: string
+  title: string
+  description: string | null
+  resource_type: string
+  subject: string | null
+  level: string | null
+  curriculum: string | null
+  url: string | null
+
+  file_path: string | null
+  file_name: string | null
+  file_size: number | null
+  mime_type: string | null
+
+  file_url?: string | null
+  preview_url?: string | null
+  download_url?: string | null
+
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
+type ResourceForm = {
+  title: string
+  description: string
+  resource_type: string
+  subject: string
+  level: string
+  curriculum: string
+  url: string
+  is_published: boolean
+}
+
+const emptyForm: ResourceForm = {
+  title: "",
+  description: "",
+  resource_type: "Notes",
+  subject: "",
+  level: "",
+  curriculum: "",
+  url: "",
+  is_published: true,
+}
+
+const resourceTypes = [
+  "Notes",
+  "Past Paper",
+  "Revision Material",
+  "Video",
+  "Link",
+  "Worksheet",
+  "Study Guide",
+  "Other",
+]
+
+const subjects = [
+  "Mathematics",
+  "English Language",
+  "Shona",
+  "Combined Science",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Computer Science",
+  "Geography",
+  "History",
+  "Commerce",
+  "Accounts",
+  "Business Studies",
+  "Economics",
+  "Statistics",
+  "Pure Mathematics",
+  "Agriculture",
+  "Heritage",
+]
+
+function formatFileSize(
+  bytes: number | null
+) {
+  if (!bytes) {
+    return ""
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(
+    bytes /
+    (1024 * 1024)
+  ).toFixed(1)} MB`
+}
+
+function isPdf(
+  resource: Resource
+) {
+  return (
+    resource.mime_type ===
+      "application/pdf" ||
+    Boolean(resource.file_path)
+  )
+}
+
+export default function TutorResourcesPage() {
+  const router = useRouter()
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    )
+
+  const [resources, setResources] =
+    useState<Resource[]>([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [search, setSearch] =
+    useState("")
+
+  const [levelFilter, setLevelFilter] =
+    useState("all")
+
+  const [typeFilter, setTypeFilter] =
+    useState("all")
+
+  const [showModal, setShowModal] =
+    useState(false)
+
+  const [
+    editingResource,
+    setEditingResource,
+  ] = useState<Resource | null>(
+    null
+  )
+
+  const [form, setForm] =
+    useState<ResourceForm>(
+      emptyForm
+    )
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null)
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(null)
+
+  const [
+    uploadingFile,
+    setUploadingFile,
+  ] = useState(false)
+
+  const [error, setError] =
+    useState("")
+
+  const [success, setSuccess] =
+    useState("")
+
+  const [
+    previewResource,
+    setPreviewResource,
+  ] = useState<Resource | null>(
+    null
+  )
+
+  /*
+   * ----------------------------------------------------------
+   * LOAD RESOURCES
+   * ----------------------------------------------------------
+   */
+
+  async function loadResources() {
+    try {
+      setLoading(true)
+      setError("")
+
+      const response =
+        await fetch(
+          "/api/tutor/resources",
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          }
+        )
+
+      const data =
+        await response.json()
+
+      if (response.status === 401) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(
+            "/tutor/resources"
+          )}`
+        )
+
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to load resources."
+        )
+      }
+
+      setResources(
+        data.resources || []
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load resources."
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadResources()
+  }, [])
+
+  /*
+   * ----------------------------------------------------------
+   * FILTERING
+   * ----------------------------------------------------------
+   */
+
+  const filteredResources =
+    useMemo(() => {
+      const searchValue =
+        search
+          .trim()
+          .toLowerCase()
+
+      return resources.filter(
+        (resource) => {
+          const matchesSearch =
+            !searchValue ||
+            resource.title
+              .toLowerCase()
+              .includes(
+                searchValue
+              ) ||
+            resource.description
+              ?.toLowerCase()
+              .includes(
+                searchValue
+              ) ||
+            resource.subject
+              ?.toLowerCase()
+              .includes(
+                searchValue
+              ) ||
+            resource.file_name
+              ?.toLowerCase()
+              .includes(
+                searchValue
+              )
+
+          const matchesLevel =
+            levelFilter ===
+              "all" ||
+            resource.level ===
+              levelFilter
+
+          const matchesType =
+            typeFilter ===
+              "all" ||
+            resource.resource_type ===
+              typeFilter
+
+          return (
+            matchesSearch &&
+            matchesLevel &&
+            matchesType
+          )
+        }
+      )
+    }, [
+      resources,
+      search,
+      levelFilter,
+      typeFilter,
+    ])
+
+  /*
+   * ----------------------------------------------------------
+   * STATISTICS
+   * ----------------------------------------------------------
+   */
+
+  const statistics =
+    useMemo(() => {
+      return {
+        total:
+          resources.length,
+
+        published:
+          resources.filter(
+            (resource) =>
+              resource.is_published
+          ).length,
+
+        oLevel:
+          resources.filter(
+            (resource) =>
+              resource.level ===
+              "O-Level"
+          ).length,
+
+        aLevel:
+          resources.filter(
+            (resource) =>
+              resource.level ===
+              "A-Level"
+          ).length,
+
+        pdfs:
+          resources.filter(
+            (resource) =>
+              isPdf(resource)
+          ).length,
+      }
+    }, [resources])
+
+  /*
+   * ----------------------------------------------------------
+   * MODALS
+   * ----------------------------------------------------------
+   */
+
+  function openCreateModal() {
+    setEditingResource(null)
+
+    setForm({
+      ...emptyForm,
+    })
+
+    setSelectedFile(null)
+
+    setError("")
+    setSuccess("")
+
+    setShowModal(true)
+  }
+
+  function openEditModal(
+    resource: Resource
+  ) {
+    setEditingResource(resource)
+
+    setForm({
+      title: resource.title,
+
+      description:
+        resource.description ||
+        "",
+
+      resource_type:
+        resource.resource_type ||
+        "Other",
+
+      subject:
+        resource.subject ||
+        "",
+
+      level:
+        resource.level ||
+        "",
+
+      curriculum:
+        resource.curriculum ||
+        "",
+
+      url:
+        resource.url ||
+        "",
+
+      is_published:
+        resource.is_published,
+    })
+
+    setSelectedFile(null)
+
+    setError("")
+    setSuccess("")
+
+    setShowModal(true)
+  }
+
+  function closeModal() {
+    if (
+      saving ||
+      uploadingFile
+    ) {
+      return
+    }
+
+    setShowModal(false)
+
+    setEditingResource(null)
+
+    setForm({
+      ...emptyForm,
+    })
+
+    setSelectedFile(null)
+
+    setError("")
+    setSuccess("")
+  }
+
+  function updateField(
+    field: keyof ResourceForm,
+    value:
+      | string
+      | boolean
+  ) {
+    setForm(
+      (current) => ({
+        ...current,
+        [field]: value,
+      })
+    )
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * PDF SELECTION
+   * ----------------------------------------------------------
+   */
+
+  function handleFileChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    setError("")
+    setSuccess("")
+
+    if (
+      file.type !==
+      "application/pdf"
+    ) {
+      setError(
+        "Only PDF files are allowed."
+      )
+
+      event.target.value = ""
+
+      return
+    }
+
+    if (
+      file.size >
+      20 * 1024 * 1024
+    ) {
+      setError(
+        "PDF file is too large. Maximum size is 20 MB."
+      )
+
+      event.target.value = ""
+
+      return
+    }
+
+    setSelectedFile(file)
+
+    /*
+     * If title is empty, automatically use filename.
+     */
+    if (!form.title.trim()) {
+      updateField(
+        "title",
+        file.name.replace(
+          /\.pdf$/i,
+          ""
+        )
+      )
+    }
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * SAVE RESOURCE
+   * ----------------------------------------------------------
+   */
+
+  async function saveResource() {
+    if (
+      !form.title.trim()
+    ) {
+      setError(
+        "Please enter a resource title."
+      )
+
+      return
+    }
+
+    /*
+     * If a PDF was selected, use the upload API.
+     */
+    if (selectedFile) {
+      await uploadPdf()
+
+      return
+    }
+
+    /*
+     * Otherwise use the normal JSON resource API.
+     */
+    try {
+      setSaving(true)
+
+      setError("")
+      setSuccess("")
+
+      const isEditing =
+        Boolean(
+          editingResource
+        )
+
+      const response =
+        await fetch(
+          isEditing
+            ? `/api/tutor/resources/${editingResource?.id}`
+            : "/api/tutor/resources",
+          {
+            method: isEditing
+              ? "PATCH"
+              : "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              title:
+                form.title,
+
+              description:
+                form.description,
+
+              resource_type:
+                form.resource_type,
+
+              subject:
+                form.subject,
+
+              level:
+                form.level,
+
+              curriculum:
+                form.curriculum,
+
+              url:
+                form.url,
+
+              is_published:
+                form.is_published,
+            }),
+          }
+        )
+
+      const data =
+        await response.json()
+
+      if (
+        response.status ===
+        401
+      ) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(
+            "/tutor/resources"
+          )}`
+        )
+
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to save resource."
+        )
+      }
+
+      if (isEditing) {
+        setResources(
+          (current) =>
+            current.map(
+              (resource) =>
+                resource.id ===
+                data.resource.id
+                  ? data.resource
+                  : resource
+            )
+        )
+      } else {
+        setResources(
+          (current) => [
+            data.resource,
+            ...current,
+          ]
+        )
+      }
+
+      setSuccess(
+        isEditing
+          ? "Resource updated successfully."
+          : "Resource created successfully."
+      )
+
+      setTimeout(() => {
+        closeModal()
+      }, 700)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save resource."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * PDF UPLOAD
+   * ----------------------------------------------------------
+   */
+
+  async function uploadPdf() {
+    if (!selectedFile) {
+      return
+    }
+
+    try {
+      setUploadingFile(true)
+
+      setError("")
+      setSuccess("")
+
+      const formData =
+        new FormData()
+
+      formData.append(
+        "file",
+        selectedFile
+      )
+
+      formData.append(
+        "title",
+        form.title
+      )
+
+      formData.append(
+        "description",
+        form.description
+      )
+
+      formData.append(
+        "resource_type",
+        form.resource_type
+      )
+
+      formData.append(
+        "subject",
+        form.subject
+      )
+
+      formData.append(
+        "level",
+        form.level
+      )
+
+      formData.append(
+        "curriculum",
+        form.curriculum
+      )
+
+      formData.append(
+        "is_published",
+        String(
+          form.is_published
+        )
+      )
+
+      if (editingResource) {
+        formData.append(
+          "resource_id",
+          editingResource.id
+        )
+      }
+
+      const response =
+        await fetch(
+          "/api/tutor/resources/upload",
+          {
+            method: "POST",
+
+            credentials:
+              "include",
+
+            body: formData,
+          }
+        )
+
+      const data =
+        await response.json()
+
+      if (
+        response.status ===
+        401
+      ) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(
+            "/tutor/resources"
+          )}`
+        )
+
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to upload PDF."
+        )
+      }
+
+      /*
+       * Reload so the newly generated
+       * signed URL is available.
+       */
+      await loadResources()
+
+      setSuccess(
+        editingResource
+          ? "PDF replaced successfully."
+          : "PDF uploaded successfully."
+      )
+
+      setSelectedFile(null)
+
+      if (
+        fileInputRef.current
+      ) {
+        fileInputRef.current.value =
+          ""
+      }
+
+      setTimeout(() => {
+        closeModal()
+      }, 700)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to upload PDF."
+      )
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * DELETE
+   * ----------------------------------------------------------
+   */
+
+  async function deleteResource(
+    resource: Resource
+  ) {
+    const confirmed =
+      window.confirm(
+        `Are you sure you want to delete "${resource.title}"? This cannot be undone.`
+      )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setDeletingId(
+        resource.id
+      )
+
+      setError("")
+
+      const response =
+        await fetch(
+          `/api/tutor/resources/${resource.id}`,
+          {
+            method: "DELETE",
+            credentials:
+              "include",
+          }
+        )
+
+      const data =
+        await response.json()
+
+      if (
+        response.status ===
+        401
+      ) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(
+            "/tutor/resources"
+          )}`
+        )
+
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to delete resource."
+        )
+      }
+
+      setResources(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.id !==
+              resource.id
+          )
+      )
+
+      setSuccess(
+        "Resource deleted successfully."
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete resource."
+      )
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ICON
+   * ----------------------------------------------------------
+   */
+
+  function getResourceIcon(
+    type: string,
+    pdf: boolean
+  ) {
+    if (pdf) {
+      return FileText
+    }
+
+    if (type === "Video") {
+      return Video
+    }
+
+    if (type === "Link") {
+      return LinkIcon
+    }
+
+    return FileText
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * UI
+   * ----------------------------------------------------------
+   */
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <TutorSidebar tutorName="Tutor" />
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-background lg:flex">
-
-        <div className="flex h-16 items-center border-b px-5">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-
-            <div>
-              <p className="text-sm font-bold">
-                GlobeDK Elite
-              </p>
-
-              <p className="text-[11px] text-muted-foreground">
-                Tutor Portal
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        <div className="border-b p-4">
-          <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <User className="h-5 w-5 text-primary" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold">
-                Mr Daka
-              </p>
-
-              <p className="text-xs text-muted-foreground">
-                Mathematics Tutor
-              </p>
-            </div>
-
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto p-3">
-
-          <div className="space-y-1">
-
-            {navigation.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <Link
-                  key={item.title}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
-                    item.active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.title}
-                </Link>
-              )
-            })}
-
-          </div>
-        </nav>
-
-        <div className="border-t p-3">
-
-          <Link
-            href="/tutor/profile"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted"
-          >
-            <User className="h-4 w-4" />
-            My Profile
-          </Link>
-
-          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted">
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-
-        </div>
-
-      </aside>
-
-      <div className="lg:pl-64">
-
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
-
+      <div className="pl-[72px] lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur">
           <div>
-            <p className="text-sm font-medium">
+            <h1 className="text-xl font-semibold">
               Resources
-            </p>
-
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Teaching materials and learning resources
-            </p>
-          </div>
-
-          <Button asChild size="sm">
-            <Link href="/tutor/resources/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Upload Resource
-            </Link>
-          </Button>
-
-        </header>
-
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-
-          <section className="mb-8">
-
-            <Badge className="mb-3">
-              Teaching Centre
-            </Badge>
-
-            <h1 className="text-2xl font-bold md:text-3xl">
-              Learning Resources
             </h1>
 
-            <p className="mt-2 text-muted-foreground">
-              Manage notes, worksheets, past papers and other materials
-              for your students.
+            <p className="text-sm text-muted-foreground">
+              Manage your teaching materials,
+              PDFs and learning resources.
             </p>
+          </div>
 
-          </section>
+          <Button
+            onClick={
+              openCreateModal
+            }
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Resource
+          </Button>
+        </header>
 
-          <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <main className="space-y-6 p-6">
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
 
+          {success && !showModal && (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700">
+              {success}
+            </div>
+          )}
+
+          {/* STATISTICS */}
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Card>
-              <CardContent className="p-5">
-                <FolderOpen className="h-5 w-5 text-primary" />
-
-                <p className="mt-3 text-sm text-muted-foreground">
+              <CardHeader className="pb-2">
+                <CardDescription>
                   Total Resources
-                </p>
+                </CardDescription>
 
-                <p className="mt-1 text-3xl font-bold">
-                  24
+                <CardTitle className="text-3xl">
+                  {
+                    statistics.total
+                  }
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <BookOpen className="h-4 w-4" />
+                  All materials
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Published
+                </CardDescription>
+
+                <CardTitle className="text-3xl">
+                  {
+                    statistics.published
+                  }
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Available
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  PDF Resources
+                </CardDescription>
+
+                <CardTitle className="text-3xl">
+                  {
+                    statistics.pdfs
+                  }
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Uploaded documents
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-5">
-                <BookOpen className="h-5 w-5 text-primary" />
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  O-Level
+                </CardDescription>
 
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Notes
-                </p>
+                <CardTitle className="text-3xl">
+                  {
+                    statistics.oLevel
+                  }
+                </CardTitle>
+              </CardHeader>
 
-                <p className="mt-1 text-3xl font-bold">
-                  9
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <ClipboardList className="h-5 w-5 text-primary" />
-
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Practice
-                </p>
-
-                <p className="mt-1 text-3xl font-bold">
-                  8
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  O-Level resources
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-5">
-                <FileText className="h-5 w-5 text-primary" />
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  A-Level
+                </CardDescription>
 
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Past Papers
-                </p>
+                <CardTitle className="text-3xl">
+                  {
+                    statistics.aLevel
+                  }
+                </CardTitle>
+              </CardHeader>
 
-                <p className="mt-1 text-3xl font-bold">
-                  7
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  A-Level resources
                 </p>
               </CardContent>
             </Card>
+          </div>
 
-          </section>
+          {/* RESOURCE LIST */}
 
           <Card>
-
             <CardHeader>
-
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <CardTitle>
                     My Resources
                   </CardTitle>
 
                   <CardDescription>
-                    Resources available to your assigned students
+                    Teaching materials you
+                    have created.
                   </CardDescription>
                 </div>
 
-                <div className="relative w-full md:w-72">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-                  <Input
-                    placeholder="Search resources..."
-                    className="pl-9"
-                  />
+                    <Input
+                      value={search}
+                      onChange={(
+                        event
+                      ) =>
+                        setSearch(
+                          event.target
+                            .value
+                        )
+                      }
+                      placeholder="Search resources..."
+                      className="pl-9 sm:w-[240px]"
+                    />
+                  </div>
+
+                  <Select
+                    value={
+                      levelFilter
+                    }
+                    onValueChange={
+                      setLevelFilter
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[150px]">
+                      <Filter className="mr-2 h-4 w-4" />
+
+                      <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Levels
+                      </SelectItem>
+
+                      <SelectItem value="O-Level">
+                        O-Level
+                      </SelectItem>
+
+                      <SelectItem value="A-Level">
+                        A-Level
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={
+                      typeFilter
+                    }
+                    onValueChange={
+                      setTypeFilter
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[170px]">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Types
+                      </SelectItem>
+
+                      {resourceTypes.map(
+                        (
+                          type
+                        ) => (
+                          <SelectItem
+                            key={
+                              type
+                            }
+                            value={
+                              type
+                            }
+                          >
+                            {
+                              type
+                            }
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
-
               </div>
-
             </CardHeader>
 
-            <CardContent className="space-y-3">
+            <CardContent>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-sm text-muted-foreground">
+                  <Loader2 className="mb-3 h-6 w-6 animate-spin" />
 
-              {resources.map((resource) => (
-                <div
-                  key={resource.title}
-                  className="flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between"
-                >
-
-                  <div className="flex gap-4">
-
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-
-                    <div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-
-                        <h3 className="font-semibold">
-                          {resource.title}
-                        </h3>
-
-                        <Badge variant="secondary">
-                          {resource.type}
-                        </Badge>
-
-                      </div>
-
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {resource.subject} · {resource.category}
-                      </p>
-
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Uploaded {resource.uploaded} ·{" "}
-                        {resource.downloads} downloads
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                  <div className="flex gap-2">
-
-                    <Button variant="outline" size="sm">
-                      View
-                    </Button>
-
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-
-                  </div>
-
+                  Loading resources...
                 </div>
-              ))}
+              ) : filteredResources.length ===
+                0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
+                  <BookOpen className="mb-4 h-10 w-10 text-muted-foreground" />
 
+                  <h3 className="font-semibold">
+                    No resources found
+                  </h3>
+
+                  <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                    Create your first teaching
+                    resource by uploading a PDF
+                    or adding a useful link.
+                  </p>
+
+                  <Button
+                    className="mt-5"
+                    onClick={
+                      openCreateModal
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+
+                    Add Resource
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredResources.map(
+                    (
+                      resource
+                    ) => {
+                      const pdf =
+                        isPdf(
+                          resource
+                        )
+
+                      const ResourceIcon =
+                        getResourceIcon(
+                          resource.resource_type,
+                          pdf
+                        )
+
+                      return (
+                        <Card
+                          key={
+                            resource.id
+                          }
+                          className="group overflow-hidden transition-shadow hover:shadow-md"
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 gap-3">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                  <ResourceIcon className="h-5 w-5" />
+                                </div>
+
+                                <div className="min-w-0">
+                                  <CardTitle className="line-clamp-2 text-base">
+                                    {
+                                      resource.title
+                                    }
+                                  </CardTitle>
+
+                                  <CardDescription className="mt-1">
+                                    {
+                                      resource.resource_type
+                                    }
+
+                                    {pdf &&
+                                      resource.file_size && (
+                                        <>
+                                          {" "}
+                                          •{" "}
+                                          {formatFileSize(
+                                            resource.file_size
+                                          )}
+                                        </>
+                                      )}
+                                  </CardDescription>
+                                </div>
+                              </div>
+
+                              <Badge
+                                variant={
+                                  resource.is_published
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {resource.is_published
+                                  ? "Published"
+                                  : "Draft"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="space-y-4">
+                            {resource.description && (
+                              <p className="line-clamp-3 text-sm text-muted-foreground">
+                                {
+                                  resource.description
+                                }
+                              </p>
+                            )}
+
+                            {pdf &&
+                              resource.file_name && (
+                                <div className="rounded-lg border bg-muted/30 p-3">
+                                  <div className="flex items-center gap-3">
+                                    <FileText className="h-8 w-8 shrink-0 text-primary" />
+
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-medium">
+                                        {
+                                          resource.file_name
+                                        }
+                                      </p>
+
+                                      <p className="text-xs text-muted-foreground">
+                                        PDF
+                                        {resource.file_size
+                                          ? ` • ${formatFileSize(
+                                              resource.file_size
+                                            )}`
+                                          : ""}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                            <div className="flex flex-wrap gap-2">
+                              {resource.subject && (
+                                <Badge variant="outline">
+                                  {
+                                    resource.subject
+                                  }
+                                </Badge>
+                              )}
+
+                              {resource.level && (
+                                <Badge variant="outline">
+                                  {
+                                    resource.level
+                                  }
+                                </Badge>
+                              )}
+
+                              {resource.curriculum && (
+                                <Badge variant="outline">
+                                  {
+                                    resource.curriculum
+                                  }
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+                              <div className="flex flex-wrap gap-2">
+                                {pdf &&
+                                  resource.preview_url && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        setPreviewResource(
+                                          resource
+                                        )
+                                      }
+                                    >
+                                      <Eye className="mr-2 h-4 w-4" />
+
+                                      Preview
+                                    </Button>
+                                  )}
+
+                                {pdf &&
+                                  resource.download_url && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      asChild
+                                    >
+                                      <a
+                                        href={
+                                          resource.download_url
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={
+                                          resource.file_name ||
+                                          undefined
+                                        }
+                                      >
+                                        <Download className="mr-2 h-4 w-4" />
+
+                                        Download
+                                      </a>
+                                    </Button>
+                                  )}
+
+                                {!pdf &&
+                                  resource.url && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      asChild
+                                    >
+                                      <a
+                                        href={
+                                          resource.url
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+
+                                        Open
+                                      </a>
+                                    </Button>
+                                  )}
+
+                                {!pdf &&
+                                  !resource.url && (
+                                    <span className="text-xs text-muted-foreground">
+                                      No file or link
+                                    </span>
+                                  )}
+                              </div>
+
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    openEditModal(
+                                      resource
+                                    )
+                                  }
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={
+                                    deletingId ===
+                                    resource.id
+                                  }
+                                  onClick={() =>
+                                    deleteResource(
+                                      resource
+                                    )
+                                  }
+                                >
+                                  {deletingId ===
+                                  resource.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    }
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
-
         </main>
       </div>
+
+      {/* =====================================================
+          CREATE / EDIT MODAL
+      ===================================================== */}
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="max-h-[92vh] w-full max-w-2xl overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>
+                    {editingResource
+                      ? "Edit Resource"
+                      : "Add Resource"}
+                  </CardTitle>
+
+                  <CardDescription>
+                    {editingResource
+                      ? "Update your teaching resource or replace its PDF."
+                      : "Add a teaching resource for your students."}
+                  </CardDescription>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={
+                    closeModal
+                  }
+                  disabled={
+                    saving ||
+                    uploadingFile
+                  }
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-5">
+              {error && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700">
+                  {success}
+                </div>
+              )}
+
+              {/* TITLE */}
+
+              <div className="space-y-2">
+                <Label htmlFor="resource-title">
+                  Resource Title
+                </Label>
+
+                <Input
+                  id="resource-title"
+                  value={
+                    form.title
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "title",
+                      event.target
+                        .value
+                    )
+                  }
+                  placeholder="e.g. Algebra Revision Notes"
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div className="space-y-2">
+                <Label htmlFor="resource-description">
+                  Description
+                </Label>
+
+                <Textarea
+                  id="resource-description"
+                  value={
+                    form.description
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "description",
+                      event.target
+                        .value
+                    )
+                  }
+                  placeholder="Briefly describe this resource..."
+                  rows={4}
+                />
+              </div>
+
+              {/* TYPE / SUBJECT */}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Resource Type
+                  </Label>
+
+                  <Select
+                    value={
+                      form.resource_type
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      updateField(
+                        "resource_type",
+                        value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {resourceTypes.map(
+                        (
+                          type
+                        ) => (
+                          <SelectItem
+                            key={
+                              type
+                            }
+                            value={
+                              type
+                            }
+                          >
+                            {
+                              type
+                            }
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Subject
+                  </Label>
+
+                  <Select
+                    value={
+                      form.subject ||
+                      "none"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      updateField(
+                        "subject",
+                        value ===
+                          "none"
+                          ? ""
+                          : value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="none">
+                        No subject
+                      </SelectItem>
+
+                      {subjects.map(
+                        (
+                          subject
+                        ) => (
+                          <SelectItem
+                            key={
+                              subject
+                            }
+                            value={
+                              subject
+                            }
+                          >
+                            {
+                              subject
+                            }
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* LEVEL / CURRICULUM */}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Level
+                  </Label>
+
+                  <Select
+                    value={
+                      form.level ||
+                      "none"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      updateField(
+                        "level",
+                        value ===
+                          "none"
+                          ? ""
+                          : value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="none">
+                        No level
+                      </SelectItem>
+
+                      <SelectItem value="O-Level">
+                        O-Level
+                      </SelectItem>
+
+                      <SelectItem value="A-Level">
+                        A-Level
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Curriculum
+                  </Label>
+
+                  <Select
+                    value={
+                      form.curriculum ||
+                      "none"
+                    }
+                    onValueChange={(
+                      value
+                    ) =>
+                      updateField(
+                        "curriculum",
+                        value ===
+                          "none"
+                          ? ""
+                          : value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select curriculum" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="none">
+                        No curriculum
+                      </SelectItem>
+
+                      <SelectItem value="ZIMSEC">
+                        ZIMSEC
+                      </SelectItem>
+
+                      <SelectItem value="Cambridge">
+                        Cambridge
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* PDF UPLOAD */}
+
+              <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                <div>
+                  <Label>
+                    PDF Resource
+                  </Label>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Upload a PDF up to 20 MB.
+                    PDFs are stored securely in
+                    private Supabase Storage.
+                  </p>
+                </div>
+
+                <input
+                  ref={
+                    fileInputRef
+                  }
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={
+                    handleFileChange
+                  }
+                  className="hidden"
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  disabled={
+                    saving ||
+                    uploadingFile
+                  }
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+
+                  {editingResource &&
+                  isPdf(
+                    editingResource
+                  )
+                    ? "Replace PDF"
+                    : "Choose PDF"}
+                </Button>
+
+                {selectedFile && (
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-8 w-8 shrink-0 text-primary" />
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {
+                              selectedFile.name
+                            }
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(
+                              selectedFile.size
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setSelectedFile(
+                            null
+                          )
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!selectedFile &&
+                  editingResource &&
+                  isPdf(
+                    editingResource
+                  ) && (
+                    <div className="rounded-lg border bg-background p-3">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-8 w-8 text-primary" />
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {
+                              editingResource.file_name
+                            }
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Current PDF
+                            {editingResource.file_size
+                              ? ` • ${formatFileSize(
+                                  editingResource.file_size
+                                )}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              {/* URL */}
+
+              <div className="space-y-2">
+                <Label htmlFor="resource-url">
+                  Resource URL
+                </Label>
+
+                <Input
+                  id="resource-url"
+                  type="url"
+                  value={
+                    form.url
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "url",
+                      event.target
+                        .value
+                    )
+                  }
+                  placeholder="https://..."
+                />
+
+                <p className="text-xs text-muted-foreground">
+                  Use this for Google Drive,
+                  YouTube, websites or other
+                  external resources. If you
+                  upload a PDF, the PDF takes
+                  priority.
+                </p>
+              </div>
+
+              {/* PUBLISH */}
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">
+                    Publish Resource
+                  </p>
+
+                  <p className="text-sm text-muted-foreground">
+                    Published resources can be
+                    made available to students.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant={
+                    form.is_published
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    updateField(
+                      "is_published",
+                      !form.is_published
+                    )
+                  }
+                >
+                  {form.is_published
+                    ? "Published"
+                    : "Draft"}
+                </Button>
+              </div>
+
+              {/* ACTIONS */}
+
+              <div className="flex justify-end gap-3 border-t pt-5">
+                <Button
+                  variant="outline"
+                  onClick={
+                    closeModal
+                  }
+                  disabled={
+                    saving ||
+                    uploadingFile
+                  }
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  onClick={
+                    saveResource
+                  }
+                  disabled={
+                    saving ||
+                    uploadingFile
+                  }
+                >
+                  {saving ||
+                  uploadingFile ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
+                      {uploadingFile
+                        ? "Uploading PDF..."
+                        : "Saving..."}
+                    </>
+                  ) : editingResource ? (
+                    "Update Resource"
+                  ) : (
+                    "Create Resource"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* =====================================================
+          PDF PREVIEW
+      ===================================================== */}
+
+      {previewResource &&
+        previewResource.preview_url && (
+          <div className="fixed inset-0 z-[60] flex flex-col bg-black/80">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-4">
+              <div className="min-w-0">
+                <h2 className="truncate font-semibold">
+                  {
+                    previewResource.title
+                  }
+                </h2>
+
+                <p className="text-xs text-muted-foreground">
+                  {
+                    previewResource.file_name
+                  }
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {previewResource.download_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={
+                        previewResource.download_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={
+                        previewResource.file_name ||
+                        undefined
+                      }
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+
+                      Download
+                    </a>
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setPreviewResource(
+                      null
+                    )
+                  }
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 p-3">
+              <iframe
+                src={
+                  previewResource.preview_url
+                }
+                title={
+                  previewResource.title
+                }
+                className="h-full w-full rounded-lg bg-white"
+              />
+            </div>
+          </div>
+        )}
     </div>
   )
 }
