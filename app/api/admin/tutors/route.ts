@@ -1,4 +1,3 @@
-
 import {
   NextRequest,
   NextResponse,
@@ -32,13 +31,17 @@ const VALID_CURRICULA = [
   "Cambridge",
 ]
 
+type TutorAssignmentInput = {
+  subject?: string
+  level?: string
+  curriculum?: string
+}
+
 type CreateTutorBody = {
   name?: string
   email?: string
   phone?: string
-  subject?: string
-  level?: string
-  curriculum?: string
+  assignments?: TutorAssignmentInput[]
 }
 
 function splitFullName(name: string) {
@@ -67,6 +70,110 @@ function splitFullName(name: string) {
       .slice(1)
       .join(" "),
   }
+}
+
+function normalizeAssignments(
+  assignments: TutorAssignmentInput[]
+) {
+  const normalized = assignments.map(
+    (assignment) => ({
+      subject:
+        assignment.subject
+          ?.trim() || "",
+      level:
+        assignment.level
+          ?.trim() || "",
+      curriculum:
+        assignment.curriculum
+          ?.trim() || "",
+    })
+  )
+
+  const unique = new Map<
+    string,
+    {
+      subject: string
+      level: string
+      curriculum: string
+    }
+  >()
+
+  for (const assignment of normalized) {
+    const key =
+      `${assignment.subject.toLowerCase()}|` +
+      `${assignment.level.toLowerCase()}|` +
+      `${assignment.curriculum.toLowerCase()}`
+
+    if (!unique.has(key)) {
+      unique.set(key, assignment)
+    }
+  }
+
+  return Array.from(unique.values())
+}
+
+function validateAssignments(
+  assignments: TutorAssignmentInput[]
+) {
+  if (
+    !Array.isArray(assignments) ||
+    assignments.length === 0
+  ) {
+    return "At least one teaching assignment is required."
+  }
+
+  for (
+    let index = 0;
+    index < assignments.length;
+    index++
+  ) {
+    const assignment =
+      assignments[index]
+
+    const subject =
+      assignment.subject
+        ?.trim() || ""
+
+    const level =
+      assignment.level
+        ?.trim() || ""
+
+    const curriculum =
+      assignment.curriculum
+        ?.trim() || ""
+
+    if (!subject) {
+      return `Teaching assignment ${index + 1} is missing a subject.`
+    }
+
+    if (!level) {
+      return `Teaching assignment ${index + 1} is missing a level.`
+    }
+
+    if (
+      !VALID_LEVELS.includes(level)
+    ) {
+      return `Teaching assignment ${index + 1} has an invalid level.`
+    }
+
+    if (!curriculum) {
+      return `Teaching assignment ${index + 1} is missing a curriculum.`
+    }
+
+    if (
+      !VALID_CURRICULA.includes(
+        curriculum
+      )
+    ) {
+      return `Teaching assignment ${index + 1} has an invalid curriculum.`
+    }
+
+    if (subject.length > 150) {
+      return `Teaching assignment ${index + 1} has an invalid subject.`
+    }
+  }
+
+  return null
 }
 
 export async function GET(
@@ -128,10 +235,12 @@ export async function GET(
       )
 
     let tutorSubjects: Array<{
+      id: string
       tutor_id: string
       subject: string
       level: string
       curriculum: string
+      created_at?: string
     }> = []
 
     if (tutorIds.length > 0) {
@@ -142,15 +251,23 @@ export async function GET(
         .from("tutor_subjects")
         .select(
           `
+            id,
             tutor_id,
             subject,
             level,
-            curriculum
+            curriculum,
+            created_at
           `
         )
         .in(
           "tutor_id",
           tutorIds
+        )
+        .order(
+          "created_at",
+          {
+            ascending: true,
+          }
         )
 
       if (error) {
@@ -178,11 +295,23 @@ export async function GET(
       (tutors || []).map(
         (tutor) => {
           const assignments =
-            tutorSubjects.filter(
-              (item) =>
-                item.tutor_id ===
-                tutor.id
-            )
+            tutorSubjects
+              .filter(
+                (item) =>
+                  item.tutor_id ===
+                  tutor.id
+              )
+              .map(
+                (item) => ({
+                  id: item.id,
+                  subject:
+                    item.subject,
+                  level:
+                    item.level,
+                  curriculum:
+                    item.curriculum,
+                })
+              )
 
           const subjects =
             Array.from(
@@ -261,16 +390,14 @@ export async function GET(
             phone:
               tutor.phone || "",
 
+            assignments,
+
             subjects,
 
             levels,
 
             curricula,
 
-            /*
-             * Student assignment is not
-             * connected yet.
-             */
             students: 0,
 
             status,
@@ -368,11 +495,10 @@ export async function GET(
 export async function POST(
   request: NextRequest
 ) {
+  let createdTutorId: string | null =
+    null
+
   try {
-    /*
-     * Only administrators can create
-     * tutor accounts.
-     */
     const admin =
       await requireRole([
         "admin",
@@ -397,16 +523,6 @@ export async function POST(
     const body =
       (await request.json()) as CreateTutorBody
 
-    /*
-     * The frontend sends:
-     *
-     * name
-     * email
-     * phone
-     * subject
-     * level
-     * curriculum
-     */
     const name =
       body.name?.trim() || ""
 
@@ -418,18 +534,9 @@ export async function POST(
     const phone =
       body.phone?.trim() || null
 
-    const subject =
-      body.subject?.trim() || ""
+    const assignments =
+      body.assignments || []
 
-    const level =
-      body.level?.trim() || ""
-
-    const curriculum =
-      body.curriculum?.trim() || ""
-
-    /*
-     * Basic validation.
-     */
     if (!name) {
       return NextResponse.json(
         {
@@ -483,74 +590,6 @@ export async function POST(
       )
     }
 
-    if (!subject) {
-      return NextResponse.json(
-        {
-          error:
-            "A subject must be selected.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    if (!level) {
-      return NextResponse.json(
-        {
-          error:
-            "A level must be selected.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    if (
-      !VALID_LEVELS.includes(
-        level
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid level selected.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    if (!curriculum) {
-      return NextResponse.json(
-        {
-          error:
-            "A curriculum must be selected.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    if (
-      !VALID_CURRICULA.includes(
-        curriculum
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid curriculum selected.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
     if (
       phone &&
       phone.length > 40
@@ -566,20 +605,28 @@ export async function POST(
       )
     }
 
-    /*
-     * Split the frontend's single
-     * "name" field into the database's
-     * first_name and last_name fields.
-     *
-     * Example:
-     *
-     * John Daka
-     *
-     * becomes:
-     *
-     * first_name = John
-     * last_name  = Daka
-     */
+    const assignmentError =
+      validateAssignments(
+        assignments
+      )
+
+    if (assignmentError) {
+      return NextResponse.json(
+        {
+          error:
+            assignmentError,
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const normalizedAssignments =
+      normalizeAssignments(
+        assignments
+      )
+
     const {
       firstName,
       lastName,
@@ -597,10 +644,6 @@ export async function POST(
       )
     }
 
-    /*
-     * Check whether this email is
-     * already registered.
-     */
     const {
       data: existingUser,
       error: existingError,
@@ -650,38 +693,15 @@ export async function POST(
       )
     }
 
-    /*
-     * Generate a secure invitation token.
-     *
-     * IMPORTANT:
-     *
-     * The raw token is sent only by email.
-     * Only the SHA-256 hash is stored
-     * in the database.
-     */
     const rawToken =
       generateSecureToken()
 
     const tokenHash =
-      hashToken(
-        rawToken
-      )
+      hashToken(rawToken)
 
-    /*
-     * Invitation expires after 24 hours.
-     */
     const tokenExpiry =
       getTokenExpiry(24)
 
-    /*
-     * Create the tutor account.
-     *
-     * The tutor does NOT receive a password
-     * here.
-     *
-     * They create their password from
-     * the invitation link.
-     */
     const {
       data: tutor,
       error: userError,
@@ -738,10 +758,6 @@ export async function POST(
         userError
       )
 
-      /*
-       * Handle duplicate email caused
-       * by a race condition.
-       */
       if (
         userError?.code ===
         "23505"
@@ -768,38 +784,46 @@ export async function POST(
       )
     }
 
-    /*
-     * Create the academic assignment.
-     *
-     * The current admin form selects
-     * one subject + one level +
-     * one curriculum.
-     */
+    createdTutorId =
+      tutor.id
+
     const {
       error: subjectError,
     } =
       await supabaseAdmin
         .from("tutor_subjects")
-        .insert({
-          tutor_id:
-            tutor.id,
+        .insert(
+          normalizedAssignments.map(
+            (assignment) => ({
+              tutor_id:
+                tutor.id,
 
-          subject,
+              subject:
+                assignment.subject,
 
-          level,
+              level:
+                assignment.level,
 
-          curriculum,
-        })
+              curriculum:
+                assignment.curriculum,
+            })
+          )
+        )
 
     if (subjectError) {
       console.error(
-        "Tutor subject creation error:",
+        "Tutor assignments creation error:",
         subjectError
       )
 
-      /*
-       * Roll back the tutor account.
-       */
+      await supabaseAdmin
+        .from("tutor_subjects")
+        .delete()
+        .eq(
+          "tutor_id",
+          tutor.id
+        )
+
       await supabaseAdmin
         .from("users")
         .delete()
@@ -811,7 +835,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Tutor was not created because the academic assignment could not be saved.",
+            "Tutor was not created because the teaching assignments could not be saved.",
         },
         {
           status: 500,
@@ -819,12 +843,6 @@ export async function POST(
       )
     }
 
-    /*
-     * Send the invitation email.
-     *
-     * The email contains the RAW token.
-     * The database contains only its hash.
-     */
     try {
       await sendTutorInvitation({
         firstName,
@@ -837,9 +855,6 @@ export async function POST(
         emailError
       )
 
-      /*
-       * Remove the academic assignment.
-       */
       await supabaseAdmin
         .from("tutor_subjects")
         .delete()
@@ -848,9 +863,6 @@ export async function POST(
           tutor.id
         )
 
-      /*
-       * Remove the incomplete tutor.
-       */
       await supabaseAdmin
         .from("users")
         .delete()
@@ -870,9 +882,6 @@ export async function POST(
       )
     }
 
-    /*
-     * Everything succeeded.
-     */
     return NextResponse.json(
       {
         success: true,
@@ -903,11 +912,8 @@ export async function POST(
           accountStatus:
             tutor.account_status,
 
-          subject,
-
-          level,
-
-          curriculum,
+          assignments:
+            normalizedAssignments,
         },
       },
       {
@@ -919,6 +925,26 @@ export async function POST(
       "POST /api/admin/tutors error:",
       error
     )
+
+    if (
+      createdTutorId
+    ) {
+      await supabaseAdmin
+        .from("tutor_subjects")
+        .delete()
+        .eq(
+          "tutor_id",
+          createdTutorId
+        )
+
+      await supabaseAdmin
+        .from("users")
+        .delete()
+        .eq(
+          "id",
+          createdTutorId
+        )
+    }
 
     if (
       error instanceof Error &&
@@ -963,4 +989,3 @@ export async function POST(
     )
   }
 }
-

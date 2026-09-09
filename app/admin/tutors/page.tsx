@@ -38,6 +38,13 @@ import { Input } from "@/components/ui/input"
 
 type TutorStatus = "Active" | "Pending" | "Inactive"
 
+type TutorAssignment = {
+  id: string
+  subject: string
+  level: string
+  curriculum: string
+}
+
 type Tutor = {
   id: string
   name: string
@@ -46,6 +53,7 @@ type Tutor = {
   subjects: string[]
   levels: string[]
   curricula: string[]
+  assignments: TutorAssignment[]
   students: number
   status: TutorStatus
   experience: string
@@ -57,15 +65,14 @@ type NewTutor = {
   name: string
   email: string
   phone: string
-  subject: string
-  level: string
-  curriculum: string
+  assignments: TutorAssignment[]
 }
 
 type EditTutor = {
   name: string
   email: string
   phone: string
+  assignments: TutorAssignment[]
 }
 
 const subjectOptions = [
@@ -91,20 +98,37 @@ const levelOptions = ["O-Level", "A-Level"]
 
 const curriculumOptions = ["ZIMSEC", "Cambridge"]
 
-const emptyNewTutor: NewTutor = {
-  name: "",
-  email: "",
-  phone: "",
-  subject: "Mathematics",
-  level: "O-Level",
-  curriculum: "ZIMSEC",
+function createAssignment(): TutorAssignment {
+  return {
+    id: crypto.randomUUID(),
+    subject: "Mathematics",
+    level: "O-Level",
+    curriculum: "ZIMSEC",
+  }
 }
 
-const emptyEditTutor: EditTutor = {
-  name: "",
-  email: "",
-  phone: "",
+function createEmptyNewTutor(): NewTutor {
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    assignments: [
+      createAssignment(),
+    ],
+  }
 }
+
+function createEmptyEditTutor(): EditTutor {
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    assignments: [],
+  }
+}
+
+const emptyNewTutor = createEmptyNewTutor()
+const emptyEditTutor = createEmptyEditTutor()
 
 export default function AdminTutorsPage() {
   const [tutors, setTutors] = useState<Tutor[]>([])
@@ -164,7 +188,14 @@ export default function AdminTutorsPage() {
 
       setTutors(
         Array.isArray(data?.tutors)
-          ? data.tutors
+          ? data.tutors.map((tutor: Tutor) => ({
+              ...tutor,
+              assignments: Array.isArray(
+                tutor.assignments
+              )
+                ? tutor.assignments
+                : [],
+            }))
           : []
       )
     } catch (err) {
@@ -273,12 +304,155 @@ export default function AdminTutorsPage() {
   ).length
 
   /*
+   * Update one assignment in the Add Tutor form.
+   */
+  function updateNewAssignment(
+    assignmentId: string,
+    field: keyof TutorAssignment,
+    value: string
+  ) {
+    setNewTutor((current) => ({
+      ...current,
+      assignments:
+        current.assignments.map(
+          (assignment) =>
+            assignment.id === assignmentId
+              ? {
+                  ...assignment,
+                  [field]: value,
+                }
+              : assignment
+        ),
+    }))
+  }
+
+  /*
+   * Add a new teaching assignment.
+   */
+  function addNewAssignment() {
+    setNewTutor((current) => ({
+      ...current,
+      assignments: [
+        ...current.assignments,
+        createAssignment(),
+      ],
+    }))
+  }
+
+  /*
+   * Remove one teaching assignment.
+   */
+  function removeNewAssignment(
+    assignmentId: string
+  ) {
+    setNewTutor((current) => ({
+      ...current,
+      assignments:
+        current.assignments.filter(
+          (assignment) =>
+            assignment.id !== assignmentId
+        ),
+    }))
+  }
+
+  /*
+   * Update one assignment in the Edit Tutor form.
+   */
+  function updateEditAssignment(
+    assignmentId: string,
+    field: keyof TutorAssignment,
+    value: string
+  ) {
+    setEditTutor((current) => ({
+      ...current,
+      assignments:
+        current.assignments.map(
+          (assignment) =>
+            assignment.id === assignmentId
+              ? {
+                  ...assignment,
+                  [field]: value,
+                }
+              : assignment
+        ),
+    }))
+  }
+
+  /*
+   * Add a new assignment while editing.
+   */
+  function addEditAssignment() {
+    setEditTutor((current) => ({
+      ...current,
+      assignments: [
+        ...current.assignments,
+        createAssignment(),
+      ],
+    }))
+  }
+
+  /*
+   * Remove an assignment while editing.
+   */
+  function removeEditAssignment(
+    assignmentId: string
+  ) {
+    setEditTutor((current) => ({
+      ...current,
+      assignments:
+        current.assignments.filter(
+          (assignment) =>
+            assignment.id !== assignmentId
+        ),
+    }))
+  }
+
+  /*
+   * Check that assignment rows are complete
+   * and that the same exact combination has
+   * not been entered twice.
+   */
+  function validateAssignments(
+    assignments: TutorAssignment[]
+  ): string | null {
+    if (assignments.length === 0) {
+      return "Please add at least one teaching assignment."
+    }
+
+    for (const assignment of assignments) {
+      if (!assignment.subject) {
+        return "Please select a subject for every teaching assignment."
+      }
+
+      if (!assignment.level) {
+        return "Please select a level for every teaching assignment."
+      }
+
+      if (!assignment.curriculum) {
+        return "Please select a curriculum for every teaching assignment."
+      }
+    }
+
+    const combinations = assignments.map(
+      (assignment) =>
+        `${assignment.subject.trim().toLowerCase()}|${assignment.level.trim().toLowerCase()}|${assignment.curriculum.trim().toLowerCase()}`
+    )
+
+    if (
+      new Set(combinations).size !==
+      combinations.length
+    ) {
+      return "The same subject, level and curriculum combination cannot be added twice."
+    }
+
+    return null
+  }
+
+  /*
    * Create a real tutor account.
    *
-   * IMPORTANT:
-   * The invitation token is NOT generated here.
-   * The server generates the secure token, stores only
-   * its hash, and emails the raw token to the tutor.
+   * The server generates the secure invitation
+   * token and emails it to the tutor.
    */
   async function handleAddTutor() {
     setError("")
@@ -307,6 +481,16 @@ export default function AdminTutorsPage() {
       return
     }
 
+    const assignmentError =
+      validateAssignments(
+        newTutor.assignments
+      )
+
+    if (assignmentError) {
+      setError(assignmentError)
+      return
+    }
+
     try {
       setSaving(true)
 
@@ -323,12 +507,17 @@ export default function AdminTutorsPage() {
             name,
             email,
             phone,
-            subject:
-              newTutor.subject,
-            level:
-              newTutor.level,
-            curriculum:
-              newTutor.curriculum,
+            assignments:
+              newTutor.assignments.map(
+                (assignment) => ({
+                  subject:
+                    assignment.subject.trim(),
+                  level:
+                    assignment.level.trim(),
+                  curriculum:
+                    assignment.curriculum.trim(),
+                })
+              ),
           }),
         }
       )
@@ -349,9 +538,9 @@ export default function AdminTutorsPage() {
        */
       await loadTutors()
 
-      setNewTutor({
-        ...emptyNewTutor,
-      })
+      setNewTutor(
+        createEmptyNewTutor()
+      )
 
       setShowAddTutor(false)
 
@@ -374,6 +563,12 @@ export default function AdminTutorsPage() {
 
   /*
    * Open edit modal.
+   *
+   * Important:
+   * We copy the actual assignment rows rather
+   * than reconstructing them from subjects,
+   * levels and curricula. This preserves the
+   * exact subject/level/curriculum relationship.
    */
   function handleOpenEdit(
     tutor: Tutor
@@ -384,6 +579,24 @@ export default function AdminTutorsPage() {
       name: tutor.name,
       email: tutor.email,
       phone: tutor.phone,
+      assignments:
+        Array.isArray(tutor.assignments)
+          ? tutor.assignments.map(
+              (assignment) => ({
+                id:
+                  assignment.id ||
+                  crypto.randomUUID(),
+                subject:
+                  assignment.subject || "",
+                level:
+                  assignment.level ||
+                  "O-Level",
+                curriculum:
+                  assignment.curriculum ||
+                  "ZIMSEC",
+              })
+            )
+          : [],
     })
 
     setError("")
@@ -393,7 +606,7 @@ export default function AdminTutorsPage() {
   }
 
   /*
-   * Save tutor profile changes.
+   * Save tutor profile and teaching assignments.
    */
   async function handleSaveEdit() {
     if (!selectedTutor) return
@@ -426,6 +639,16 @@ export default function AdminTutorsPage() {
       return
     }
 
+    const assignmentError =
+      validateAssignments(
+        editTutor.assignments
+      )
+
+    if (assignmentError) {
+      setError(assignmentError)
+      return
+    }
+
     try {
       setEditing(true)
 
@@ -442,6 +665,17 @@ export default function AdminTutorsPage() {
             name,
             email,
             phone,
+            assignments:
+              editTutor.assignments.map(
+                (assignment) => ({
+                  subject:
+                    assignment.subject.trim(),
+                  level:
+                    assignment.level.trim(),
+                  curriculum:
+                    assignment.curriculum.trim(),
+                })
+              ),
           }),
         }
       )
@@ -463,7 +697,7 @@ export default function AdminTutorsPage() {
 
       setSuccess(
         data?.message ||
-          "Tutor information updated successfully."
+          "Tutor information and teaching assignments updated successfully."
       )
     } catch (err) {
       console.error(err)
@@ -728,6 +962,9 @@ export default function AdminTutorsPage() {
                 onClick={() => {
                   setError("")
                   setSuccess("")
+                  setNewTutor(
+                    createEmptyNewTutor()
+                  )
                   setShowAddTutor(true)
                 }}
                 className="shrink-0"
@@ -1086,6 +1323,9 @@ export default function AdminTutorsPage() {
                     className="mt-5"
                     onClick={() => {
                       setError("")
+                      setNewTutor(
+                        createEmptyNewTutor()
+                      )
                       setShowAddTutor(
                         true
                       )
@@ -1210,7 +1450,7 @@ export default function AdminTutorsPage() {
                               </div>
                             </td>
 
-                            {/* Levels */}
+                            {/* Levels / Curricula */}
                             <td className="px-4 py-5">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap gap-1">
@@ -1475,7 +1715,7 @@ export default function AdminTutorsPage() {
 
       {showAddTutor && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-xl border bg-background shadow-2xl">
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b p-5">
               <div>
                 <h2 className="text-lg font-semibold">
@@ -1484,8 +1724,10 @@ export default function AdminTutorsPage() {
 
                 <p className="text-sm text-muted-foreground">
                   Create a tutor account
-                  and send a secure
-                  activation invitation.
+                  and assign every
+                  subject, level and
+                  curriculum they can
+                  teach.
                 </p>
               </div>
 
@@ -1563,102 +1805,268 @@ export default function AdminTutorsPage() {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Primary Subject
-                  </label>
+              {/* ================================================= */}
+              {/* TEACHING ASSIGNMENTS                             */}
+              {/* ================================================= */}
 
-                  <select
-                    value={
-                      newTutor.subject
-                    }
-                    disabled={saving}
-                    onChange={(event) =>
-                      setNewTutor({
-                        ...newTutor,
-                        subject:
-                          event.target
-                            .value,
-                      })
-                    }
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {subjectOptions.map(
-                      (subject) => (
-                        <option
-                          key={subject}
-                          value={subject}
-                        >
-                          {subject}
-                        </option>
-                      )
-                    )}
-                  </select>
+              <div className="space-y-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <label className="block text-sm font-semibold">
+                      Teaching Assignments
+                    </label>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Add each subject,
+                      level and
+                      curriculum combination
+                      separately.
+                    </p>
+                  </div>
+
+                  <Badge variant="secondary">
+                    {newTutor.assignments.length}{" "}
+                    assignment
+                    {newTutor.assignments.length !==
+                    1
+                      ? "s"
+                      : ""}
+                  </Badge>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Level
-                  </label>
+                {newTutor.assignments.map(
+                  (
+                    assignment,
+                    index
+                  ) => (
+                    <div
+                      key={
+                        assignment.id
+                      }
+                      className="rounded-xl border bg-muted/20 p-4"
+                    >
+                      <div className="mb-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            Assignment{" "}
+                            {index + 1}
+                          </p>
 
-                  <select
-                    value={newTutor.level}
-                    disabled={saving}
-                    onChange={(event) =>
-                      setNewTutor({
-                        ...newTutor,
-                        level:
-                          event.target
-                            .value,
-                      })
-                    }
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {levelOptions.map(
-                      (level) => (
-                        <option
-                          key={level}
-                          value={level}
-                        >
-                          {level}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
+                          <p className="text-xs text-muted-foreground">
+                            Subject + level +
+                            curriculum
+                          </p>
+                        </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Curriculum
-                  </label>
+                        {newTutor
+                          .assignments
+                          .length > 1 && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={
+                              saving
+                            }
+                            title="Remove assignment"
+                            onClick={() =>
+                              removeNewAssignment(
+                                assignment.id
+                              )
+                            }
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
 
-                  <select
-                    value={
-                      newTutor.curriculum
-                    }
-                    disabled={saving}
-                    onChange={(event) =>
-                      setNewTutor({
-                        ...newTutor,
-                        curriculum:
-                          event.target
-                            .value,
-                      })
-                    }
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {curriculumOptions.map(
-                      (curriculum) => (
-                        <option
-                          key={curriculum}
-                          value={curriculum}
-                        >
-                          {curriculum}
-                        </option>
-                      )
-                    )}
-                  </select>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="mb-2 block text-sm font-medium">
+                            Subject
+                          </label>
+
+                          <select
+                            value={
+                              assignment.subject
+                            }
+                            disabled={
+                              saving
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              updateNewAssignment(
+                                assignment.id,
+                                "subject",
+                                event.target
+                                  .value
+                              )
+                            }
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <option value="">
+                              Select subject
+                            </option>
+
+                            {subjectOptions.map(
+                              (
+                                subject
+                              ) => (
+                                <option
+                                  key={
+                                    subject
+                                  }
+                                  value={
+                                    subject
+                                  }
+                                >
+                                  {
+                                    subject
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-medium">
+                            Level
+                          </label>
+
+                          <select
+                            value={
+                              assignment.level
+                            }
+                            disabled={
+                              saving
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              updateNewAssignment(
+                                assignment.id,
+                                "level",
+                                event.target
+                                  .value
+                              )
+                            }
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            {levelOptions.map(
+                              (
+                                level
+                              ) => (
+                                <option
+                                  key={
+                                    level
+                                  }
+                                  value={
+                                    level
+                                  }
+                                >
+                                  {
+                                    level
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-medium">
+                            Curriculum
+                          </label>
+
+                          <select
+                            value={
+                              assignment.curriculum
+                            }
+                            disabled={
+                              saving
+                            }
+                            onChange={(
+                              event
+                            ) =>
+                              updateNewAssignment(
+                                assignment.id,
+                                "curriculum",
+                                event.target
+                                  .value
+                              )
+                            }
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            {curriculumOptions.map(
+                              (
+                                curriculum
+                              ) => (
+                                <option
+                                  key={
+                                    curriculum
+                                  }
+                                  value={
+                                    curriculum
+                                  }
+                                >
+                                  {
+                                    curriculum
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={
+                    addNewAssignment
+                  }
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Teaching Assignment
+                </Button>
+
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  <div className="flex gap-3">
+                    <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Example
+                      </p>
+
+                      <p className="mt-1">
+                        A tutor can teach
+                        Mathematics,
+                        Geography and
+                        English under
+                        ZIMSEC, while also
+                        teaching Mathematics
+                        under Cambridge.
+                      </p>
+
+                      <p className="mt-2">
+                        Each combination
+                        is stored separately
+                        in the{" "}
+                        <strong>
+                          tutor_subjects
+                        </strong>{" "}
+                        table.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1735,7 +2143,7 @@ export default function AdminTutorsPage() {
       {showViewTutor &&
         selectedTutor && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-2xl rounded-xl border bg-background shadow-2xl">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border bg-background shadow-2xl">
               <div className="flex items-center justify-between border-b p-5">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1839,6 +2247,97 @@ export default function AdminTutorsPage() {
                   </div>
                 </div>
 
+                {/* Exact Teaching Assignments */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold">
+                      Teaching Assignments
+                    </p>
+
+                    <Badge variant="secondary">
+                      {
+                        selectedTutor
+                          .assignments
+                          .length
+                      }{" "}
+                      assignment
+                      {selectedTutor
+                        .assignments
+                        .length !== 1
+                        ? "s"
+                        : ""}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    {selectedTutor.assignments
+                      .length > 0 ? (
+                      selectedTutor.assignments.map(
+                        (
+                          assignment
+                        ) => (
+                          <div
+                            key={
+                              assignment.id
+                            }
+                            className="rounded-lg border p-3"
+                          >
+                            <div className="grid gap-3 sm:grid-cols-3">
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Subject
+                                </p>
+
+                                <p className="mt-1 text-sm font-medium">
+                                  {
+                                    assignment.subject
+                                  }
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Level
+                                </p>
+
+                                <Badge
+                                  variant="outline"
+                                  className="mt-1"
+                                >
+                                  {
+                                    assignment.level
+                                  }
+                                </Badge>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Curriculum
+                                </p>
+
+                                <Badge
+                                  variant="secondary"
+                                  className="mt-1"
+                                >
+                                  {
+                                    assignment.curriculum
+                                  }
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )
+                    ) : (
+                      <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        No teaching assignments
+                        recorded.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Subjects */}
                 <div>
                   <p className="mb-3 text-sm font-semibold">
                     Subjects
@@ -1858,6 +2357,7 @@ export default function AdminTutorsPage() {
                   </div>
                 </div>
 
+                {/* Academic Coverage */}
                 <div>
                   <p className="mb-3 text-sm font-semibold">
                     Academic Coverage
@@ -1939,7 +2439,7 @@ export default function AdminTutorsPage() {
       {showEditTutor &&
         selectedTutor && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-xl border bg-background shadow-2xl">
+            <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl border bg-background shadow-2xl">
               <div className="flex items-center justify-between border-b p-5">
                 <div>
                   <h2 className="text-lg font-semibold">
@@ -1948,7 +2448,8 @@ export default function AdminTutorsPage() {
 
                   <p className="text-sm text-muted-foreground">
                     Update tutor account
-                    information.
+                    information and
+                    teaching assignments.
                   </p>
                 </div>
 
@@ -1967,44 +2468,48 @@ export default function AdminTutorsPage() {
               </div>
 
               <div className="space-y-5 p-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Full Name
-                  </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Full Name
+                    </label>
 
-                  <Input
-                    value={editTutor.name}
-                    disabled={editing}
-                    onChange={(event) =>
-                      setEditTutor({
-                        ...editTutor,
-                        name: event.target
-                          .value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium">
-                    Email Address
-                  </label>
-
-                  <Input
-                    type="email"
-                    value={
-                      editTutor.email
-                    }
-                    disabled={editing}
-                    onChange={(event) =>
-                      setEditTutor({
-                        ...editTutor,
-                        email:
-                          event.target
+                    <Input
+                      value={
+                        editTutor.name
+                      }
+                      disabled={editing}
+                      onChange={(event) =>
+                        setEditTutor({
+                          ...editTutor,
+                          name: event.target
                             .value,
-                      })
-                    }
-                  />
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Email Address
+                    </label>
+
+                    <Input
+                      type="email"
+                      value={
+                        editTutor.email
+                      }
+                      disabled={editing}
+                      onChange={(event) =>
+                        setEditTutor({
+                          ...editTutor,
+                          email:
+                            event.target
+                              .value,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -2026,6 +2531,283 @@ export default function AdminTutorsPage() {
                       })
                     }
                   />
+                </div>
+
+                {/* ================================================= */}
+                {/* EDIT TEACHING ASSIGNMENTS                       */}
+                {/* ================================================= */}
+
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <label className="block text-sm font-semibold">
+                        Teaching Assignments
+                      </label>
+
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Add, remove or change
+                        the subjects,
+                        levels and curricula
+                        this tutor teaches.
+                      </p>
+                    </div>
+
+                    <Badge variant="secondary">
+                      {
+                        editTutor
+                          .assignments
+                          .length
+                      }{" "}
+                      assignment
+                      {editTutor
+                        .assignments
+                        .length !== 1
+                        ? "s"
+                        : ""}
+                    </Badge>
+                  </div>
+
+                  {editTutor.assignments.map(
+                    (
+                      assignment,
+                      index
+                    ) => (
+                      <div
+                        key={
+                          assignment.id
+                        }
+                        className="rounded-xl border bg-muted/20 p-4"
+                      >
+                        <div className="mb-4 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Assignment{" "}
+                              {index + 1}
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              Subject + level +
+                              curriculum
+                            </p>
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={
+                              editing
+                            }
+                            title="Remove assignment"
+                            onClick={() =>
+                              removeEditAssignment(
+                                assignment.id
+                              )
+                            }
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              Subject
+                            </label>
+
+                            <select
+                              value={
+                                assignment.subject
+                              }
+                              disabled={
+                                editing
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                updateEditAssignment(
+                                  assignment.id,
+                                  "subject",
+                                  event.target
+                                    .value
+                                )
+                              }
+                              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              <option value="">
+                                Select subject
+                              </option>
+
+                              {subjectOptions.map(
+                                (
+                                  subject
+                                ) => (
+                                  <option
+                                    key={
+                                      subject
+                                    }
+                                    value={
+                                      subject
+                                    }
+                                  >
+                                    {
+                                      subject
+                                    }
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              Level
+                            </label>
+
+                            <select
+                              value={
+                                assignment.level
+                              }
+                              disabled={
+                                editing
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                updateEditAssignment(
+                                  assignment.id,
+                                  "level",
+                                  event.target
+                                    .value
+                                )
+                              }
+                              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              {levelOptions.map(
+                                (
+                                  level
+                                ) => (
+                                  <option
+                                    key={
+                                      level
+                                    }
+                                    value={
+                                      level
+                                    }
+                                  >
+                                    {
+                                      level
+                                    }
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              Curriculum
+                            </label>
+
+                            <select
+                              value={
+                                assignment.curriculum
+                              }
+                              disabled={
+                                editing
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                updateEditAssignment(
+                                  assignment.id,
+                                  "curriculum",
+                                  event.target
+                                    .value
+                                )
+                              }
+                              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              {curriculumOptions.map(
+                                (
+                                  curriculum
+                                ) => (
+                                  <option
+                                    key={
+                                      curriculum
+                                    }
+                                    value={
+                                      curriculum
+                                    }
+                                  >
+                                    {
+                                      curriculum
+                                    }
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={editing}
+                    onClick={
+                      addEditAssignment
+                    }
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Teaching Assignment
+                  </Button>
+
+                  <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                    <div className="flex gap-3">
+                      <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+
+                      <div>
+                        <p className="font-medium text-foreground">
+                          Each row is independent
+                        </p>
+
+                        <p className="mt-1">
+                          For example, the
+                          same tutor can have:
+                        </p>
+
+                        <ul className="mt-2 list-disc space-y-1 pl-5">
+                          <li>
+                            Mathematics —
+                            A-Level —
+                            ZIMSEC
+                          </li>
+
+                          <li>
+                            Geography —
+                            A-Level —
+                            ZIMSEC
+                          </li>
+
+                          <li>
+                            English Language
+                            — O-Level —
+                            ZIMSEC
+                          </li>
+
+                          <li>
+                            Mathematics —
+                            O-Level —
+                            Cambridge
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
