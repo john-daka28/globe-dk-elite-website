@@ -58,6 +58,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+type Subject = {
+  id: string
+  name: string
+  is_active?: boolean
+}
+
 type Resource = {
   id: string
   created_by: string
@@ -116,30 +122,7 @@ const resourceTypes = [
   "Other",
 ]
 
-const subjects = [
-  "Mathematics",
-  "English Language",
-  "Shona",
-  "Combined Science",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "Geography",
-  "History",
-  "Commerce",
-  "Accounts",
-  "Business Studies",
-  "Economics",
-  "Statistics",
-  "Pure Mathematics",
-  "Agriculture",
-  "Heritage",
-]
-
-function formatFileSize(
-  bytes: number | null
-) {
+function formatFileSize(bytes: number | null) {
   if (!bytes) {
     return ""
   }
@@ -152,18 +135,12 @@ function formatFileSize(
     return `${(bytes / 1024).toFixed(1)} KB`
   }
 
-  return `${(
-    bytes /
-    (1024 * 1024)
-  ).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function isPdf(
-  resource: Resource
-) {
+function isPdf(resource: Resource) {
   return (
-    resource.mime_type ===
-      "application/pdf" ||
+    resource.mime_type === "application/pdf" ||
     Boolean(resource.file_path)
   )
 }
@@ -172,14 +149,18 @@ export default function TutorResourcesPage() {
   const router = useRouter()
 
   const fileInputRef =
-    useRef<HTMLInputElement | null>(
-      null
-    )
+    useRef<HTMLInputElement | null>(null)
 
   const [resources, setResources] =
     useState<Resource[]>([])
 
+  const [subjects, setSubjects] =
+    useState<Subject[]>([])
+
   const [loading, setLoading] =
+    useState(true)
+
+  const [loadingSubjects, setLoadingSubjects] =
     useState(true)
 
   const [search, setSearch] =
@@ -197,14 +178,10 @@ export default function TutorResourcesPage() {
   const [
     editingResource,
     setEditingResource,
-  ] = useState<Resource | null>(
-    null
-  )
+  ] = useState<Resource | null>(null)
 
   const [form, setForm] =
-    useState<ResourceForm>(
-      emptyForm
-    )
+    useState<ResourceForm>(emptyForm)
 
   const [selectedFile, setSelectedFile] =
     useState<File | null>(null)
@@ -231,9 +208,61 @@ export default function TutorResourcesPage() {
   const [
     previewResource,
     setPreviewResource,
-  ] = useState<Resource | null>(
-    null
-  )
+  ] = useState<Resource | null>(null)
+
+  /*
+   * ----------------------------------------------------------
+   * LOAD SUBJECTS
+   * ----------------------------------------------------------
+   */
+
+  async function loadSubjects() {
+    try {
+      setLoadingSubjects(true)
+
+      const response = await fetch(
+        "/api/tutor/subjects",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }
+      )
+
+      const data = await response.json()
+
+      if (response.status === 401) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(
+            "/tutor/resources"
+          )}`
+        )
+
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to load subjects."
+        )
+      }
+
+      setSubjects(
+        Array.isArray(data.subjects)
+          ? data.subjects
+          : []
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load subjects."
+      )
+    } finally {
+      setLoadingSubjects(false)
+    }
+  }
 
   /*
    * ----------------------------------------------------------
@@ -246,18 +275,16 @@ export default function TutorResourcesPage() {
       setLoading(true)
       setError("")
 
-      const response =
-        await fetch(
-          "/api/tutor/resources",
-          {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-          }
-        )
+      const response = await fetch(
+        "/api/tutor/resources",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }
+      )
 
-      const data =
-        await response.json()
+      const data = await response.json()
 
       if (response.status === 401) {
         router.push(
@@ -277,7 +304,9 @@ export default function TutorResourcesPage() {
       }
 
       setResources(
-        data.resources || []
+        Array.isArray(data.resources)
+          ? data.resources
+          : []
       )
     } catch (err) {
       setError(
@@ -290,8 +319,15 @@ export default function TutorResourcesPage() {
     }
   }
 
+  /*
+   * ----------------------------------------------------------
+   * INITIAL LOAD
+   * ----------------------------------------------------------
+   */
+
   useEffect(() => {
     loadResources()
+    loadSubjects()
   }, [])
 
   /*
@@ -300,63 +336,49 @@ export default function TutorResourcesPage() {
    * ----------------------------------------------------------
    */
 
-  const filteredResources =
-    useMemo(() => {
-      const searchValue =
-        search
-          .trim()
-          .toLowerCase()
+  const filteredResources = useMemo(() => {
+    const searchValue =
+      search.trim().toLowerCase()
 
-      return resources.filter(
-        (resource) => {
-          const matchesSearch =
-            !searchValue ||
-            resource.title
-              .toLowerCase()
-              .includes(
-                searchValue
-              ) ||
-            resource.description
-              ?.toLowerCase()
-              .includes(
-                searchValue
-              ) ||
-            resource.subject
-              ?.toLowerCase()
-              .includes(
-                searchValue
-              ) ||
-            resource.file_name
-              ?.toLowerCase()
-              .includes(
-                searchValue
-              )
+    return resources.filter(
+      (resource) => {
+        const matchesSearch =
+          !searchValue ||
+          resource.title
+            .toLowerCase()
+            .includes(searchValue) ||
+          resource.description
+            ?.toLowerCase()
+            .includes(searchValue) ||
+          resource.subject
+            ?.toLowerCase()
+            .includes(searchValue) ||
+          resource.file_name
+            ?.toLowerCase()
+            .includes(searchValue)
 
-          const matchesLevel =
-            levelFilter ===
-              "all" ||
-            resource.level ===
-              levelFilter
+        const matchesLevel =
+          levelFilter === "all" ||
+          resource.level === levelFilter
 
-          const matchesType =
-            typeFilter ===
-              "all" ||
-            resource.resource_type ===
-              typeFilter
+        const matchesType =
+          typeFilter === "all" ||
+          resource.resource_type ===
+            typeFilter
 
-          return (
-            matchesSearch &&
-            matchesLevel &&
-            matchesType
-          )
-        }
-      )
-    }, [
-      resources,
-      search,
-      levelFilter,
-      typeFilter,
-    ])
+        return (
+          matchesSearch &&
+          matchesLevel &&
+          matchesType
+        )
+      }
+    )
+  }, [
+    resources,
+    search,
+    levelFilter,
+    typeFilter,
+  ])
 
   /*
    * ----------------------------------------------------------
@@ -364,39 +386,34 @@ export default function TutorResourcesPage() {
    * ----------------------------------------------------------
    */
 
-  const statistics =
-    useMemo(() => {
-      return {
-        total:
-          resources.length,
+  const statistics = useMemo(() => {
+    return {
+      total: resources.length,
 
-        published:
-          resources.filter(
-            (resource) =>
-              resource.is_published
-          ).length,
+      published:
+        resources.filter(
+          (resource) =>
+            resource.is_published
+        ).length,
 
-        oLevel:
-          resources.filter(
-            (resource) =>
-              resource.level ===
-              "O-Level"
-          ).length,
+      oLevel:
+        resources.filter(
+          (resource) =>
+            resource.level === "O-Level"
+        ).length,
 
-        aLevel:
-          resources.filter(
-            (resource) =>
-              resource.level ===
-              "A-Level"
-          ).length,
+      aLevel:
+        resources.filter(
+          (resource) =>
+            resource.level === "A-Level"
+        ).length,
 
-        pdfs:
-          resources.filter(
-            (resource) =>
-              isPdf(resource)
-          ).length,
-      }
-    }, [resources])
+      pdfs:
+        resources.filter((resource) =>
+          isPdf(resource)
+        ).length,
+    }
+  }, [resources])
 
   /*
    * ----------------------------------------------------------
@@ -414,6 +431,7 @@ export default function TutorResourcesPage() {
     setSelectedFile(null)
 
     setError("")
+
     setSuccess("")
 
     setShowModal(true)
@@ -428,28 +446,23 @@ export default function TutorResourcesPage() {
       title: resource.title,
 
       description:
-        resource.description ||
-        "",
+        resource.description || "",
 
       resource_type:
         resource.resource_type ||
         "Other",
 
       subject:
-        resource.subject ||
-        "",
+        resource.subject || "",
 
       level:
-        resource.level ||
-        "",
+        resource.level || "",
 
       curriculum:
-        resource.curriculum ||
-        "",
+        resource.curriculum || "",
 
       url:
-        resource.url ||
-        "",
+        resource.url || "",
 
       is_published:
         resource.is_published,
@@ -458,6 +471,7 @@ export default function TutorResourcesPage() {
     setSelectedFile(null)
 
     setError("")
+
     setSuccess("")
 
     setShowModal(true)
@@ -482,21 +496,18 @@ export default function TutorResourcesPage() {
     setSelectedFile(null)
 
     setError("")
+
     setSuccess("")
   }
 
   function updateField(
     field: keyof ResourceForm,
-    value:
-      | string
-      | boolean
+    value: string | boolean
   ) {
-    setForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      })
-    )
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
   }
 
   /*
@@ -547,8 +558,10 @@ export default function TutorResourcesPage() {
     setSelectedFile(file)
 
     /*
-     * If title is empty, automatically use filename.
+     * If title is empty,
+     * automatically use filename.
      */
+
     if (!form.title.trim()) {
       updateField(
         "title",
@@ -567,9 +580,7 @@ export default function TutorResourcesPage() {
    */
 
   async function saveResource() {
-    if (
-      !form.title.trim()
-    ) {
+    if (!form.title.trim()) {
       setError(
         "Please enter a resource title."
       )
@@ -578,8 +589,10 @@ export default function TutorResourcesPage() {
     }
 
     /*
-     * If a PDF was selected, use the upload API.
+     * If a PDF was selected,
+     * use the upload API.
      */
+
     if (selectedFile) {
       await uploadPdf()
 
@@ -587,18 +600,19 @@ export default function TutorResourcesPage() {
     }
 
     /*
-     * Otherwise use the normal JSON resource API.
+     * Otherwise use normal
+     * JSON resource API.
      */
+
     try {
       setSaving(true)
 
       setError("")
+
       setSuccess("")
 
       const isEditing =
-        Boolean(
-          editingResource
-        )
+        Boolean(editingResource)
 
       const response =
         await fetch(
@@ -650,8 +664,7 @@ export default function TutorResourcesPage() {
         await response.json()
 
       if (
-        response.status ===
-        401
+        response.status === 401
       ) {
         router.push(
           `/login?callbackUrl=${encodeURIComponent(
@@ -724,6 +737,7 @@ export default function TutorResourcesPage() {
       setUploadingFile(true)
 
       setError("")
+
       setSuccess("")
 
       const formData =
@@ -765,6 +779,11 @@ export default function TutorResourcesPage() {
       )
 
       formData.append(
+        "url",
+        form.url
+      )
+
+      formData.append(
         "is_published",
         String(
           form.is_published
@@ -795,8 +814,7 @@ export default function TutorResourcesPage() {
         await response.json()
 
       if (
-        response.status ===
-        401
+        response.status === 401
       ) {
         router.push(
           `/login?callbackUrl=${encodeURIComponent(
@@ -815,9 +833,11 @@ export default function TutorResourcesPage() {
       }
 
       /*
-       * Reload so the newly generated
-       * signed URL is available.
+       * Reload resources so
+       * latest file information
+       * is displayed.
        */
+
       await loadResources()
 
       setSuccess(
@@ -879,6 +899,7 @@ export default function TutorResourcesPage() {
           `/api/tutor/resources/${resource.id}`,
           {
             method: "DELETE",
+
             credentials:
               "include",
           }
@@ -888,8 +909,7 @@ export default function TutorResourcesPage() {
         await response.json()
 
       if (
-        response.status ===
-        401
+        response.status === 401
       ) {
         router.push(
           `/login?callbackUrl=${encodeURIComponent(
@@ -995,11 +1015,12 @@ export default function TutorResourcesPage() {
             </div>
           )}
 
-          {success && !showModal && (
-            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700">
-              {success}
-            </div>
-          )}
+          {success &&
+            !showModal && (
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700">
+                {success}
+              </div>
+            )}
 
           {/* STATISTICS */}
 
@@ -1011,9 +1032,7 @@ export default function TutorResourcesPage() {
                 </CardDescription>
 
                 <CardTitle className="text-3xl">
-                  {
-                    statistics.total
-                  }
+                  {statistics.total}
                 </CardTitle>
               </CardHeader>
 
@@ -1032,9 +1051,7 @@ export default function TutorResourcesPage() {
                 </CardDescription>
 
                 <CardTitle className="text-3xl">
-                  {
-                    statistics.published
-                  }
+                  {statistics.published}
                 </CardTitle>
               </CardHeader>
 
@@ -1053,9 +1070,7 @@ export default function TutorResourcesPage() {
                 </CardDescription>
 
                 <CardTitle className="text-3xl">
-                  {
-                    statistics.pdfs
-                  }
+                  {statistics.pdfs}
                 </CardTitle>
               </CardHeader>
 
@@ -1073,9 +1088,7 @@ export default function TutorResourcesPage() {
                 </CardDescription>
 
                 <CardTitle className="text-3xl">
-                  {
-                    statistics.oLevel
-                  }
+                  {statistics.oLevel}
                 </CardTitle>
               </CardHeader>
 
@@ -1093,9 +1106,7 @@ export default function TutorResourcesPage() {
                 </CardDescription>
 
                 <CardTitle className="text-3xl">
-                  {
-                    statistics.aLevel
-                  }
+                  {statistics.aLevel}
                 </CardTitle>
               </CardHeader>
 
@@ -1189,20 +1200,12 @@ export default function TutorResourcesPage() {
                       </SelectItem>
 
                       {resourceTypes.map(
-                        (
-                          type
-                        ) => (
+                        (type) => (
                           <SelectItem
-                            key={
-                              type
-                            }
-                            value={
-                              type
-                            }
+                            key={type}
+                            value={type}
                           >
-                            {
-                              type
-                            }
+                            {type}
                           </SelectItem>
                         )
                       )}
@@ -1241,16 +1244,13 @@ export default function TutorResourcesPage() {
                     }
                   >
                     <Plus className="mr-2 h-4 w-4" />
-
                     Add Resource
                   </Button>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {filteredResources.map(
-                    (
-                      resource
-                    ) => {
+                    (resource) => {
                       const pdf =
                         isPdf(
                           resource
@@ -1340,6 +1340,7 @@ export default function TutorResourcesPage() {
 
                                       <p className="text-xs text-muted-foreground">
                                         PDF
+
                                         {resource.file_size
                                           ? ` • ${formatFileSize(
                                               resource.file_size
@@ -1627,26 +1628,20 @@ export default function TutorResourcesPage() {
 
                     <SelectContent>
                       {resourceTypes.map(
-                        (
-                          type
-                        ) => (
+                        (type) => (
                           <SelectItem
-                            key={
-                              type
-                            }
-                            value={
-                              type
-                            }
+                            key={type}
+                            value={type}
                           >
-                            {
-                              type
-                            }
+                            {type}
                           </SelectItem>
                         )
                       )}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* DATABASE SUBJECT COMBOBOX */}
 
                 <div className="space-y-2">
                   <Label>
@@ -1669,9 +1664,22 @@ export default function TutorResourcesPage() {
                           : value
                       )
                     }
+                    disabled={
+                      loadingSubjects
+                    }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
+                      {loadingSubjects ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+
+                          <span>
+                            Loading subjects...
+                          </span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Select subject" />
+                      )}
                     </SelectTrigger>
 
                     <SelectContent>
@@ -1680,25 +1688,43 @@ export default function TutorResourcesPage() {
                       </SelectItem>
 
                       {subjects.map(
-                        (
-                          subject
-                        ) => (
+                        (subject) => (
                           <SelectItem
                             key={
-                              subject
+                              subject.id
                             }
                             value={
-                              subject
+                              subject.name
                             }
                           >
                             {
-                              subject
+                              subject.name
                             }
                           </SelectItem>
                         )
                       )}
                     </SelectContent>
                   </Select>
+
+                  {!loadingSubjects &&
+                    subjects.length ===
+                      0 && (
+                      <p className="text-xs text-destructive">
+                        No active subjects
+                        were found in the
+                        database.
+                      </p>
+                    )}
+
+                  {!loadingSubjects &&
+                    subjects.length >
+                      0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Select a subject from
+                        the subjects configured
+                        in the database.
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -1800,8 +1826,8 @@ export default function TutorResourcesPage() {
 
                   <p className="mt-1 text-xs text-muted-foreground">
                     Upload a PDF up to 20 MB.
-                    PDFs are stored securely in
-                    private Supabase Storage.
+                    PDFs are stored securely
+                    in private Supabase Storage.
                   </p>
                 </div>
 
@@ -1893,6 +1919,7 @@ export default function TutorResourcesPage() {
 
                           <p className="text-xs text-muted-foreground">
                             Current PDF
+
                             {editingResource.file_size
                               ? ` • ${formatFileSize(
                                   editingResource.file_size
