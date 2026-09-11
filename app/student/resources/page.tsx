@@ -242,13 +242,27 @@ async function addStorageUrls(
   | This URL allows the browser to open the PDF.
   |
   */
-  const previewResult =
-    await supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(
-        resource.file_path,
-        60 * 60
-      )
+  const [previewResult, downloadResult] =
+    await Promise.all([
+      supabaseAdmin.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(
+          resource.file_path,
+          60 * 60
+        ),
+
+      supabaseAdmin.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(
+          resource.file_path,
+          60 * 60,
+          {
+            download:
+              resource.file_name ||
+              true,
+          }
+        ),
+    ])
 
   let previewUrl:
     | string
@@ -284,18 +298,6 @@ async function addStorageUrls(
   | Content-Disposition.
   |
   */
-  const downloadResult =
-    await supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(
-        resource.file_path,
-        60 * 60,
-        {
-          download:
-            resource.file_name ||
-            true,
-        }
-      )
 
   let downloadUrl:
     | string
@@ -352,8 +354,9 @@ async function addStorageUrls(
 export default async function StudentResourcesPage({
   searchParams,
 }: {
-  searchParams?: SearchParams
+  searchParams: Promise<SearchParams>
 }) {
+  const params = await searchParams
   /* ============================================================
      SESSION / AUTHENTICATION
      ============================================================
@@ -615,19 +618,19 @@ export default async function StudentResourcesPage({
      ============================================================ */
 
   const searchTerm =
-    searchParams?.search?.trim().toLowerCase() || ""
+    params?.search?.trim().toLowerCase() || ""
 
   const selectedType =
-    searchParams?.type?.trim() || ""
+    params?.type?.trim() || ""
 
   const selectedSubject =
-    searchParams?.subject?.trim() || ""
+    params?.subject?.trim() || ""
 
   const selectedLevel =
-    searchParams?.level?.trim() || ""
+    params?.level?.trim() || ""
 
   const selectedCurriculum =
-    searchParams?.curriculum?.trim() || ""
+    params?.curriculum?.trim() || ""
 
   const uniqueValues = (
     values: Array<string | null>
@@ -982,7 +985,7 @@ export default async function StudentResourcesPage({
                   subjects={subjects}
                   levels={levels}
                   curricula={curricula}
-                  initialSearch={searchParams?.search || ""}
+                  initialSearch={params?.search || ""}
                   initialType={selectedType}
                   initialSubject={selectedSubject}
                   initialLevel={selectedLevel}
