@@ -53,6 +53,7 @@
     "html2canvas": "^1.4.1",
     "input-otp": "1.4.1",
     "jose": "^6.2.8",
+    "jsonwebtoken": "^9.0.3",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.454.0",
     "next": "15.2.6",
@@ -75,6 +76,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19",
