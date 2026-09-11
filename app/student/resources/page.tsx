@@ -25,6 +25,10 @@ import {
   StudentSidebar,
 } from "../../components/student/StudentSidebar"
 
+import {
+  ResourceFilters,
+} from "./ResourceFilters"
+
 type Resource = {
   id: string
   created_by: string
@@ -55,6 +59,14 @@ type Tutor = {
   id: string
   first_name: string | null
   last_name: string | null
+}
+
+type SearchParams = {
+  search?: string
+  type?: string
+  subject?: string
+  level?: string
+  curriculum?: string
 }
 
 /*
@@ -337,7 +349,11 @@ async function addStorageUrls(
 |--------------------------------------------------------------------------
 */
 
-export default async function StudentResourcesPage() {
+export default async function StudentResourcesPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams
+}) {
   /* ============================================================
      SESSION / AUTHENTICATION
      ============================================================
@@ -595,6 +611,135 @@ export default async function StudentResourcesPage() {
       : "Your tutor"
 
   /* ============================================================
+     SEARCH / FILTER OPTIONS
+     ============================================================ */
+
+  const searchTerm =
+    searchParams?.search?.trim().toLowerCase() || ""
+
+  const selectedType =
+    searchParams?.type?.trim() || ""
+
+  const selectedSubject =
+    searchParams?.subject?.trim() || ""
+
+  const selectedLevel =
+    searchParams?.level?.trim() || ""
+
+  const selectedCurriculum =
+    searchParams?.curriculum?.trim() || ""
+
+  const uniqueValues = (
+    values: Array<string | null>
+  ) =>
+    Array.from(
+      new Set(
+        values
+          .map((value) => value?.trim())
+          .filter(
+            (value): value is string =>
+              Boolean(value)
+          )
+      )
+    ).sort((a, b) =>
+      a.localeCompare(b)
+    )
+
+  const resourceTypes =
+    uniqueValues(
+      resources.map(
+        (resource) =>
+          resource.resource_type
+      )
+    )
+
+  const subjects =
+    uniqueValues(
+      resources.map(
+        (resource) =>
+          resource.subject
+      )
+    )
+
+  const levels =
+    uniqueValues(
+      resources.map(
+        (resource) =>
+          resource.level
+      )
+    )
+
+  const curricula =
+    uniqueValues(
+      resources.map(
+        (resource) =>
+          resource.curriculum
+      )
+    )
+
+  const filteredResources =
+    resources.filter(
+      (resource) => {
+        const searchableText =
+          [
+            resource.title,
+            resource.description,
+            resource.resource_type,
+            resource.subject,
+            resource.level,
+            resource.curriculum,
+            resource.file_name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+
+        const matchesSearch =
+          !searchTerm ||
+          searchableText.includes(
+            searchTerm
+          )
+
+        const matchesType =
+          !selectedType ||
+          resource.resource_type ===
+            selectedType
+
+        const matchesSubject =
+          !selectedSubject ||
+          resource.subject ===
+            selectedSubject
+
+        const matchesLevel =
+          !selectedLevel ||
+          resource.level ===
+            selectedLevel
+
+        const matchesCurriculum =
+          !selectedCurriculum ||
+          resource.curriculum ===
+            selectedCurriculum
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesSubject &&
+          matchesLevel &&
+          matchesCurriculum
+        )
+      }
+    )
+
+  const hasActiveFilters =
+    Boolean(
+      searchTerm ||
+        selectedType ||
+        selectedSubject ||
+        selectedLevel ||
+        selectedCurriculum
+    )
+
+  /* ============================================================
      PAGE
      ============================================================ */
 
@@ -825,22 +970,25 @@ export default async function StudentResourcesPage() {
                   </h2>
 
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Resources published by your assigned tutor.
+                    {hasActiveFilters
+                      ? `${filteredResources.length} of ${resources.length} resources shown.`
+                      : "Resources published by your assigned tutor."}
                   </p>
 
                 </div>
 
-                <div className="relative w-full sm:max-w-xs">
-
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-                  <input
-                    type="search"
-                    placeholder="Search resources..."
-                    className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20"
-                  />
-
-                </div>
+                <ResourceFilters
+                  resourceTypes={resourceTypes}
+                  subjects={subjects}
+                  levels={levels}
+                  curricula={curricula}
+                  initialSearch={searchParams?.search || ""}
+                  initialType={selectedType}
+                  initialSubject={selectedSubject}
+                  initialLevel={selectedLevel}
+                  initialCurriculum={selectedCurriculum}
+                  hasActiveFilters={hasActiveFilters}
+                />
 
               </div>
 
@@ -908,6 +1056,39 @@ export default async function StudentResourcesPage() {
 
               </div>
 
+            ) : filteredResources.length === 0 ? (
+
+              /* ==================================================
+                 NO SEARCH RESULTS
+                 ================================================== */
+
+              <div className="rounded-2xl border border-dashed bg-background p-8 text-center shadow-sm sm:p-12">
+
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+
+                  <Search className="h-8 w-8 text-muted-foreground" />
+
+                </div>
+
+                <h3 className="mt-5 text-lg font-semibold">
+                  No matching resources
+                </h3>
+
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+                  No resources match your current search or
+                  filters. Try a different search term or clear
+                  one or more filters.
+                </p>
+
+                <Link
+                  href="/student/resources"
+                  className="mt-5 inline-flex items-center justify-center rounded-xl border bg-background px-4 py-2.5 text-sm font-medium transition hover:bg-muted"
+                >
+                  Clear Search & Filters
+                </Link>
+
+              </div>
+
             ) : (
 
               /* ==================================================
@@ -916,7 +1097,7 @@ export default async function StudentResourcesPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 
-                {resources.map(
+                {filteredResources.map(
                   (
                     resource
                   ) => {
