@@ -35,40 +35,83 @@ import {
 
 type Prediction = {
   paper: "Paper 1" | "Paper 2"
-  question_number: number
+
   topic: string
+
+  subtopic?: string | null
+
+  concept_family?: string | null
+
+  question_family?: string | null
+
   predicted_question: string
+
   prediction_reason: string
-  confidence: number
+
+  confidence: "Low" | "Medium" | "High"
+
+  prediction_score?: number
+
+  historical_frequency?: number
+
+  recency_score?: number
+
+  variation_score?: number
+
+  mark_weight_score?: number
+
+  revision_advice?: string | null
+
   source_question_ids: string[]
 }
 
 type Student = {
   id: string
+
   email: string
+
   firstName: string
+
   lastName: string
+
   level: "O-Level" | "A-Level"
+
   curriculum: "ZIMSEC" | "Cambridge"
 }
 
 type MeResponse = {
   authenticated: boolean
+
   student?: Student
+
   credits?: {
     balance: number
   }
+
   error?: string
 }
 
 type PredictorResponse = {
   success?: boolean
+
   error?: string
+
   code?: string
+
   requiresPayment?: boolean
+
   predictions?: Prediction[]
+
   runId?: string
+
   credits?: number
+
+  source?: {
+    paperCount?: number
+    questionCount?: number
+    patternCount?: number
+    analysisType?: string
+  }
 }
 
 export default function AIExamPredictorPage() {
@@ -324,16 +367,34 @@ export default function AIExamPredictorPage() {
       [predictions]
     )
 
+  /*
+   * The API now returns confidence as:
+   * Low | Medium | High
+   *
+   * We convert those labels into display values
+   * only for the summary statistic.
+   */
   const averageConfidence =
     predictions.length
       ? Math.round(
           predictions.reduce(
-            (sum, item) =>
-              sum +
-              Number(
-                item.confidence ||
-                  0
-              ),
+            (sum, item) => {
+              if (
+                item.confidence ===
+                "High"
+              ) {
+                return sum + 100
+              }
+
+              if (
+                item.confidence ===
+                "Medium"
+              ) {
+                return sum + 67
+              }
+
+              return sum + 33
+            },
             0
           ) /
             predictions.length
@@ -500,8 +561,6 @@ export default function AIExamPredictorPage() {
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[250px] border-r border-[#10243d]/10 bg-[#10243d] lg:flex lg:flex-col">
 
-        {/* Logo */}
-
         <div className="border-b border-white/10 px-6 py-6">
 
           <div className="flex items-center gap-3">
@@ -523,8 +582,6 @@ export default function AIExamPredictorPage() {
           </div>
 
         </div>
-
-        {/* Navigation */}
 
         <nav className="flex-1 space-y-1 px-4 py-6">
 
@@ -586,8 +643,6 @@ export default function AIExamPredictorPage() {
           />
 
         </nav>
-
-        {/* Account */}
 
         <div className="border-t border-white/10 p-4">
 
@@ -676,8 +731,6 @@ export default function AIExamPredictorPage() {
 
             <div className="flex items-center gap-3">
 
-              {/* Credits */}
-
               <button
                 type="button"
                 onClick={() =>
@@ -705,8 +758,6 @@ export default function AIExamPredictorPage() {
                 </div>
 
               </button>
-
-              {/* Profile */}
 
               <button
                 type="button"
@@ -1306,8 +1357,11 @@ export default function AIExamPredictorPage() {
                       }}
                       className="relative inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#10243d] transition hover:bg-gray-100"
                     >
+
                       <ArrowLeft className="h-4 w-4" />
+
                       New prediction
+
                     </button>
 
                   </div>
@@ -1332,7 +1386,7 @@ export default function AIExamPredictorPage() {
 
                 <PredictionSection
                   title="Paper 1"
-                  description="Priority questions and concepts identified from the historical pattern."
+                  description="Priority concepts and question families identified from the historical pattern."
                   predictions={paper1}
                 />
 
@@ -1551,7 +1605,7 @@ function PredictionSection({
           ) => (
 
             <article
-              key={`${prediction.paper}-${prediction.question_number}-${index}`}
+              key={`${prediction.paper}-${prediction.concept_family || prediction.topic}-${prediction.question_family || index}`}
               className="rounded-3xl border border-[#10243d]/10 bg-white p-6 shadow-sm transition hover:shadow-md sm:p-7"
             >
 
@@ -1559,8 +1613,14 @@ function PredictionSection({
 
                 <div className="flex items-start gap-4">
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#10243d] text-sm font-black text-white">
-                    {prediction.question_number}
+                  {/* 
+                    We no longer display a predicted question number.
+                    The API predicts concepts/question families rather
+                    than claiming an exact future question number.
+                  */}
+
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#10243d]">
+                    <Sparkles className="h-5 w-5 text-[#e3a56f]" />
                   </div>
 
                   <div>
@@ -1570,6 +1630,22 @@ function PredictionSection({
                       <span className="rounded-full bg-[#f4f1ea] px-3 py-1 text-xs font-black text-[#8c4c22]">
                         {prediction.topic}
                       </span>
+
+                      {prediction.concept_family && (
+
+                        <span className="rounded-full bg-[#10243d]/5 px-3 py-1 text-xs font-bold text-[#10243d]/65">
+                          {prediction.concept_family}
+                        </span>
+
+                      )}
+
+                      {prediction.question_family && (
+
+                        <span className="rounded-full bg-[#e3a56f]/15 px-3 py-1 text-xs font-bold text-[#8c4c22]">
+                          {prediction.question_family}
+                        </span>
+
+                      )}
 
                       <ConfidenceBadge
                         confidence={
@@ -1589,6 +1665,22 @@ function PredictionSection({
 
               </div>
 
+              {prediction.subtopic && (
+
+                <div className="mt-4">
+
+                  <p className="text-xs font-black uppercase tracking-wide text-[#10243d]/35">
+                    Subtopic
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-[#10243d]/65">
+                    {prediction.subtopic}
+                  </p>
+
+                </div>
+
+              )}
+
               <div className="mt-5 border-t border-[#10243d]/5 pt-5">
 
                 <p className="text-xs font-black uppercase tracking-wide text-[#10243d]/35">
@@ -1600,6 +1692,22 @@ function PredictionSection({
                 </p>
 
               </div>
+
+              {prediction.revision_advice && (
+
+                <div className="mt-5 rounded-2xl bg-[#f4f1ea] p-4">
+
+                  <p className="text-xs font-black uppercase tracking-wide text-[#b15d2b]">
+                    Revision advice
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-[#10243d]/65">
+                    {prediction.revision_advice}
+                  </p>
+
+                </div>
+
+              )}
 
               {prediction.source_question_ids &&
                 prediction.source_question_ids.length > 0 && (
@@ -1643,30 +1751,22 @@ function PredictionSection({
 function ConfidenceBadge({
   confidence,
 }: {
-  confidence: number
+  confidence: "Low" | "Medium" | "High"
 }) {
-  const value =
-    Number(confidence || 0)
-
-  let label = "Low"
-
-  if (value >= 75) {
-    label = "High"
-  } else if (value >= 50) {
-    label = "Medium"
-  }
+  const label =
+    confidence || "Low"
 
   return (
     <span
       className={
-        value >= 75
+        label === "High"
           ? "rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700"
-          : value >= 50
+          : label === "Medium"
             ? "rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"
             : "rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600"
       }
     >
-      {label} confidence · {value}%
+      {label} confidence
     </span>
   )
 }
