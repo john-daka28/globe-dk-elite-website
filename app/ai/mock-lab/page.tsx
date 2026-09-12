@@ -7,11 +7,17 @@ import {
   CheckCircle2,
   Clock3,
   FileQuestion,
+  FileText,
   GraduationCap,
   Loader2,
+  LogOut,
+  Menu,
+  MessageCircle,
   Sparkles,
   Target,
+  TrendingUp,
   Trophy,
+  X,
   XCircle,
   Zap,
 } from "lucide-react"
@@ -21,6 +27,8 @@ import {
   useMemo,
   useState,
 } from "react"
+
+import Image from "next/image"
 
 import {
   useRouter,
@@ -156,10 +164,71 @@ export default function MockLabPage() {
       null
     )
 
-  /*
+  /* 
    * ---------------------------------------------------------
+   * SIDEBAR
+   * ---------------------------------------------------------
+   */
+
+  const [
+    mobileMenuOpen,
+    setMobileMenuOpen,
+  ] =
+    useState(false)
+
+  const [
+    signingOut,
+    setSigningOut,
+  ] =
+    useState(false)
+
+  function openFeature(
+    path: string
+  ) {
+    setMobileMenuOpen(
+      false
+    )
+
+    router.push(
+      path
+    )
+  }
+
+  async function handleSignOut() {
+    try {
+      setSigningOut(
+        true
+      )
+
+      await fetch(
+        "/api/ai/auth/signout",
+        {
+          method:
+            "POST",
+          credentials:
+            "include",
+        }
+      )
+    } catch (
+      signOutError
+    ) {
+      console.error(
+        "AI signout error:",
+        signOutError
+      )
+    } finally {
+      router.replace(
+        "/ai/signin"
+      )
+
+      router.refresh()
+    }
+  }
+
+  /* 
+   * --------------------------------------------------------- 
    * LOAD AI SESSION
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   useEffect(() => {
@@ -221,10 +290,10 @@ export default function MockLabPage() {
     loadSession()
   }, [router])
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * TIMER
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   useEffect(() => {
@@ -274,10 +343,10 @@ export default function MockLabPage() {
     submitting,
   ])
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * GENERATE MOCK
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   async function generateMock() {
@@ -385,10 +454,10 @@ export default function MockLabPage() {
     }
   }
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * ANSWERS
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   function setAnswer(
@@ -406,10 +475,10 @@ export default function MockLabPage() {
     )
   }
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * SUBMIT
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   async function handleSubmit(
@@ -516,10 +585,10 @@ export default function MockLabPage() {
     }
   }
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * HELPERS
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   function formatTime(
@@ -567,10 +636,19 @@ export default function MockLabPage() {
       answers,
     ])
 
-  /*
-   * ---------------------------------------------------------
+  const fullName =
+    [
+      student?.firstName,
+      student?.lastName,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
+    "Student"
+
+  /* 
+   * --------------------------------------------------------- 
    * LOADING
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   if (loadingAuth) {
@@ -586,10 +664,10 @@ export default function MockLabPage() {
     )
   }
 
-  /*
-   * ---------------------------------------------------------
+  /* 
+   * --------------------------------------------------------- 
    * TEST SCREEN
-   * ---------------------------------------------------------
+   * --------------------------------------------------------- 
    */
 
   if (mock) {
@@ -610,246 +688,298 @@ export default function MockLabPage() {
       100
 
     return (
-      <main className="min-h-screen bg-[#f4f1ea]">
-        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#b15d2b]">
-                GlobeDk AI
-              </p>
+      <>
+        {/* =====================================================
+            MOBILE AI LEARNING HUB SIDEBAR
+            ===================================================== */}
 
-              <h1 className="text-lg font-black text-[#10243d]">
-                {mock.title}
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {secondsRemaining !==
-                null && (
-                <div
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 font-black ${
-                    secondsRemaining <
-                    300
-                      ? "bg-red-100 text-red-700"
-                      : "bg-[#10243d] text-white"
-                  }`}
-                >
-                  <Clock3 className="h-4 w-4" />
-
-                  {formatTime(
-                    secondsRemaining
-                  )}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() =>
-                  handleSubmit()
-                }
-                disabled={
-                  submitting
-                }
-                className="rounded-xl bg-[#b15d2b] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-              >
-                {submitting
-                  ? "Submitting..."
-                  : "Submit Test"}
-              </button>
-            </div>
-          </div>
-
-          <div className="h-1 bg-slate-100">
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
             <div
-              className="h-1 bg-[#b15d2b] transition-all"
-              style={{
-                width: `${progress}%`,
-              }}
+              className="absolute inset-0 bg-[#10243d]/50"
+              onClick={() =>
+                setMobileMenuOpen(
+                  false
+                )
+              }
             />
-          </div>
-        </header>
 
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_260px] lg:px-8">
-          <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-slate-500">
-                  Question{" "}
-                  {currentQuestion +
-                    1}{" "}
-                  of{" "}
-                  {
-                    mock.questions
-                      .length
-                  }
-                </p>
+            <aside className="relative flex h-full w-[290px] flex-col bg-[#10243d] px-5 py-6 shadow-2xl">
+              <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                    <Image
+                      src="/Logo.png"
+                      alt="GlobeDk Elite Academy"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
 
-                <h2 className="mt-1 text-2xl font-black text-[#10243d]">
-                  {question.topic}
-                </h2>
-              </div>
+                  <div>
+                    <p className="text-lg font-black tracking-tight text-white">
+                      GlobeDk AI
+                    </p>
 
-              <div className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-[#b15d2b]">
-                {question.marks}{" "}
-                {question.marks ===
-                1
-                  ? "mark"
-                  : "marks"}
-              </div>
-            </div>
+                    <p className="text-xs text-white/60">
+                      Learning Hub
+                    </p>
+                  </div>
+                </div>
 
-            <div className="mb-8 rounded-2xl bg-slate-50 p-5">
-              <p className="whitespace-pre-wrap text-lg font-semibold leading-8 text-slate-800">
-                {
-                  question.question_text
-                }
-              </p>
-            </div>
-
-            {question.subtopic && (
-              <p className="mb-4 text-sm text-slate-500">
-                Topic:{" "}
-                <span className="font-semibold">
-                  {
-                    question.subtopic
-                  }
-                </span>
-              </p>
-            )}
-
-            {question.question_type ===
-              "multiple_choice" &&
-            Array.isArray(
-              question.options
-            ) ? (
-              <div className="space-y-3">
-                {question.options.map(
-                  (
-                    option,
-                    index
-                  ) => {
-                    const value =
-                      option
-
-                    const selected =
-                      answers[
-                        question.id
-                      ] ===
-                      value
-
-                    return (
-                      <button
-                        key={`${question.id}-${index}`}
-                        type="button"
-                        onClick={() =>
-                          setAnswer(
-                            question.id,
-                            value
-                          )
-                        }
-                        className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition ${
-                          selected
-                            ? "border-[#b15d2b] bg-orange-50"
-                            : "border-slate-200 bg-white hover:border-slate-400"
-                        }`}
-                      >
-                        <span
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                            selected
-                              ? "bg-[#b15d2b] text-white"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {String.fromCharCode(
-                            65 +
-                              index
-                          )}
-                        </span>
-
-                        <span className="pt-1 font-semibold text-slate-700">
-                          {option}
-                        </span>
-                      </button>
-                    )
-                  }
-                )}
-              </div>
-            ) : (
-              <textarea
-                value={
-                  answers[
-                    question.id
-                  ] ??
-                  ""
-                }
-                onChange={(
-                  event
-                ) =>
-                  setAnswer(
-                    question.id,
-                    event.target
-                      .value
-                  )
-                }
-                rows={
-                  question.question_type ===
-                  "short_answer"
-                    ? 3
-                    : 7
-                }
-                placeholder="Type your answer here..."
-                className="w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-base outline-none transition focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
-              />
-            )}
-
-            <div className="mt-8 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                disabled={
-                  currentQuestion ===
-                  0
-                }
-                onClick={() =>
-                  setCurrentQuestion(
-                    (
-                      current
-                    ) =>
-                      Math.max(
-                        0,
-                        current -
-                          1
-                      )
-                  )
-                }
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Previous
-              </button>
-
-              {!isLast ? (
                 <button
                   type="button"
                   onClick={() =>
-                    setCurrentQuestion(
-                      (
-                        current
-                      ) =>
-                        Math.min(
-                          mock.questions
-                            .length -
-                            1,
-                          current +
-                            1
-                        )
+                    setMobileMenuOpen(
+                      false
                     )
                   }
-                  className="flex items-center gap-2 rounded-xl bg-[#10243d] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                  className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
                 >
-                  Next
-                  <ArrowRight className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </button>
-              ) : (
+              </div>
+
+              <nav className="space-y-2">
+                <MobileNavItem
+                  icon={GraduationCap}
+                  label="Dashboard"
+                  onClick={() =>
+                    openFeature(
+                      "/ai"
+                    )
+                  }
+                />
+
+                <MobileNavItem
+                  icon={Sparkles}
+                  label="Exam Predictor"
+                  onClick={() =>
+                    openFeature(
+                      "/ai/exam-predictor"
+                    )
+                  }
+                />
+
+                <MobileNavItem
+                  icon={FileText}
+                  label="Mock Lab"
+                  active
+                  onClick={() =>
+                    setMobileMenuOpen(
+                      false
+                    )
+                  }
+                />
+
+                <MobileNavItem
+                  icon={Target}
+                  label="Revision Coach"
+                  onClick={() =>
+                    openFeature(
+                      "/ai/revision-coach"
+                    )
+                  }
+                />
+
+            
+
+                <MobileNavItem
+                  icon={TrendingUp}
+                  label="My Progress"
+                  onClick={() =>
+                    openFeature(
+                      "/ai/progress"
+                    )
+                  }
+                />
+              </nav>
+
+              <div className="mt-auto border-t border-white/10 pt-5">
+                <button
+                  type="button"
+                  onClick={
+                    handleSignOut
+                  }
+                  disabled={
+                    signingOut
+                  }
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+                >
+                  <LogOut className="h-5 w-5" />
+
+                  {signingOut
+                    ? "Signing out..."
+                    : "Sign out"}
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {/* =====================================================
+            DESKTOP AI LEARNING HUB SIDEBAR
+            ===================================================== */}
+
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[250px] border-r border-[#10243d]/10 bg-[#10243d] lg:flex lg:flex-col">
+          <div className="px-5 pt-6">
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                  <Image
+                    src="/Logo.png"
+                    alt="GlobeDk Elite Academy"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <div>
+                  <p className="text-lg font-black tracking-tight text-white">
+                    GlobeDk AI
+                  </p>
+
+                  <p className="text-xs text-white/60">
+                    Learning Hub
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 px-4 py-6">
+            <SidebarItem
+              icon={GraduationCap}
+              label="Dashboard"
+              onClick={() =>
+                openFeature(
+                  "/ai"
+                )
+              }
+            />
+
+            <SidebarItem
+              icon={Sparkles}
+              label="Exam Predictor"
+              onClick={() =>
+                openFeature(
+                  "/ai/exam-predictor"
+                )
+              }
+            />
+
+            <SidebarItem
+              icon={FileText}
+              label="Mock Lab"
+              active
+              onClick={() => {}}
+            />
+
+            <SidebarItem
+              icon={Target}
+              label="Revision Coach"
+              onClick={() =>
+                openFeature(
+                  "/ai/revision-coach"
+                )
+              }
+            />
+
+         
+
+            <SidebarItem
+              icon={TrendingUp}
+              label="My Progress"
+              onClick={() =>
+                openFeature(
+                  "/ai/progress"
+                )
+              }
+            />
+          </nav>
+
+          <div className="border-t border-white/10 p-4">
+            <div className="mb-3 rounded-xl bg-white/5 p-3">
+              <p className="truncate text-sm font-bold text-white">
+                {fullName}
+              </p>
+
+              <p className="truncate text-xs text-white/50">
+                {student?.email}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                handleSignOut
+              }
+              disabled={
+                signingOut
+              }
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              <LogOut className="h-5 w-5" />
+
+              {signingOut
+                ? "Signing out..."
+                : "Sign out"}
+            </button>
+          </div>
+        </aside>
+
+        {/* =====================================================
+            TEST SCREEN
+            ===================================================== */}
+
+        <main className="min-h-screen bg-[#f4f1ea] lg:pl-[250px]">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileMenuOpen(
+                      true
+                    )
+                  }
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10243d] text-white lg:hidden"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#b15d2b]">
+                    GlobeDk AI
+                  </p>
+
+                  <h1 className="text-lg font-black text-[#10243d]">
+                    {mock.title}
+                  </h1>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {secondsRemaining !==
+                  null && (
+                  <div
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2 font-black ${
+                      secondsRemaining <
+                      300
+                        ? "bg-red-100 text-red-700"
+                        : "bg-[#10243d] text-white"
+                    }`}
+                  >
+                    <Clock3 className="h-4 w-4" />
+
+                    {formatTime(
+                      secondsRemaining
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() =>
@@ -858,427 +988,967 @@ export default function MockLabPage() {
                   disabled={
                     submitting
                   }
-                  className="flex items-center gap-2 rounded-xl bg-[#b15d2b] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-xl bg-[#b15d2b] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
                   {submitting
                     ? "Submitting..."
-                    : "Finish Test"}
+                    : "Submit Test"}
                 </button>
-              )}
-            </div>
-
-            {error && (
-              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                {error}
-              </div>
-            )}
-          </section>
-
-          <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm lg:sticky lg:top-24">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Test progress
-              </p>
-
-              <div className="mt-2 flex items-end justify-between">
-                <span className="text-2xl font-black text-[#10243d]">
-                  {
-                    answeredCount
-                  }
-                  /
-                  {
-                    mock.questions
-                      .length
-                  }
-                </span>
-
-                <span className="text-sm font-semibold text-slate-500">
-                  answered
-                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-2">
-              {mock.questions.map(
-                (
-                  item,
-                  index
-                ) => {
-                  const answered =
-                    Boolean(
-                      answers[
-                        item.id
-                      ]?.trim()
-                    )
-
-                  return (
-                    <button
-                      key={
-                        item.id
-                      }
-                      type="button"
-                      onClick={() =>
-                        setCurrentQuestion(
-                          index
-                        )
-                      }
-                      className={`flex h-10 items-center justify-center rounded-xl text-sm font-black transition ${
-                        index ===
-                        currentQuestion
-                          ? "bg-[#10243d] text-white"
-                          : answered
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                      }`}
-                    >
-                      {index +
-                        1}
-                    </button>
-                  )
-                }
-              )}
+            <div className="h-1 bg-slate-100">
+              <div
+                className="h-1 bg-[#b15d2b] transition-all"
+                style={{
+                  width: `${progress}%`,
+                }}
+              />
             </div>
+          </header>
 
-            <div className="mt-6 border-t border-slate-100 pt-5 text-xs text-slate-500">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded bg-[#10243d]" />
-                Current
-              </div>
+          <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_260px] lg:px-8">
+            <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">
+                    Question{" "}
+                    {currentQuestion +
+                      1}{" "}
+                    of{" "}
+                    {
+                      mock.questions
+                        .length
+                    }
+                  </p>
 
-              <div className="mt-2 flex items-center gap-2">
-                <div className="h-3 w-3 rounded bg-green-100" />
-                Answered
-              </div>
+                  <h2 className="mt-1 text-2xl font-black text-[#10243d]">
+                    {question.topic}
+                  </h2>
+                </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <div className="h-3 w-3 rounded bg-slate-100" />
-                Unanswered
-              </div>
-            </div>
-          </aside>
-        </div>
-      </main>
-    )
-  }
-
-  /*
-   * ---------------------------------------------------------
-   * GENERATOR SCREEN
-   * ---------------------------------------------------------
-   */
-
-  return (
-    <main className="min-h-screen bg-[#f4f1ea]">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10243d] text-white">
-              <Sparkles className="h-5 w-5" />
-            </div>
-
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-[#b15d2b]">
-                GlobeDk AI Learning Hub
-              </p>
-
-              <h1 className="text-xl font-black text-[#10243d]">
-                Mock Lab
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl bg-orange-50 px-4 py-2 text-sm font-black text-[#b15d2b]">
-              <Zap className="h-4 w-4" />
-              {credits}{" "}
-              AI Credits
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
-          <section className="rounded-3xl bg-[#10243d] p-7 text-white shadow-xl sm:p-10">
-            <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-              <Target className="h-7 w-7 text-orange-200" />
-            </div>
-
-            <p className="mb-2 text-sm font-bold uppercase tracking-widest text-orange-200">
-              AI-Powered Practice
-            </p>
-
-            <h2 className="max-w-2xl text-3xl font-black leading-tight sm:text-5xl">
-              Turn your exam predictions into a fresh mock test.
-            </h2>
-
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
-              Mock Lab uses your latest ZIMSEC
-              Mathematics prediction topics to
-              create completely new practice
-              questions designed to test the
-              same skills.
-            </p>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white/10 p-4">
-                <Sparkles className="mb-3 h-5 w-5 text-orange-200" />
-
-                <p className="font-bold">
-                  Fresh Questions
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-slate-300">
-                  Not simple copies of predicted questions.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-white/10 p-4">
-                <Target className="mb-3 h-5 w-5 text-orange-200" />
-
-                <p className="font-bold">
-                  Targeted Practice
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-slate-300">
-                  Focused on likely exam skills and topics.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-white/10 p-4">
-                <Trophy className="mb-3 h-5 w-5 text-orange-200" />
-
-                <p className="font-bold">
-                  Instant Results
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-slate-300">
-                  See your score and weak topics after submission.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl bg-white p-7 shadow-sm sm:p-8">
-            <div className="mb-7">
-              <p className="text-sm font-bold uppercase tracking-widest text-[#b15d2b]">
-                Create Mock
-              </p>
-
-              <h2 className="mt-2 text-2xl font-black text-[#10243d]">
-                Build your test
-              </h2>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Subject
-                </label>
-
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <GraduationCap className="h-5 w-5 text-[#b15d2b]" />
-
-                  <div>
-                    <p className="font-bold text-[#10243d]">
-                      Mathematics
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                      {student?.level ??
-                        "O-Level"}{" "}
-                      •{" "}
-                      {student?.curriculum ??
-                        "ZIMSEC"}
-                    </p>
-                  </div>
+                <div className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-[#b15d2b]">
+                  {question.marks}{" "}
+                  {question.marks ===
+                  1
+                    ? "mark"
+                    : "marks"}
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Paper
-                </label>
+              <div className="mb-8 rounded-2xl bg-slate-50 p-5">
+                <p className="whitespace-pre-wrap text-lg font-semibold leading-8 text-slate-800">
+                  {
+                    question.question_text
+                  }
+                </p>
+              </div>
 
-                <select
-                  value={paper}
+              {question.subtopic && (
+                <p className="mb-4 text-sm text-slate-500">
+                  Topic:{" "}
+                  <span className="font-semibold">
+                    {
+                      question.subtopic
+                    }
+                  </span>
+                </p>
+              )}
+
+              {question.question_type ===
+                "multiple_choice" &&
+              Array.isArray(
+                question.options
+              ) ? (
+                <div className="space-y-3">
+                  {question.options.map(
+                    (
+                      option,
+                      index
+                    ) => {
+                      const value =
+                        option
+
+                      const selected =
+                        answers[
+                          question.id
+                        ] ===
+                        value
+
+                      return (
+                        <button
+                          key={`${question.id}-${index}`}
+                          type="button"
+                          onClick={() =>
+                            setAnswer(
+                              question.id,
+                              value
+                            )
+                          }
+                          className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition ${
+                            selected
+                              ? "border-[#b15d2b] bg-orange-50"
+                              : "border-slate-200 bg-white hover:border-slate-400"
+                          }`}
+                        >
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
+                              selected
+                                ? "bg-[#b15d2b] text-white"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {String.fromCharCode(
+                              65 +
+                                index
+                            )}
+                          </span>
+
+                          <span className="pt-1 font-semibold text-slate-700">
+                            {option}
+                          </span>
+                        </button>
+                      )
+                    }
+                  )}
+                </div>
+              ) : (
+                <textarea
+                  value={
+                    answers[
+                      question.id
+                    ] ??
+                    ""
+                  }
                   onChange={(
                     event
                   ) =>
-                    setPaper(
+                    setAnswer(
+                      question.id,
                       event.target
                         .value
                     )
                   }
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
-                >
-                  <option>
-                    Both Papers
-                  </option>
-
-                  <option>
-                    Paper 1
-                  </option>
-
-                  <option>
-                    Paper 2
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Number of questions
-                </label>
-
-                <select
-                  value={
-                    questionCount
+                  rows={
+                    question.question_type ===
+                    "short_answer"
+                      ? 3
+                      : 7
                   }
-                  onChange={(
-                    event
-                  ) =>
-                    setQuestionCount(
-                      Number(
-                        event.target
-                          .value
-                      )
+                  placeholder="Type your answer here..."
+                  className="w-full resize-y rounded-2xl border border-slate-200 bg-white p-4 text-base outline-none transition focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
+                />
+              )}
+
+              <div className="mt-8 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    currentQuestion ===
+                    0
+                  }
+                  onClick={() =>
+                    setCurrentQuestion(
+                      (
+                        current
+                      ) =>
+                        Math.max(
+                          0,
+                          current -
+                            1
+                        )
                     )
                   }
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <option value={5}>
-                    5 questions
-                  </option>
+                  <ArrowLeft className="h-4 w-4" />
+                  Previous
+                </button>
 
-                  <option value={10}>
-                    10 questions
-                  </option>
+                {!isLast ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentQuestion(
+                        (
+                          current
+                        ) =>
+                          Math.min(
+                            mock.questions
+                              .length -
+                              1,
+                            current +
+                              1
+                          )
+                      )
+                    }
+                    className="flex items-center gap-2 rounded-xl bg-[#10243d] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSubmit()
+                    }
+                    disabled={
+                      submitting
+                    }
+                    className="flex items-center gap-2 rounded-xl bg-[#b15d2b] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
 
-                  <option value={15}>
-                    15 questions
-                  </option>
-
-                  <option value={20}>
-                    20 questions
-                  </option>
-                </select>
-              </div>
-
-              <div className="rounded-2xl bg-orange-50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-600">
-                    Generation cost
-                  </span>
-
-                  <span className="flex items-center gap-1 font-black text-[#b15d2b]">
-                    <Zap className="h-4 w-4" />
-                    1 AI Credit
-                  </span>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                  <span>
-                    Available
-                  </span>
-
-                  <span className="font-bold">
-                    {credits} credits
-                  </span>
-                </div>
+                    {submitting
+                      ? "Submitting..."
+                      : "Finish Test"}
+                  </button>
+                )}
               </div>
 
               {error && (
-                <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
+                <div className="mt-5 flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                  <span>
-                    {error}
-                  </span>
+                  {error}
                 </div>
               )}
+            </section>
+
+            <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm lg:sticky lg:top-24">
+              <div className="mb-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  Test progress
+                </p>
+
+                <div className="mt-2 flex items-end justify-between">
+                  <span className="text-2xl font-black text-[#10243d]">
+                    {
+                      answeredCount
+                    }
+                    /
+                    {
+                      mock.questions
+                        .length
+                    }
+                  </span>
+
+                  <span className="text-sm font-semibold text-slate-500">
+                    answered
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
+                {mock.questions.map(
+                  (
+                    item,
+                    index
+                  ) => {
+                    const answered =
+                      Boolean(
+                        answers[
+                          item.id
+                        ]?.trim()
+                      )
+
+                    return (
+                      <button
+                        key={
+                          item.id
+                        }
+                        type="button"
+                        onClick={() =>
+                          setCurrentQuestion(
+                            index
+                          )
+                        }
+                        className={`flex h-10 items-center justify-center rounded-xl text-sm font-black transition ${
+                          index ===
+                          currentQuestion
+                            ? "bg-[#10243d] text-white"
+                            : answered
+                            ? "bg-green-100 text-green-700"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
+                      >
+                        {index +
+                          1}
+                      </button>
+                    )
+                  }
+                )}
+              </div>
+
+              <div className="mt-6 border-t border-slate-100 pt-5 text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded bg-[#10243d]" />
+                  Current
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-3 w-3 rounded bg-green-100" />
+                  Answered
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-3 w-3 rounded bg-slate-100" />
+                  Unanswered
+                </div>
+              </div>
+            </aside>
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  /* 
+   * --------------------------------------------------------- 
+   * GENERATOR SCREEN
+   * --------------------------------------------------------- 
+   */
+
+  return (
+    <>
+      {/* =====================================================
+          MOBILE AI LEARNING HUB SIDEBAR
+          ===================================================== */}
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-[#10243d]/50"
+            onClick={() =>
+              setMobileMenuOpen(
+                false
+              )
+            }
+          />
+
+          <aside className="relative flex h-full w-[290px] flex-col bg-[#10243d] px-5 py-6 shadow-2xl">
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                  <Image
+                    src="/Logo.png"
+                    alt="GlobeDk Elite Academy"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <div>
+                  <p className="text-lg font-black tracking-tight text-white">
+                    GlobeDk AI
+                  </p>
+
+                  <p className="text-xs text-white/60">
+                    Learning Hub
+                  </p>
+                </div>
+              </div>
 
               <button
                 type="button"
+                onClick={() =>
+                  setMobileMenuOpen(
+                    false
+                  )
+                }
+                className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="space-y-2">
+              <MobileNavItem
+                icon={GraduationCap}
+                label="Dashboard"
+                onClick={() =>
+                  openFeature(
+                    "/ai"
+                  )
+                }
+              />
+
+              <MobileNavItem
+                icon={Sparkles}
+                label="Exam Predictor"
+                onClick={() =>
+                  openFeature(
+                    "/ai/exam-predictor"
+                  )
+                }
+              />
+
+              <MobileNavItem
+                icon={FileText}
+                label="Mock Lab"
+                active
+                onClick={() =>
+                  setMobileMenuOpen(
+                    false
+                  )
+                }
+              />
+
+              <MobileNavItem
+                icon={Target}
+                label="Revision Coach"
+                onClick={() =>
+                  openFeature(
+                    "/ai/revision-coach"
+                  )
+                }
+              />
+
+          
+              <MobileNavItem
+                icon={TrendingUp}
+                label="My Progress"
+                onClick={() =>
+                  openFeature(
+                    "/ai/progress"
+                  )
+                }
+              />
+            </nav>
+
+            <div className="mt-auto border-t border-white/10 pt-5">
+              <button
+                type="button"
                 onClick={
-                  generateMock
+                  handleSignOut
                 }
                 disabled={
-                  generating ||
-                  credits < 1
+                  signingOut
                 }
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#b15d2b] px-5 py-4 text-sm font-black text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
               >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Generating Mock...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5" />
-                    Generate Mock Test
-                  </>
-                )}
+                <LogOut className="h-5 w-5" />
+
+                {signingOut
+                  ? "Signing out..."
+                  : "Sign out"}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* =====================================================
+          DESKTOP AI LEARNING HUB SIDEBAR
+          ===================================================== */}
+
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[250px] border-r border-[#10243d]/10 bg-[#10243d] lg:flex lg:flex-col">
+        <div className="px-5 pt-6">
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                <Image
+                  src="/Logo.png"
+                  alt="GlobeDk Elite Academy"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+
+              <div>
+                <p className="text-lg font-black tracking-tight text-white">
+                  GlobeDk AI
+                </p>
+
+                <p className="text-xs text-white/60">
+                  Learning Hub
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1 px-4 py-6">
+          <SidebarItem
+            icon={GraduationCap}
+            label="Dashboard"
+            onClick={() =>
+              openFeature(
+                "/ai"
+              )
+            }
+          />
+
+          <SidebarItem
+            icon={Sparkles}
+            label="Exam Predictor"
+            onClick={() =>
+              openFeature(
+                "/ai/exam-predictor"
+              )
+            }
+          />
+
+          <SidebarItem
+            icon={FileText}
+            label="Mock Lab"
+            active
+            onClick={() => {}}
+          />
+
+          <SidebarItem
+            icon={Target}
+            label="Revision Coach"
+            onClick={() =>
+              openFeature(
+                "/ai/revision-coach"
+              )
+            }
+          />
+
+       
+
+          <SidebarItem
+            icon={TrendingUp}
+            label="My Progress"
+            onClick={() =>
+              openFeature(
+                "/ai/progress"
+              )
+            }
+          />
+        </nav>
+
+        <div className="border-t border-white/10 p-4">
+          <div className="mb-3 rounded-xl bg-white/5 p-3">
+            <p className="truncate text-sm font-bold text-white">
+              {fullName}
+            </p>
+
+            <p className="truncate text-xs text-white/50">
+              {student?.email}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              handleSignOut
+            }
+            disabled={
+              signingOut
+            }
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+          >
+            <LogOut className="h-5 w-5" />
+
+            {signingOut
+              ? "Signing out..."
+              : "Sign out"}
+          </button>
+        </div>
+      </aside>
+
+      {/* =====================================================
+          GENERATOR SCREEN
+          ===================================================== */}
+
+      <main className="min-h-screen bg-[#f4f1ea] lg:pl-[250px]">
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileMenuOpen(
+                    true
+                  )
+                }
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10243d] text-white lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
               </button>
 
-              {credits <
-                1 && (
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10243d] text-white">
+                <Sparkles className="h-5 w-5" />
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-[#b15d2b]">
+                  GlobeDk AI Learning Hub
+                </p>
+
+                <h1 className="text-xl font-black text-[#10243d]">
+                  Mock Lab
+                </h1>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-xl bg-orange-50 px-4 py-2 text-sm font-black text-[#b15d2b]">
+                <Zap className="h-4 w-4" />
+
+                {credits}{" "}
+                AI Credits
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">
+            <section className="rounded-3xl bg-[#10243d] p-7 text-white shadow-xl sm:p-10">
+              <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
+                <Target className="h-7 w-7 text-orange-200" />
+              </div>
+
+              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-orange-200">
+                AI-Powered Practice
+              </p>
+
+              <h2 className="max-w-2xl text-3xl font-black leading-tight sm:text-5xl">
+                Turn your exam predictions into a fresh mock test.
+              </h2>
+
+              <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
+                Mock Lab uses your latest ZIMSEC
+                Mathematics prediction topics to
+                create completely new practice
+                questions designed to test the
+                same skills.
+              </p>
+
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <Sparkles className="mb-3 h-5 w-5 text-orange-200" />
+
+                  <p className="font-bold">
+                    Fresh Questions
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-300">
+                    Not simple copies of predicted questions.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <Target className="mb-3 h-5 w-5 text-orange-200" />
+
+                  <p className="font-bold">
+                    Targeted Practice
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-300">
+                    Focused on likely exam skills and topics.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <Trophy className="mb-3 h-5 w-5 text-orange-200" />
+
+                  <p className="font-bold">
+                    Instant Results
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-300">
+                    See your score and weak topics after submission.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl bg-white p-7 shadow-sm sm:p-8">
+              <div className="mb-7">
+                <p className="text-sm font-bold uppercase tracking-widest text-[#b15d2b]">
+                  Create Mock
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-[#10243d]">
+                  Build your test
+                </h2>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                    Subject
+                  </label>
+
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <GraduationCap className="h-5 w-5 text-[#b15d2b]" />
+
+                    <div>
+                      <p className="font-bold text-[#10243d]">
+                        Mathematics
+                      </p>
+
+                      <p className="text-xs text-slate-500">
+                        {student?.level ??
+                          "O-Level"}{" "}
+                        •{" "}
+                        {student?.curriculum ??
+                          "ZIMSEC"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                    Paper
+                  </label>
+
+                  <select
+                    value={paper}
+                    onChange={(
+                      event
+                    ) =>
+                      setPaper(
+                        event.target
+                          .value
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
+                  >
+                    <option>
+                      Both Papers
+                    </option>
+
+                    <option>
+                      Paper 1
+                    </option>
+
+                    <option>
+                      Paper 2
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                    Number of questions
+                  </label>
+
+                  <select
+                    value={
+                      questionCount
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setQuestionCount(
+                        Number(
+                          event.target
+                            .value
+                        )
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-[#b15d2b] focus:ring-2 focus:ring-orange-100"
+                  >
+                    <option value={5}>
+                      5 questions
+                    </option>
+
+                    <option value={10}>
+                      10 questions
+                    </option>
+
+                    <option value={15}>
+                      15 questions
+                    </option>
+
+                    <option value={20}>
+                      20 questions
+                    </option>
+                  </select>
+                </div>
+
+                <div className="rounded-2xl bg-orange-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-600">
+                      Generation cost
+                    </span>
+
+                    <span className="flex items-center gap-1 font-black text-[#b15d2b]">
+                      <Zap className="h-4 w-4" />
+                      1 AI Credit
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                    <span>
+                      Available
+                    </span>
+
+                    <span className="font-bold">
+                      {credits} credits
+                    </span>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+
+                    <span>
+                      {error}
+                    </span>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() =>
-                    router.push(
-                      "/ai/credits"
-                    )
+                  onClick={
+                    generateMock
                   }
-                  className="w-full rounded-2xl border border-[#10243d] px-5 py-3 text-sm font-black text-[#10243d] transition hover:bg-slate-50"
+                  disabled={
+                    generating ||
+                    credits < 1
+                  }
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#b15d2b] px-5 py-4 text-sm font-black text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Get AI Credits
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Generating Mock...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Generate Mock Test
+                    </>
+                  )}
                 </button>
-              )}
+
+                {credits <
+                  1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        "/ai/credits"
+                      )
+                    }
+                    className="w-full rounded-2xl border border-[#10243d] px-5 py-3 text-sm font-black text-[#10243d] transition hover:bg-slate-50"
+                  >
+                    Get AI Credits
+                  </button>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <section className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <FileQuestion className="mb-3 h-6 w-6 text-[#b15d2b]" />
+
+              <p className="font-black text-[#10243d]">
+                Prediction-Based
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Questions are created around the topics identified by your latest prediction.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <CheckCircle2 className="mb-3 h-6 w-6 text-green-600" />
+
+              <p className="font-black text-[#10243d]">
+                Exam Practice
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Practice under a timed test environment before your actual examination.
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <Trophy className="mb-3 h-6 w-6 text-[#b15d2b]" />
+
+              <p className="font-black text-[#10243d]">
+                Learn From Results
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Your results identify the areas that need more revision.
+              </p>
             </div>
           </section>
         </div>
+      </main>
+    </>
+  )
+}
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <FileQuestion className="mb-3 h-6 w-6 text-[#b15d2b]" />
+/* ============================================================
+   DESKTOP SIDEBAR ITEM
+   ============================================================ */
 
-            <p className="font-black text-[#10243d]">
-              Prediction-Based
-            </p>
+function SidebarItem({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: React.ElementType
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={
+        active
+          ? "flex w-full items-center gap-3 rounded-xl bg-[#e3a56f] px-4 py-3 text-sm font-black text-[#10243d] shadow-sm"
+          : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
+      }
+    >
+      <Icon className="h-5 w-5 shrink-0" />
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Questions are created around the topics identified by your latest prediction.
-            </p>
-          </div>
+      <span>
+        {label}
+      </span>
+    </button>
+  )
+}
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <CheckCircle2 className="mb-3 h-6 w-6 text-green-600" />
+/* ============================================================
+   MOBILE SIDEBAR ITEM
+   ============================================================ */
 
-            <p className="font-black text-[#10243d]">
-              Exam Practice
-            </p>
+function MobileNavItem({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: React.ElementType
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={
+        active
+          ? "flex w-full items-center gap-3 rounded-xl bg-[#e3a56f] px-4 py-3 text-sm font-black text-[#10243d]"
+          : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
+      }
+    >
+      <Icon className="h-5 w-5" />
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Practice under a timed test environment before your actual examination.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <Trophy className="mb-3 h-6 w-6 text-[#b15d2b]" />
-
-            <p className="font-black text-[#10243d]">
-              Learn From Results
-            </p>
-
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Your results identify the areas that need more revision.
-            </p>
-          </div>
-        </section>
-      </div>
-    </main>
+      {label}
+    </button>
   )
 }

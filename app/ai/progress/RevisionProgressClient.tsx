@@ -757,15 +757,7 @@ export default function RevisionProgressClient() {
                 }
               />
 
-              <MobileNavItem
-                icon={MessageCircle}
-                label="AI Tutor"
-                onClick={() =>
-                  openFeature(
-                    "/ai/tutor"
-                  )
-                }
-              />
+              
 
               <MobileNavItem
                 icon={TrendingUp}
@@ -865,15 +857,7 @@ export default function RevisionProgressClient() {
             }
           />
 
-          <SidebarItem
-            icon={MessageCircle}
-            label="AI Tutor"
-            onClick={() =>
-              openFeature(
-                "/ai/tutor"
-              )
-            }
-          />
+        
 
           <SidebarItem
             icon={TrendingUp}

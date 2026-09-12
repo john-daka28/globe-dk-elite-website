@@ -267,15 +267,7 @@ export default function AIDashboardPage() {
                 }
               />
 
-              <MobileNavItem
-                icon={MessageCircle}
-                label="AI Tutor"
-                onClick={() =>
-                  openFeature(
-                    "/ai/tutor"
-                  )
-                }
-              />
+            
 
               <MobileNavItem
                 icon={TrendingUp}
@@ -389,15 +381,7 @@ export default function AIDashboardPage() {
             }
           />
 
-          <SidebarItem
-            icon={MessageCircle}
-            label="AI Tutor"
-            onClick={() =>
-              openFeature(
-                "/ai/tutor"
-              )
-            }
-          />
+     
 
           <SidebarItem
             icon={TrendingUp}
@@ -745,18 +729,7 @@ export default function AIDashboardPage() {
                 }
               />
 
-              <FeatureCard
-                icon={MessageCircle}
-                title="AI Tutor"
-                description="Ask questions, request explanations and get step-by-step help with difficult Mathematics topics."
-                button="Ask AI Tutor"
-                badge="Interactive"
-                onClick={() =>
-                  openFeature(
-                    "/ai/tutor"
-                  )
-                }
-              />
+             
 
             </div>
 
@@ -808,16 +781,7 @@ export default function AIDashboardPage() {
                 }
               />
 
-              <QuickAction
-                icon={Brain}
-                title="Ask AI Tutor"
-                description="Get step-by-step help"
-                onClick={() =>
-                  openFeature(
-                    "/ai/tutor"
-                  )
-                }
-              />
+              
 
             </div>
 
