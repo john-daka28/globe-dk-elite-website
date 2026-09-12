@@ -1,3 +1,4 @@
+
 import {
   NextRequest,
   NextResponse,
@@ -23,6 +24,29 @@ type SubmittedAnswer = {
   questionId: string
   answer: string
 }
+
+type QuestionData = {
+  options?: string[] | null
+
+  difficulty?:
+    | "easy"
+    | "medium"
+    | "hard"
+    | string
+    | null
+
+  prediction_id?: string | null
+
+  paper?: string | null
+
+  source?: string | null
+
+  generated_from_prediction?: boolean
+}
+
+/* ============================================================
+   ANSWER HELPERS
+   ============================================================ */
 
 function normaliseAnswer(
   value: unknown
@@ -64,9 +88,9 @@ function answersMatch(
   }
 
   /*
-   * Remove common formatting differences.
+   * Remove common punctuation / spacing
+   * differences.
    */
-
   const clean = (
     value: string
   ) =>
@@ -86,6 +110,56 @@ function answersMatch(
   )
 }
 
+function getQuestionData(
+  value: unknown
+): QuestionData {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
+    return value as QuestionData
+  }
+
+  return {}
+}
+
+function getQuestionOptions(
+  value: unknown
+) {
+  const data =
+    getQuestionData(
+      value
+    )
+
+  return Array.isArray(
+    data.options
+  )
+    ? data.options.map(
+        option =>
+          String(option)
+      )
+    : null
+}
+
+function getQuestionDifficulty(
+  value: unknown
+) {
+  const data =
+    getQuestionData(
+      value
+    )
+
+  return (
+    data.difficulty ??
+    "medium"
+  )
+}
+
+/* ============================================================
+   AUTHENTICATED AI STUDENT
+   ============================================================ */
+
 async function getAuthenticatedStudent() {
   const session =
     await getAIStudentSession()
@@ -96,9 +170,12 @@ async function getAuthenticatedStudent() {
 
   const {
     data: student,
+    error,
   } =
     await supabaseAdmin
-      .from("ai_students")
+      .from(
+        "ai_students"
+      )
       .select(
         `
         id,
@@ -116,6 +193,15 @@ async function getAuthenticatedStudent() {
       )
       .maybeSingle()
 
+  if (error) {
+    console.error(
+      "AI student lookup error:",
+      error
+    )
+
+    return null
+  }
+
   if (
     !student ||
     student.account_status !==
@@ -127,11 +213,45 @@ async function getAuthenticatedStudent() {
   return student
 }
 
-/*
- * ============================================================
- * GET LATEST SUBMITTED RESULT
- * ============================================================
- */
+/* ============================================================
+   FIND NORMAL USERS.ID
+   ============================================================ */
+
+async function getLinkedUserId(
+  studentEmail: string
+) {
+  const {
+    data: user,
+    error,
+  } =
+    await supabaseAdmin
+      .from(
+        "users"
+      )
+      .select(
+        "id"
+      )
+      .eq(
+        "email",
+        studentEmail
+      )
+      .maybeSingle()
+
+  if (error) {
+    console.error(
+      "Linked normal user lookup error:",
+      error
+    )
+
+    return null
+  }
+
+  return user?.id ?? null
+}
+
+/* ============================================================
+   GET LATEST SUBMITTED RESULT
+   ============================================================ */
 
 export async function GET(
   request: NextRequest,
@@ -173,7 +293,14 @@ export async function GET(
     }
 
     /*
-     * Verify that this mock belongs to this student.
+     * ========================================================
+     * LOAD MOCK EXAM
+     * ========================================================
+     *
+     * ai_mock_exams does NOT contain:
+     *
+     * - total_questions
+     * - updated_at
      */
 
     const {
@@ -193,10 +320,13 @@ export async function GET(
           level,
           curriculum,
           paper,
-          total_questions,
           total_marks,
           duration_minutes,
-          created_at
+          created_at,
+          status,
+          score,
+          percentage,
+          completed_at
           `
         )
         .eq(
@@ -240,9 +370,9 @@ export async function GET(
       )
     }
 
-    /*
-     * Find latest submitted attempt.
-     */
+    /* ========================================================
+       LATEST SUBMITTED ATTEMPT
+       ======================================================== */
 
     const {
       data: attempts,
@@ -253,7 +383,24 @@ export async function GET(
         .from(
           "ai_mock_attempts"
         )
-        .select("*")
+        .select(
+          `
+          id,
+          mock_exam_id,
+          ai_student_id,
+          started_at,
+          submitted_at,
+          score,
+          percentage,
+          total_marks,
+          correct_count,
+          incorrect_count,
+          unanswered_count,
+          status,
+          created_at,
+          updated_at
+          `
+        )
         .eq(
           "mock_exam_id",
           mockExamId
@@ -310,9 +457,9 @@ export async function GET(
       )
     }
 
-    /*
-     * Questions
-     */
+    /* ========================================================
+       QUESTIONS
+       ======================================================== */
 
     const {
       data: questions,
@@ -331,10 +478,9 @@ export async function GET(
           subtopic,
           question_text,
           question_type,
-          options,
+          question_data,
           explanation,
-          marks,
-          difficulty
+          marks
           `
         )
         .eq(
@@ -366,9 +512,50 @@ export async function GET(
       )
     }
 
-    /*
-     * Answers
-     */
+    const formattedQuestions =
+      (
+        questions ?? []
+      ).map(
+        question => ({
+          id:
+            question.id,
+
+          question_number:
+            question.question_number,
+
+          topic:
+            question.topic,
+
+          subtopic:
+            question.subtopic,
+
+          question_text:
+            question.question_text,
+
+          question_type:
+            question.question_type,
+
+          options:
+            getQuestionOptions(
+              question.question_data
+            ),
+
+          explanation:
+            question.explanation,
+
+          marks:
+            question.marks,
+
+          difficulty:
+            getQuestionDifficulty(
+              question.question_data
+            ),
+        })
+      )
+
+    /* ========================================================
+       ANSWERS
+       ======================================================== */
 
     const {
       data: answers,
@@ -382,10 +569,17 @@ export async function GET(
         .select(
           `
           id,
-          question_id,
-          answer,
+          mock_question_id,
+          user_id,
+          answer_text,
+          marks_awarded,
           is_correct,
-          marks_awarded
+          ai_feedback,
+          ai_explanation,
+          created_at,
+          updated_at,
+          attempt_id,
+          question_id
           `
         )
         .eq(
@@ -411,16 +605,54 @@ export async function GET(
       )
     }
 
+    const totalQuestions =
+      formattedQuestions.length
+
+    const formattedMock = {
+      ...mockExam,
+
+      total_questions:
+        totalQuestions,
+
+      totalQuestions:
+        totalQuestions,
+
+      total_marks:
+        Number(
+          mockExam.total_marks ??
+            0
+        ),
+
+      totalMarks:
+        Number(
+          mockExam.total_marks ??
+            0
+        ),
+
+      duration_minutes:
+        Number(
+          mockExam.duration_minutes ??
+            0
+        ),
+
+      durationMinutes:
+        Number(
+          mockExam.duration_minutes ??
+            0
+        ),
+    }
+
     return NextResponse.json(
       {
         success: true,
 
-        mock: mockExam,
+        mock:
+          formattedMock,
 
         attempt,
 
         questions:
-          questions ?? [],
+          formattedQuestions,
 
         answers:
           answers ?? [],
@@ -448,11 +680,9 @@ export async function GET(
   }
 }
 
-/*
- * ============================================================
- * POST SUBMISSION
- * ============================================================
- */
+/* ============================================================
+   POST SUBMISSION
+   ============================================================ */
 
 export async function POST(
   request: NextRequest,
@@ -493,6 +723,34 @@ export async function POST(
       )
     }
 
+    /*
+     * ========================================================
+     * GET LINKED NORMAL USER
+     * ========================================================
+     *
+     * ai_mock_answers.user_id references users.id.
+     */
+
+    const userId =
+      await getLinkedUserId(
+        student.email
+      )
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Your AI student account is not linked to a normal user account.",
+          code:
+            "USER_ACCOUNT_NOT_LINKED",
+        },
+        {
+          status: 409,
+        }
+      )
+    }
+
     let body:
       | {
           answers?: SubmittedAnswer[]
@@ -513,9 +771,9 @@ export async function POST(
         ? body.answers
         : []
 
-    /*
-     * Verify mock belongs to student.
-     */
+    /* ========================================================
+       VERIFY MOCK BELONGS TO STUDENT
+       ======================================================== */
 
     const {
       data: mockExam,
@@ -534,7 +792,6 @@ export async function POST(
           level,
           curriculum,
           paper,
-          total_questions,
           total_marks,
           duration_minutes,
           status
@@ -581,9 +838,9 @@ export async function POST(
       )
     }
 
-    /*
-     * Prevent multiple submissions.
-     */
+    /* ========================================================
+       PREVENT MULTIPLE SUBMISSIONS
+       ======================================================== */
 
     const {
       data: existingAttempts,
@@ -595,7 +852,22 @@ export async function POST(
           "ai_mock_attempts"
         )
         .select(
-          "*"
+          `
+          id,
+          mock_exam_id,
+          ai_student_id,
+          started_at,
+          submitted_at,
+          score,
+          percentage,
+          total_marks,
+          correct_count,
+          incorrect_count,
+          unanswered_count,
+          status,
+          created_at,
+          updated_at
+          `
         )
         .eq(
           "mock_exam_id",
@@ -658,9 +930,9 @@ export async function POST(
       )
     }
 
-    /*
-     * Get questions including correct answers.
-     */
+    /* ========================================================
+       GET QUESTIONS
+       ======================================================== */
 
     const {
       data: questions,
@@ -679,11 +951,10 @@ export async function POST(
           subtopic,
           question_text,
           question_type,
-          options,
+          question_data,
           correct_answer,
           explanation,
-          marks,
-          difficulty
+          marks
           `
         )
         .eq(
@@ -732,11 +1003,9 @@ export async function POST(
       )
     }
 
-    /*
-     * ---------------------------------------------------------
-     * CREATE ATTEMPT
-     * ---------------------------------------------------------
-     */
+    /* ========================================================
+       CREATE ATTEMPT
+       ======================================================== */
 
     const {
       data: attempt,
@@ -764,7 +1033,22 @@ export async function POST(
             "in_progress",
         })
         .select(
-          "*"
+          `
+          id,
+          mock_exam_id,
+          ai_student_id,
+          started_at,
+          submitted_at,
+          score,
+          percentage,
+          total_marks,
+          correct_count,
+          incorrect_count,
+          unanswered_count,
+          status,
+          created_at,
+          updated_at
+          `
         )
         .single()
 
@@ -786,24 +1070,32 @@ export async function POST(
       )
     }
 
-    /*
-     * ---------------------------------------------------------
-     * MARK ANSWERS
-     * ---------------------------------------------------------
-     */
+    /* ========================================================
+       MARK ANSWERS
+       ======================================================== */
 
     let totalScore = 0
+
     let correctCount = 0
+
     let incorrectCount = 0
+
     let unansweredCount = 0
 
+    /*
+     * This matches the ACTUAL ai_mock_answers schema.
+     */
+
     const answerRows: Array<{
+      mock_question_id: string
+      user_id: string
+      answer_text: string | null
+      marks_awarded: number
+      is_correct: boolean
+      ai_feedback: string | null
+      ai_explanation: string | null
       attempt_id: string
       question_id: string
-      answer: string | null
-      is_correct: boolean
-      marks_awarded: number
-      answered_at: string | null
     }> = []
 
     for (
@@ -812,9 +1104,7 @@ export async function POST(
     ) {
       const submitted =
         submittedAnswers.find(
-          (
-            item
-          ) =>
+          item =>
             item.questionId ===
             question.id
         )
@@ -829,35 +1119,43 @@ export async function POST(
         unansweredCount++
 
         answerRows.push({
+          mock_question_id:
+            question.id,
+
+          user_id:
+            userId,
+
+          answer_text:
+            null,
+
+          marks_awarded:
+            0,
+
+          is_correct:
+            false,
+
+          ai_feedback:
+            "No answer submitted.",
+
+          ai_explanation:
+            question.explanation ??
+            null,
+
           attempt_id:
             attempt.id,
 
           question_id:
             question.id,
-
-          answer: null,
-
-          is_correct:
-            false,
-
-          marks_awarded:
-            0,
-
-          answered_at:
-            null,
         })
 
         continue
       }
 
       /*
-       * Multiple-choice and short-answer questions can be
-       * automatically marked.
+       * Current automatic marking.
        *
-       * Written/structured answers are currently checked against
-       * the AI-generated expected answer. This is intentionally
-       * conservative; later we can add Gemini-assisted marking
-       * for working/partial marks.
+       * The expected answer is stored in
+       * ai_mock_questions.correct_answer.
        */
 
       const correctAnswer =
@@ -890,30 +1188,41 @@ export async function POST(
         marksAwarded
 
       answerRows.push({
+        mock_question_id:
+          question.id,
+
+        user_id:
+          userId,
+
+        answer_text:
+          answer,
+
+        marks_awarded:
+          marksAwarded,
+
+        is_correct:
+          isCorrect,
+
+        ai_feedback:
+          isCorrect
+            ? "Correct answer."
+            : "The submitted answer does not match the expected answer.",
+
+        ai_explanation:
+          question.explanation ??
+          null,
+
         attempt_id:
           attempt.id,
 
         question_id:
           question.id,
-
-        answer,
-
-        is_correct:
-          isCorrect,
-
-        marks_awarded:
-          marksAwarded,
-
-        answered_at:
-          new Date().toISOString(),
       })
     }
 
-    /*
-     * ---------------------------------------------------------
-     * SAVE ANSWERS
-     * ---------------------------------------------------------
-     */
+    /* ========================================================
+       SAVE ANSWERS
+       ======================================================== */
 
     const {
       error:
@@ -955,6 +1264,10 @@ export async function POST(
       )
     }
 
+    /* ========================================================
+       CALCULATE RESULT
+       ======================================================== */
+
     const totalMarks =
       Number(
         mockExam.total_marks ??
@@ -962,22 +1275,21 @@ export async function POST(
       )
 
     const percentage =
-      totalMarks >
-      0
+      totalMarks > 0
         ? Number(
             (
-              (totalScore /
-                totalMarks) *
+              (
+                totalScore /
+                totalMarks
+              ) *
               100
             ).toFixed(2)
           )
         : 0
 
-    /*
-     * ---------------------------------------------------------
-     * COMPLETE ATTEMPT
-     * ---------------------------------------------------------
-     */
+    /* ========================================================
+       COMPLETE ATTEMPT
+       ======================================================== */
 
     const submittedAt =
       new Date().toISOString()
@@ -1024,7 +1336,22 @@ export async function POST(
           attempt.id
         )
         .select(
-          "*"
+          `
+          id,
+          mock_exam_id,
+          ai_student_id,
+          started_at,
+          submitted_at,
+          score,
+          percentage,
+          total_marks,
+          correct_count,
+          incorrect_count,
+          unanswered_count,
+          status,
+          created_at,
+          updated_at
+          `
         )
         .single()
 
@@ -1048,31 +1375,54 @@ export async function POST(
       )
     }
 
-    /*
-     * Mark the exam as completed.
-     */
+    /* ========================================================
+       MARK EXAM COMPLETED
+       ======================================================== */
 
-    await supabaseAdmin
-      .from(
-        "ai_mock_exams"
+    const {
+      error:
+        examUpdateError,
+    } =
+      await supabaseAdmin
+        .from(
+          "ai_mock_exams"
+        )
+        .update({
+          status:
+            "completed",
+
+          completed_at:
+            submittedAt,
+
+          score:
+            totalScore,
+
+          percentage,
+        })
+        .eq(
+          "id",
+          mockExamId
+        )
+        .eq(
+          "ai_student_id",
+          student.id
+        )
+
+    if (examUpdateError) {
+      console.error(
+        "Mock exam completion update error:",
+        examUpdateError
       )
-      .update({
-        status:
-          "completed",
 
-        updated_at:
-          submittedAt,
-      })
-      .eq(
-        "id",
-        mockExamId
-      )
+      /*
+       * The attempt and answers have already
+       * been saved, so do not delete them.
+       */
+    }
 
-    /*
-     * ---------------------------------------------------------
-     * TOPIC PERFORMANCE
-     * ---------------------------------------------------------
-     */
+    /* ========================================================
+       TOPIC PERFORMANCE
+       ======================================================== */
 
     const topicMap =
       new Map<
@@ -1087,10 +1437,7 @@ export async function POST(
       >()
 
     questions.forEach(
-      (
-        question,
-        index
-      ) => {
+      question => {
         const topic =
           question.topic ??
           "General Mathematics"
@@ -1100,9 +1447,13 @@ export async function POST(
             topic
           ) ?? {
             topic,
+
             marks: 0,
+
             awarded: 0,
+
             questions: 0,
+
             correct: 0,
           }
 
@@ -1117,9 +1468,7 @@ export async function POST(
 
         const submitted =
           answerRows.find(
-            (
-              answer
-            ) =>
+            answer =>
               answer.question_id ===
               question.id
           )
@@ -1147,54 +1496,82 @@ export async function POST(
     const topicPerformance =
       Array.from(
         topicMap.values()
-      ).map(
-        (
-          item
-        ) => ({
-          topic:
-            item.topic,
+      )
+        .map(
+          item => ({
+            topic:
+              item.topic,
 
-          marks:
-            item.marks,
+            marks:
+              item.marks,
 
-          awarded:
-            item.awarded,
+            awarded:
+              item.awarded,
 
-          questions:
-            item.questions,
+            questions:
+              item.questions,
 
-          correct:
-            item.correct,
+            correct:
+              item.correct,
 
-          percentage:
-            item.marks >
-            0
-              ? Number(
-                  (
-                    (item.awarded /
-                      item.marks) *
-                    100
-                  ).toFixed(
-                    1
+            percentage:
+              item.marks > 0
+                ? Number(
+                    (
+                      (
+                        item.awarded /
+                        item.marks
+                      ) *
+                      100
+                    ).toFixed(1)
                   )
-                )
-              : 0,
-        })
-      )
-      .sort(
-        (
-          a,
-          b
-        ) =>
-          a.percentage -
-          b.percentage
-      )
+                : 0,
+          })
+        )
+        .sort(
+          (a, b) =>
+            a.percentage -
+            b.percentage
+        )
+
+    /* ========================================================
+       FORMAT RESPONSE
+       ======================================================== */
+
+    const formattedMock = {
+      ...mockExam,
+
+      total_questions:
+        questions.length,
+
+      totalQuestions:
+        questions.length,
+
+      total_marks:
+        totalMarks,
+
+      totalMarks:
+        totalMarks,
+
+      duration_minutes:
+        Number(
+          mockExam.duration_minutes ??
+            0
+        ),
+
+      durationMinutes:
+        Number(
+          mockExam.duration_minutes ??
+            0
+        ),
+    }
 
     return NextResponse.json(
       {
         success: true,
 
-        mock: mockExam,
+        mock:
+          formattedMock,
 
         attempt:
           completedAttempt,
