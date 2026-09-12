@@ -40,6 +40,7 @@ export default function AISignupPage() {
 
   const [emailSent, setEmailSent] = useState(false)
   const [createdEmail, setCreatedEmail] = useState("")
+  const [initialCredits, setInitialCredits] = useState(5)
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -81,14 +82,27 @@ export default function AISignupPage() {
 
       /*
        * IMPORTANT:
-       * Do NOT navigate anywhere here.
        *
-       * The user remains on the signup page and is
-       * clearly told that the confirmation email
-       * has been sent.
+       * The backend/database is responsible for
+       * creating the student's AI credit balance.
+       *
+       * The PostgreSQL trigger
+       * initialize_ai_student_credits()
+       * gives every new AI student 5 free credits.
+       *
+       * The frontend only displays the value
+       * returned by the signup API.
        */
+
       setCreatedEmail(
         data.email || email
+      )
+
+      setInitialCredits(
+        typeof data.initialCredits === "number" &&
+          data.initialCredits >= 0
+          ? data.initialCredits
+          : 5
       )
 
       setEmailSent(true)
@@ -97,6 +111,7 @@ export default function AISignupPage() {
        * Clear password fields after successful
        * account creation.
        */
+
       setPassword("")
       setConfirmPassword("")
     } catch {
@@ -113,11 +128,12 @@ export default function AISignupPage() {
    * EMAIL SENT SUCCESS SCREEN
    * ------------------------------------------
    */
+
   if (emailSent) {
     return (
       <main className="min-h-screen bg-[#f4f1ea] flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-5xl grid lg:grid-cols-2 bg-white rounded-3xl overflow-hidden shadow-xl">
-          
+
           <div className="hidden lg:flex bg-[#10243d] text-white p-12 flex-col justify-between">
             <div>
               <div className="flex items-center gap-3">
@@ -160,7 +176,7 @@ export default function AISignupPage() {
 
           <div className="p-6 sm:p-10 lg:p-12 flex items-center">
             <div className="w-full">
-              
+
               <div className="lg:hidden mb-8">
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-xl bg-[#10243d] flex items-center justify-center">
@@ -204,6 +220,26 @@ export default function AISignupPage() {
 
                   <p className="mt-1 font-semibold text-[#10243d] break-all">
                     {createdEmail}
+                  </p>
+                </div>
+
+                {/* ------------------------------------------
+                    FREE AI CREDITS
+                   ------------------------------------------ */}
+
+                <div className="mt-4 rounded-2xl border border-[#10243d]/10 bg-[#10243d] p-5 text-white">
+                  <p className="text-sm text-white/70">
+                    Your account starts with
+                  </p>
+
+                  <p className="mt-1 text-3xl font-bold text-[#e3a56f]">
+                    {initialCredits} Free AI Credits
+                  </p>
+
+                  <p className="mt-2 text-xs text-white/60 leading-5">
+                    These credits can be used for
+                    AI Learning Hub features such as
+                    exam predictions and mock tests.
                   </p>
                 </div>
 
@@ -252,7 +288,7 @@ export default function AISignupPage() {
   return (
     <main className="min-h-screen bg-[#f4f1ea] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-5xl grid lg:grid-cols-2 bg-white rounded-3xl overflow-hidden shadow-xl">
-        
+
         <div className="hidden lg:flex bg-[#10243d] text-white p-12 flex-col justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -283,6 +319,25 @@ export default function AISignupPage() {
                 and access personalised exam
                 preparation tools.
               </p>
+
+              {/* ------------------------------------------
+                  FREE CREDITS MESSAGE
+                 ------------------------------------------ */}
+
+              <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+                <p className="text-sm text-white/60">
+                  New AI Learning Hub accounts receive
+                </p>
+
+                <p className="mt-1 text-2xl font-bold text-[#e3a56f]">
+                  5 Free AI Credits
+                </p>
+
+                <p className="mt-2 text-sm text-white/60 leading-6">
+                  Use your free credits to explore
+                  AI-powered exam preparation tools.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -294,7 +349,7 @@ export default function AISignupPage() {
         </div>
 
         <div className="p-6 sm:p-10 lg:p-12">
-          
+
           <div className="lg:hidden mb-8">
             <div className="flex items-center gap-3">
               <div className="h-11 w-11 rounded-xl bg-[#10243d] flex items-center justify-center">
@@ -321,6 +376,19 @@ export default function AISignupPage() {
             <p className="mt-2 text-gray-500">
               Join the GlobeDk AI Learning Hub.
             </p>
+
+            {/* ------------------------------------------
+                FREE CREDIT NOTICE
+               ------------------------------------------ */}
+
+            <div className="mt-4 rounded-xl border border-[#e3a56f]/40 bg-[#f4f1ea] px-4 py-3">
+              <p className="text-sm text-[#10243d]">
+                <span className="font-bold">
+                  Get 5 free AI credits
+                </span>{" "}
+                when you create your account.
+              </p>
+            </div>
           </div>
 
           {error && (
@@ -555,6 +623,7 @@ export default function AISignupPage() {
 
           <p className="text-center text-sm text-gray-500 mt-7">
             Already have an AI Learning Hub account?{" "}
+
             <Link
               href="/ai/signin"
               className="font-semibold text-[#10243d] hover:underline"

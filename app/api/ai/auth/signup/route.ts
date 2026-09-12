@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server"
 
 import bcrypt from "bcryptjs"
@@ -208,7 +209,25 @@ export async function POST(
       ).toISOString()
 
     // ------------------------------------------
-    // CREATE ACCOUNT
+    // CREATE AI STUDENT ACCOUNT
+    // ------------------------------------------
+    //
+    // IMPORTANT:
+    //
+    // The database trigger
+    // "trigger_initialize_ai_student_credits"
+    // automatically creates the student's
+    // ai_credit_balances row.
+    //
+    // New students receive:
+    //
+    // balance = 5
+    // lifetime_credits_purchased = 0
+    // lifetime_credits_used = 0
+    //
+    // Therefore, DO NOT manually insert
+    // into ai_credit_balances here.
+    //
     // ------------------------------------------
 
     const {
@@ -273,10 +292,8 @@ export async function POST(
       await sendAIEmailVerificationEmail({
         email:
           student.email,
-
         firstName:
           student.first_name,
-
         token:
           verificationToken,
       })
@@ -288,9 +305,13 @@ export async function POST(
 
       /*
        * If the email cannot be sent, remove
-       * the newly created account so the user
-       * can safely try again.
+       * the newly created account.
+       *
+       * The foreign key uses ON DELETE CASCADE,
+       * so the associated ai_credit_balances
+       * row will also be removed automatically.
        */
+
       await supabaseAdmin
         .from("ai_students")
         .delete()
@@ -335,6 +356,8 @@ export async function POST(
 
       email:
         student.email,
+
+      initialCredits: 5,
     })
   } catch (error) {
     console.error(
