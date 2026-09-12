@@ -31,6 +31,8 @@ import {
   useRouter,
 } from "next/navigation"
 
+import Image from "next/image"
+
 type AIStudent = {
   id: string
   email: string
@@ -188,38 +190,52 @@ export default function AIDashboardPage() {
 
             <div className="mb-8 flex items-center justify-between">
 
-              <div>
-                <p className="text-lg font-black tracking-tight text-white">
-                  GlobeDk AI
-                </p>
+  <div className="flex items-center gap-3">
 
-                <p className="text-xs text-white/60">
-                  Learning Hub
-                </p>
-              </div>
+    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+      <Image
+        src="/Logo.png"
+        alt="GlobeDk Elite Academy"
+        fill
+        className="object-contain"
+        priority
+      />
+    </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileMenuOpen(false)
-                }
-                className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
+    <div>
+      <p className="text-lg font-black tracking-tight text-white">
+        GlobeDk AI
+      </p>
 
-            </div>
+      <p className="text-xs text-white/60">
+        Learning Hub
+      </p>
+    </div>
+
+  </div>
+
+  <button
+    type="button"
+    onClick={() =>
+      setMobileMenuOpen(false)
+    }
+    className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+  >
+    <X className="h-5 w-5" />
+  </button>
+
+</div>
 
             <nav className="space-y-2">
 
-              <MobileNavItem
-                icon={Brain}
-                label="Dashboard"
-                active
-                onClick={() =>
-                  setMobileMenuOpen(false)
-                }
-              />
+             <MobileNavItem
+  icon={GraduationCap}
+  label="Dashboard"
+  active
+  onClick={() =>
+    setMobileMenuOpen(false)
+  }
+/>
 
               <MobileNavItem
                 icon={Sparkles}
@@ -302,27 +318,35 @@ export default function AIDashboardPage() {
 
         {/* Logo */}
 
-        <div className="border-b border-white/10 px-6 py-6">
+             <div className="mb-8 flex items-center justify-between">
 
-          <div className="flex items-center gap-3">
+  <div className="flex items-center gap-3">
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e3a56f] shadow-lg">
-              <Brain className="h-6 w-6 text-[#10243d]" />
-            </div>
+    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+      <Image
+        src="/Logo.png"
+        alt="GlobeDk Elite Academy"
+        fill
+        className="object-contain"
+        priority
+      />
+    </div>
 
-            <div>
-              <p className="text-lg font-black tracking-tight text-white">
-                GlobeDk AI
-              </p>
+    <div>
+      <p className="text-lg font-black tracking-tight text-white">
+        GlobeDk AI
+      </p>
 
-              <p className="text-xs text-white/55">
-                Learning Hub
-              </p>
-            </div>
+      <p className="text-xs text-white/60">
+        Learning Hub
+      </p>
+    </div>
 
-          </div>
+  </div>
 
-        </div>
+  
+
+</div>
 
         {/* Navigation */}
 
