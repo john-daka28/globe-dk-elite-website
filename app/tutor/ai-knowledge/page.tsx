@@ -49,6 +49,19 @@ type TopicStatistic = {
   average_marks: number | null
 }
 
+type UploadResponse = {
+  success?: boolean
+  error?: string
+  paper?: {
+    id: string
+    examYear: number
+    session: string
+    paper: "Paper 1" | "Paper 2"
+    questionCount: number
+    extractionStatus: string
+  }
+}
+
 export default function AIKnowledgePage() {
   const [papers, setPapers] =
     useState<Paper[]>([])
@@ -87,6 +100,7 @@ export default function AIKnowledgePage() {
   async function loadKnowledgeBase() {
     try {
       setLoading(true)
+      setError("")
 
       const [
         papersResponse,
@@ -95,6 +109,8 @@ export default function AIKnowledgePage() {
         fetch(
           "/api/tutor/ai-knowledge/mathematics",
           {
+            method: "GET",
+            credentials: "include",
             cache: "no-store",
           }
         ),
@@ -102,10 +118,24 @@ export default function AIKnowledgePage() {
         fetch(
           "/api/tutor/ai-knowledge/mathematics/statistics",
           {
+            method: "GET",
+            credentials: "include",
             cache: "no-store",
           }
         ),
       ])
+
+      if (!papersResponse.ok) {
+        throw new Error(
+          "Could not load historical papers."
+        )
+      }
+
+      if (!statisticsResponse.ok) {
+        throw new Error(
+          "Could not load Mathematics statistics."
+        )
+      }
 
       const papersData =
         await papersResponse.json()
@@ -115,18 +145,33 @@ export default function AIKnowledgePage() {
 
       if (papersData.success) {
         setPapers(
-          papersData.papers || []
+          Array.isArray(
+            papersData.papers
+          )
+            ? papersData.papers
+            : []
         )
       }
 
       if (statisticsData.success) {
         setStatistics(
-          statisticsData.statistics || []
+          Array.isArray(
+            statisticsData.statistics
+          )
+            ? statisticsData.statistics
+            : []
         )
       }
-    } catch {
+    } catch (loadError) {
+      console.error(
+        "Knowledge base loading error:",
+        loadError
+      )
+
       setError(
-        "Could not load the AI knowledge base."
+        loadError instanceof Error
+          ? loadError.message
+          : "Could not load the AI knowledge base."
       )
     } finally {
       setLoading(false)
@@ -148,13 +193,20 @@ export default function AIKnowledgePage() {
       return
     }
 
+    setError("")
+    setMessage("")
+
     if (
       selected.type !==
-      "application/pdf"
+        "application/pdf" &&
+      !selected.name
+        .toLowerCase()
+        .endsWith(".pdf")
     ) {
       setError(
         "Please select a PDF file."
       )
+
       setFile(null)
       return
     }
@@ -166,22 +218,25 @@ export default function AIKnowledgePage() {
       setError(
         "The maximum PDF size is 20MB."
       )
+
       setFile(null)
       return
     }
 
-    setError("")
-    setMessage("")
     setFile(selected)
   }
 
   async function handleUpload(
-    event: FormEvent
+    event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
     setError("")
     setMessage("")
+
+    if (uploading) {
+      return
+    }
 
     if (!file) {
       setError(
@@ -190,7 +245,8 @@ export default function AIKnowledgePage() {
       return
     }
 
-    const year = Number(examYear)
+    const year =
+      Number(examYear)
 
     if (
       !Number.isInteger(year) ||
@@ -203,9 +259,41 @@ export default function AIKnowledgePage() {
       return
     }
 
+    const cleanedSession =
+      session.trim()
+
+    if (!cleanedSession) {
+      setError(
+        "Please enter the examination session."
+      )
+      return
+    }
+
+    if (
+      paper !== "Paper 1" &&
+      paper !== "Paper 2"
+    ) {
+      setError(
+        "Please select Paper 1 or Paper 2."
+      )
+      return
+    }
+
     setUploading(true)
 
     try {
+      /*
+       * ----------------------------------------------------------
+       * BUILD FORM DATA
+       * ----------------------------------------------------------
+       *
+       * Keep the same names expected by the upload API:
+       *
+       * file
+       * examYear
+       * session
+       * paper
+       */
       const formData =
         new FormData()
 
@@ -216,12 +304,12 @@ export default function AIKnowledgePage() {
 
       formData.append(
         "examYear",
-        examYear
+        String(year)
       )
 
       formData.append(
         "session",
-        session
+        cleanedSession
       )
 
       formData.append(
@@ -229,29 +317,63 @@ export default function AIKnowledgePage() {
         paper
       )
 
+      /*
+       * ----------------------------------------------------------
+       * SEND PAPER TO BACKEND
+       * ----------------------------------------------------------
+       *
+       * Do NOT manually set Content-Type.
+       *
+       * The browser automatically creates the correct
+       * multipart/form-data boundary.
+       */
       const response =
         await fetch(
           "/api/tutor/ai-knowledge/mathematics/upload",
           {
             method: "POST",
+            credentials: "include",
             body: formData,
           }
         )
 
-      const data =
-        await response.json()
+      let data: UploadResponse = {}
 
-      if (!response.ok || !data.success) {
+      try {
+        data =
+          await response.json()
+      } catch {
+        throw new Error(
+          "The server returned an invalid response."
+        )
+      }
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.error ||
             "Paper processing failed."
         )
       }
 
+      /*
+       * ----------------------------------------------------------
+       * SUCCESS
+       * ----------------------------------------------------------
+       */
+      const questionCount =
+        data.paper?.questionCount ?? 0
+
       setMessage(
-        `Paper successfully processed. ${data.paper.questionCount} questions were added to the knowledge base.`
+        `Paper successfully processed. ${questionCount} questions were added to the knowledge base.`
       )
 
+      /*
+       * Clear selected file after successful
+       * processing.
+       */
       setFile(null)
 
       const input =
@@ -263,8 +385,21 @@ export default function AIKnowledgePage() {
         input.value = ""
       }
 
+      /*
+       * Refresh:
+       *
+       * - historical papers
+       * - question counts
+       * - topic statistics
+       * - latest pattern information
+       */
       await loadKnowledgeBase()
     } catch (uploadError) {
+      console.error(
+        "Mathematics paper upload error:",
+        uploadError
+      )
+
       setError(
         uploadError instanceof Error
           ? uploadError.message
@@ -285,15 +420,21 @@ export default function AIKnowledgePage() {
   const totalQuestions =
     completedPapers.reduce(
       (sum, item) =>
-        sum + item.question_count,
+        sum +
+        Number(
+          item.question_count || 0
+        ),
       0
     )
 
   const uniqueTopics =
     new Set(
-      statistics.map(
-        (item) => item.topic
-      )
+      statistics
+        .map(
+          (item) =>
+            item.topic
+        )
+        .filter(Boolean)
     ).size
 
   return (
@@ -302,8 +443,14 @@ export default function AIKnowledgePage() {
 
       <main className="lg:pl-64 pl-[72px]">
         <div className="mx-auto max-w-7xl px-6 py-8">
+
+          {/* =====================================================
+              PAGE HEADER
+          ===================================================== */}
+
           <div className="mb-8">
             <div className="flex items-center gap-3">
+
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10243d] text-white">
                 <Database className="h-6 w-6" />
               </div>
@@ -320,31 +467,50 @@ export default function AIKnowledgePage() {
                   historical Mathematics papers.
                 </p>
               </div>
+
             </div>
           </div>
 
+          {/* =====================================================
+              SUCCESS MESSAGE
+          ===================================================== */}
+
           {message && (
             <div className="mb-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
 
               <p className="text-sm">
                 {message}
               </p>
+
             </div>
           )}
 
+          {/* =====================================================
+              ERROR MESSAGE
+          ===================================================== */}
+
           {error && (
             <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
 
               <p className="text-sm">
                 {error}
               </p>
+
             </div>
           )}
 
+          {/* =====================================================
+              SUMMARY CARDS
+          ===================================================== */}
+
           <div className="mb-8 grid gap-4 sm:grid-cols-3">
+
             <div className="rounded-2xl bg-white p-5 shadow-sm">
+
               <p className="text-sm text-slate-500">
                 Papers processed
               </p>
@@ -352,9 +518,11 @@ export default function AIKnowledgePage() {
               <p className="mt-2 text-3xl font-bold">
                 {completedPapers.length}
               </p>
+
             </div>
 
             <div className="rounded-2xl bg-white p-5 shadow-sm">
+
               <p className="text-sm text-slate-500">
                 Questions indexed
               </p>
@@ -362,9 +530,11 @@ export default function AIKnowledgePage() {
               <p className="mt-2 text-3xl font-bold">
                 {totalQuestions}
               </p>
+
             </div>
 
             <div className="rounded-2xl bg-white p-5 shadow-sm">
+
               <p className="text-sm text-slate-500">
                 Topics detected
               </p>
@@ -372,12 +542,25 @@ export default function AIKnowledgePage() {
               <p className="mt-2 text-3xl font-bold">
                 {uniqueTopics}
               </p>
+
             </div>
+
           </div>
 
+          {/* =====================================================
+              MAIN CONTENT
+          ===================================================== */}
+
           <div className="grid gap-8 xl:grid-cols-[420px_1fr]">
+
+            {/* ===================================================
+                UPLOAD CARD
+            =================================================== */}
+
             <section className="rounded-2xl bg-white p-6 shadow-sm">
+
               <div className="mb-6">
+
                 <h2 className="text-lg font-bold">
                   Add past paper
                 </h2>
@@ -387,13 +570,18 @@ export default function AIKnowledgePage() {
                   Mathematics PDF. Gemini will
                   read and classify its questions.
                 </p>
+
               </div>
 
               <form
                 onSubmit={handleUpload}
                 className="space-y-5"
               >
+
+                {/* PDF */}
+
                 <div>
+
                   <label
                     htmlFor="paper-file"
                     className="mb-2 block text-sm font-semibold"
@@ -405,6 +593,7 @@ export default function AIKnowledgePage() {
                     htmlFor="paper-file"
                     className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 px-5 py-8 text-center transition hover:border-[#b15d2b]"
                   >
+
                     <Upload className="mb-3 h-7 w-7 text-[#b15d2b]" />
 
                     <span className="text-sm font-medium">
@@ -416,6 +605,7 @@ export default function AIKnowledgePage() {
                     <span className="mt-1 text-xs text-slate-500">
                       Maximum 20MB
                     </span>
+
                   </label>
 
                   <input
@@ -427,9 +617,13 @@ export default function AIKnowledgePage() {
                     }
                     className="hidden"
                   />
+
                 </div>
 
+                {/* EXAM YEAR */}
+
                 <div>
+
                   <label className="mb-2 block text-sm font-semibold">
                     Examination year
                   </label>
@@ -446,9 +640,13 @@ export default function AIKnowledgePage() {
                     }
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#b15d2b]"
                   />
+
                 </div>
 
+                {/* SESSION */}
+
                 <div>
+
                   <label className="mb-2 block text-sm font-semibold">
                     Session
                   </label>
@@ -464,9 +662,13 @@ export default function AIKnowledgePage() {
                     }
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#b15d2b]"
                   />
+
                 </div>
 
+                {/* PAPER */}
+
                 <div>
+
                   <label className="mb-2 block text-sm font-semibold">
                     Paper
                   </label>
@@ -483,74 +685,116 @@ export default function AIKnowledgePage() {
                     }
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#b15d2b]"
                   >
-                    <option>
+
+                    <option value="Paper 1">
                       Paper 1
                     </option>
 
-                    <option>
+                    <option value="Paper 2">
                       Paper 2
                     </option>
+
                   </select>
+
                 </div>
+
+                {/* UPLOAD */}
 
                 <button
                   type="submit"
                   disabled={
-                    uploading || !file
+                    uploading ||
+                    !file
                   }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#10243d] px-5 py-3 font-semibold text-white transition hover:bg-[#183553] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+
                   {uploading ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
+
                       Analysing paper...
                     </>
                   ) : (
                     <>
                       <Upload className="h-5 w-5" />
+
                       Add to knowledge base
                     </>
                   )}
+
                 </button>
+
               </form>
 
+              {/* INFORMATION */}
+
               <div className="mt-6 rounded-xl bg-[#f4f1ea] p-4">
+
                 <p className="text-xs leading-5 text-slate-600">
+
                   Gemini will identify questions,
                   topics, subtopics, skills, marks,
                   question types and other
                   mathematical patterns. The
                   original PDF is retained in
                   Supabase Storage.
+
                 </p>
+
               </div>
+
             </section>
 
+            {/* ===================================================
+                RIGHT SIDE
+            =================================================== */}
+
             <section className="space-y-8">
+
+              {/* =================================================
+                  HISTORICAL PAPERS
+              ================================================= */}
+
               <div className="rounded-2xl bg-white p-6 shadow-sm">
+
                 <div className="mb-5 flex items-center gap-3">
+
                   <FileText className="h-5 w-5 text-[#b15d2b]" />
 
                   <h2 className="text-lg font-bold">
                     Historical papers
                   </h2>
+
                 </div>
 
                 {loading ? (
+
                   <div className="flex items-center gap-2 text-sm text-slate-500">
+
                     <Loader2 className="h-4 w-4 animate-spin" />
+
                     Loading knowledge base...
+
                   </div>
+
                 ) : papers.length === 0 ? (
+
                   <p className="text-sm text-slate-500">
                     No Mathematics papers have
                     been added yet.
                   </p>
+
                 ) : (
+
                   <div className="overflow-x-auto">
+
                     <table className="w-full text-left text-sm">
+
                       <thead>
+
                         <tr className="border-b border-slate-200">
+
                           <th className="px-3 py-3 font-semibold">
                             Year
                           </th>
@@ -566,16 +810,21 @@ export default function AIKnowledgePage() {
                           <th className="px-3 py-3 font-semibold">
                             Status
                           </th>
+
                         </tr>
+
                       </thead>
 
                       <tbody>
+
                         {papers.map(
                           (item) => (
+
                             <tr
                               key={item.id}
                               className="border-b border-slate-100"
                             >
+
                               <td className="px-3 py-3 font-medium">
                                 {item.exam_year}
                               </td>
@@ -589,48 +838,96 @@ export default function AIKnowledgePage() {
                               </td>
 
                               <td className="px-3 py-3">
+
                                 {item.extraction_status ===
                                 "completed" ? (
+
                                   <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+
                                     <CheckCircle2 className="h-3.5 w-3.5" />
+
                                     Ready
+
                                   </span>
+
                                 ) : item.extraction_status ===
                                   "processing" ? (
+
                                   <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
+
                                     Processing
+
                                   </span>
+
+                                ) : item.extraction_status ===
+                                  "pending" ? (
+
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+
+                                    Pending
+
+                                  </span>
+
                                 ) : (
+
                                   <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+
+                                    <AlertCircle className="h-3.5 w-3.5" />
+
                                     Failed
+
                                   </span>
+
                                 )}
+
                               </td>
+
                             </tr>
+
                           )
                         )}
+
                       </tbody>
+
                     </table>
+
                   </div>
+
                 )}
+
               </div>
 
+              {/* =================================================
+                  DETECTED TOPIC PATTERNS
+              ================================================= */}
+
               <div className="rounded-2xl bg-white p-6 shadow-sm">
+
                 <h2 className="mb-5 text-lg font-bold">
                   Detected topic patterns
                 </h2>
 
                 {statistics.length === 0 ? (
+
                   <p className="text-sm text-slate-500">
                     Topic statistics will appear
                     after papers have been processed.
                   </p>
+
                 ) : (
+
                   <div className="overflow-x-auto">
+
                     <table className="w-full text-left text-sm">
+
                       <thead>
+
                         <tr className="border-b border-slate-200">
+
                           <th className="px-3 py-3 font-semibold">
                             Topic
                           </th>
@@ -650,28 +947,37 @@ export default function AIKnowledgePage() {
                           <th className="px-3 py-3 font-semibold">
                             Latest
                           </th>
+
                         </tr>
+
                       </thead>
 
                       <tbody>
+
                         {statistics
                           .slice(0, 30)
                           .map(
                             (item) => (
+
                               <tr
                                 key={item.id}
                                 className="border-b border-slate-100"
                               >
+
                                 <td className="px-3 py-3">
+
                                   <div className="font-medium">
                                     {item.topic}
                                   </div>
 
                                   {item.subtopic && (
+
                                     <div className="text-xs text-slate-500">
                                       {item.subtopic}
                                     </div>
+
                                   )}
+
                                 </td>
 
                                 <td className="px-3 py-3">
@@ -690,16 +996,26 @@ export default function AIKnowledgePage() {
                                   {item.most_recent_year ||
                                     "—"}
                                 </td>
+
                               </tr>
+
                             )
                           )}
+
                       </tbody>
+
                     </table>
+
                   </div>
+
                 )}
+
               </div>
+
             </section>
+
           </div>
+
         </div>
       </main>
     </div>

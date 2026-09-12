@@ -1,172 +1,290 @@
-import { NextRequest, NextResponse } from "next/server"
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server"
 
-import { getAIStudentSession } from "@/lib/ai-auth"
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { gemini, getGeminiModelName } from "@/lib/gemini"
+import {
+  getAIStudentSession,
+} from "@/lib/ai-auth"
+
+import {
+  supabaseAdmin,
+} from "@/lib/supabase-admin"
+
+import {
+  gemini,
+  getGeminiModelName,
+} from "@/lib/gemini"
 
 export const runtime = "nodejs"
 
-type RequestedPaper = "Paper 1" | "Paper 2" | "Both"
+/* ============================================================
+   TYPES
+============================================================ */
 
-type HistoricalPaper = {
-  id: string
-  exam_year: number
-  session: string
-  paper: "Paper 1" | "Paper 2"
-  title: string | null
-  original_file_name: string | null
-  question_count: number | null
+type RequestedPaper =
+  | "Paper 1"
+  | "Paper 2"
+  | "Both"
+
+type PaperType =
+  | "Paper 1"
+  | "Paper 2"
+
+type PaperOccurrenceQuestion = {
+  question_id?: string
+  question_ref?: string
+  question_number?: number
+  question_label?: string | null
 }
 
-type HistoricalQuestion = {
-  id: string
-  paper_id: string
-  question_number: number
-  question_label: string | null
-  question_text: string
-  topic: string | null
-  subtopic: string | null
-  concept_family: string | null
-  question_family: string | null
-  variation_patterns: string[] | null
-  skills: string[] | null
-  question_type: string | null
-  difficulty: string | null
-  marks: number | null
-  paper_section: string | null
-  mathematical_objects: string[] | null
-  diagram_dependency: string | null
-  position_band: string | null
-  source_page_start: number | null
-  source_page_end: number | null
-  ai_classification_confidence: number | null
+type PaperOccurrence = {
+  paper_id?: string
+  paper_label?: string
+  year?: number
+  session?: string | null
+  paper?: PaperType
+  questions?: PaperOccurrenceQuestion[]
 }
 
-type PatternAnalysis = {
+type PatternRow = {
   id: string
 
-  subject: string
-  level: string
-  curriculum: string
-
-  paper: "Paper 1" | "Paper 2"
+  paper:
+    | PaperType
 
   topic: string
-  subtopic: string | null
-  concept_family: string | null
 
-  pattern_type: string | null
-  pattern_value: string | null
+  subtopic:
+    | string
+    | null
 
-  position_min: number | null
-  position_max: number | null
-  position_average: number | null
+  pattern_type:
+    | string
+    | null
+
+  pattern_value:
+    | string
+    | null
+
+  position_min:
+    | number
+    | null
+
+  position_max:
+    | number
+    | null
+
+  position_average:
+    | number
+    | null
 
   question_count: number
+
   papers_appeared: number
 
   appearance_rate: number
 
   total_marks: number
+
   average_marks: number
 
   years_seen: number[]
+
   question_positions: number[]
 
   question_styles: string[]
+
   skills: string[]
+
   example_question_ids: string[]
 
   frequency_score: number
+
   recency_score: number
+
   position_score: number
+
   style_score: number
+
   skill_score: number
+
   mark_weight_score: number
 
   prediction_score: number
 
-  pattern_strength: "Weak" | "Moderate" | "Strong" | null
+  pattern_strength:
+    | string
+    | null
 
-  updated_at: string | null
+  concept_family:
+    | string
+    | null
+
+  paper_occurrences:
+    | PaperOccurrence[]
+    | null
 }
 
-type EvidenceQuestion = {
+type HistoricalQuestion = {
   id: string
-  year: number
-  session: string
-  paper: string
+
+  paper_id: string
 
   question_number: number
-  question_label: string | null
+
+  question_label:
+    | string
+    | null
 
   question_text: string
 
-  topic: string
-  subtopic: string
+  topic:
+    | string
+    | null
 
-  concept_family: string
-  question_family: string
+  subtopic:
+    | string
+    | null
 
-  variation_patterns: string[]
-  skills: string[]
+  skills:
+    | string[]
+    | null
 
-  question_type: string
-  difficulty: string
+  question_type:
+    | string
+    | null
 
-  marks: number
+  difficulty:
+    | string
+    | null
 
-  paper_section: string
+  marks:
+    | number
+    | null
 
-  diagram_dependency: string
-  position_band: string
+  paper_section:
+    | string
+    | null
+
+  concept_family:
+    | string
+    | null
+
+  question_family:
+    | string
+    | null
+
+  variation_patterns:
+    | string[]
+    | null
+
+  diagram_dependency:
+    | string
+    | null
+
+  position_band:
+    | string
+    | null
+}
+
+type HistoricalPaper = {
+  id: string
+
+  exam_year: number
+
+  session:
+    | string
+    | null
+
+  paper:
+    | PaperType
 }
 
 type GeminiPrediction = {
-  paper: "Paper 1" | "Paper 2"
-
-  topic: string
-  subtopic?: string
-
-  concept_family?: string
-  question_family?: string
-
-  prediction_score?: number
-  confidence?: string | number
-
-  historical_frequency?: number
-  recency_score?: number
-  position_score?: number
-  variation_score?: number
-  skill_score?: number
-  mark_weight_score?: number
+  evidence_key?: string
 
   reasoning?: string
 
-  likely_question_styles?: string[]
+  what_repeats?: string
+
+  what_changes?: string
 
   revision_advice?: string
+
+  likely_question_styles?:
+    | string[]
+    | null
+
+  practice_question_concept?:
+    | string
+    | null
+
+  practice_question?:
+    | string
+    | null
 }
 
-function clamp(
-  value: number,
-  min = 0,
-  max = 100,
-) {
-  return Math.max(
-    min,
-    Math.min(max, value),
+type PredictionInsert = {
+  prediction_run_id: string
+
+  ai_student_id: string
+
+  topic: string
+
+  subtopic: string
+
+  paper: PaperType
+
+  prediction_score: number
+
+  confidence:
+    | "Low"
+    | "Medium"
+    | "High"
+
+  historical_frequency: number
+
+  recency_score: number
+
+  variation_score: number
+
+  mark_weight_score: number
+
+  reasoning: string
+
+  likely_question_styles: string[]
+
+  revision_advice: string
+
+  concept_family: string
+
+  question_family: string
+
+  historical_question_ids: string[]
+
+  practice_question_concept: string
+}
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+function normalizeText(
+  value: unknown
+): string {
+  return String(
+    value ?? ""
   )
-}
-
-function normalizeText(value: unknown) {
-  return String(value ?? "")
     .trim()
-    .replace(/\s+/g, " ")
+    .replace(
+      /\s+/g,
+      " "
+    )
 }
 
 function normalizePaper(
-  value: unknown,
+  value: unknown
 ): RequestedPaper | null {
   if (
     value === "Paper 1" ||
@@ -181,27 +299,47 @@ function normalizePaper(
 
 function toNumber(
   value: unknown,
-  fallback = 0,
-) {
-  const number = Number(value)
+  fallback = 0
+): number {
+  const number =
+    Number(value)
 
-  return Number.isFinite(number)
+  return Number.isFinite(
+    number
+  )
     ? number
     : fallback
 }
 
-/**
- * Convert the evidence score into the exact
- * confidence values accepted by ai_predictions.
- */
+function clamp(
+  value: number,
+  min = 0,
+  max = 100
+): number {
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  )
+}
+
 function confidenceFromScore(
-  score: number,
-): "Low" | "Medium" | "High" {
-  if (score >= 75) {
+  score: number
+):
+  | "Low"
+  | "Medium"
+  | "High" {
+  if (
+    score >= 75
+  ) {
     return "High"
   }
 
-  if (score >= 50) {
+  if (
+    score >= 50
+  ) {
     return "Medium"
   }
 
@@ -209,62 +347,241 @@ function confidenceFromScore(
 }
 
 function uniqueStrings(
-  values: unknown,
-) {
-  if (!Array.isArray(values)) {
+  values: unknown
+): string[] {
+  if (
+    !Array.isArray(values)
+  ) {
     return []
   }
 
   return Array.from(
     new Set(
       values
-        .map((value) =>
-          normalizeText(value),
+        .map(
+          (value) =>
+            normalizeText(
+              value
+            )
         )
-        .filter(Boolean),
-    ),
+        .filter(Boolean)
+    )
   )
 }
 
-function cleanJsonText(
-  text: string,
-) {
-  let cleaned = text.trim()
+/* ============================================================
+   SPECIFIC QUESTION FAMILY
+============================================================ */
 
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned
-      .replace(
-        /^```(?:json)?/i,
-        "",
-      )
-      .replace(
-        /```$/i,
-        "",
-      )
-      .trim()
+/*
+ * IMPORTANT
+ *
+ * Broad concept_family values such as:
+ *
+ * "Algebraic Manipulation and Equations"
+ *
+ * are NOT specific enough to be the main prediction grouping.
+ *
+ * The predictor therefore prefers:
+ *
+ * 1. question_family
+ * 2. pattern_value
+ * 3. subtopic
+ * 4. concept_family
+ * 5. topic
+ *
+ * This prevents unrelated historical questions from being
+ * placed into one prediction.
+ */
+
+function getSpecificQuestionFamily(
+  pattern: PatternRow
+): string {
+  const candidates = [
+    normalizeText(
+      pattern.pattern_value
+    ),
+
+    normalizeText(
+      pattern.subtopic
+    ),
+
+    normalizeText(
+      pattern.concept_family
+    ),
+
+    normalizeText(
+      pattern.topic
+    ),
+  ]
+
+  /*
+   * The pattern_value is normally the most specific value
+   * generated by the database pattern-analysis process.
+   */
+
+  for (
+    const candidate of candidates
+  ) {
+    if (
+      candidate
+    ) {
+      return candidate
+    }
   }
 
-  const firstBrace =
-    cleaned.indexOf("{")
+  return "General"
+}
 
-  const lastBrace =
-    cleaned.lastIndexOf("}")
+/* ============================================================
+   PATTERN KEY
+============================================================ */
+
+function evidenceKey(
+  pattern: PatternRow
+): string {
+  const concept =
+    normalizeText(
+      pattern.concept_family
+    ) ||
+    normalizeText(
+      pattern.topic
+    ) ||
+    "Other"
+
+  const family =
+    getSpecificQuestionFamily(
+      pattern
+    )
+
+  return [
+    pattern.paper,
+    concept.toLowerCase(),
+    family.toLowerCase(),
+  ].join("|")
+}
+
+/* ============================================================
+   PAPER LABEL
+============================================================ */
+
+function formatPaperLabel(
+  paper: HistoricalPaper
+): string {
+  const session =
+    normalizeText(
+      paper.session
+    )
+
+  const paperShort =
+    paper.paper.replace(
+      "Paper ",
+      "P"
+    )
+
+  /*
+   * Avoid producing labels such as:
+   *
+   * November 2025 P1
+   *
+   * and then accidentally displaying the label again alongside
+   * session/year/paper.
+   */
 
   if (
-    firstBrace >= 0 &&
-    lastBrace > firstBrace
+    session
+      .toLowerCase()
+      .includes("specimen")
   ) {
-    cleaned = cleaned.slice(
-      firstBrace,
-      lastBrace + 1,
+    return `${session} ${paperShort}`
+  }
+
+  if (session) {
+    return `${session} ${paper.exam_year} ${paperShort}`
+  }
+
+  return `${paper.exam_year} ${paperShort}`
+}
+
+/* ============================================================
+   QUESTION REFERENCE
+============================================================ */
+
+function questionReference(
+  question: HistoricalQuestion
+): string {
+  const label =
+    normalizeText(
+      question.question_label
+    )
+
+  if (label) {
+    if (
+      /^Q/i.test(label)
+    ) {
+      return label
+    }
+
+    return `Q${label}`
+  }
+
+  return `Q${question.question_number}`
+}
+
+/* ============================================================
+   CLEAN GEMINI JSON
+============================================================ */
+
+function cleanJsonText(
+  text: string
+): string {
+  let cleaned =
+    text.trim()
+
+  cleaned =
+    cleaned.replace(
+      /^```(?:json)?\s*/i,
+      ""
+    )
+
+  cleaned =
+    cleaned.replace(
+      /\s*```$/i,
+      ""
+    )
+
+  cleaned =
+    cleaned.trim()
+
+  const firstObject =
+    cleaned.indexOf(
+      "{"
+    )
+
+  const lastObject =
+    cleaned.lastIndexOf(
+      "}"
+    )
+
+  if (
+    firstObject >= 0 &&
+    lastObject > firstObject
+  ) {
+    return cleaned.slice(
+      firstObject,
+      lastObject + 1
     )
   }
 
   return cleaned
 }
 
-function extractTextFromInteraction(
-  interaction: any,
+/* ============================================================
+   GEMINI OUTPUT EXTRACTION
+============================================================ */
+
+function extractInteractionText(
+  interaction: any
 ): string {
   if (
     typeof interaction?.output_text ===
@@ -280,585 +597,1190 @@ function extractTextFromInteraction(
     return interaction.outputText
   }
 
-  const steps =
-    interaction?.steps
+  const pieces: string[] = []
 
-  if (Array.isArray(steps)) {
-    const pieces: string[] = []
+  const addText = (
+    value: unknown
+  ) => {
+    if (
+      typeof value ===
+      "string"
+    ) {
+      const text =
+        value.trim()
 
-    for (const step of steps) {
-      const contents =
-        step?.content
-
-      if (Array.isArray(contents)) {
-        for (const content of contents) {
-          if (
-            typeof content?.text ===
-            "string"
-          ) {
-            pieces.push(
-              content.text,
-            )
-          }
-        }
-      }
-
-      if (
-        typeof step?.text ===
-        "string"
-      ) {
-        pieces.push(step.text)
-      }
-
-      if (
-        typeof step?.output_text ===
-        "string"
-      ) {
+      if (text) {
         pieces.push(
-          step.output_text,
+          text
         )
       }
     }
+  }
 
-    if (pieces.length > 0) {
-      return pieces.join("\n")
+  const steps =
+    interaction?.steps
+
+  if (
+    Array.isArray(
+      steps
+    )
+  ) {
+    for (
+      const step of
+      steps
+    ) {
+      addText(
+        step?.text
+      )
+
+      addText(
+        step?.output_text
+      )
+
+      if (
+        Array.isArray(
+          step?.content
+        )
+      ) {
+        for (
+          const content of
+          step.content
+        ) {
+          addText(
+            content?.text
+          )
+
+          addText(
+            content?.output_text
+          )
+        }
+      }
     }
   }
 
   const output =
     interaction?.output
 
-  if (Array.isArray(output)) {
-    const pieces: string[] = []
+  if (
+    Array.isArray(
+      output
+    )
+  ) {
+    for (
+      const item of
+      output
+    ) {
+      addText(
+        item?.text
+      )
 
-    for (const item of output) {
+      addText(
+        item?.output_text
+      )
+
       if (
-        typeof item?.text ===
-        "string"
+        Array.isArray(
+          item?.content
+        )
       ) {
-        pieces.push(item.text)
-      }
+        for (
+          const content of
+          item.content
+        ) {
+          addText(
+            content?.text
+          )
 
-      if (Array.isArray(item?.content)) {
-        for (const content of item.content) {
-          if (
-            typeof content?.text ===
-            "string"
-          ) {
-            pieces.push(
-              content.text,
-            )
-          }
+          addText(
+            content?.output_text
+          )
         }
       }
     }
-
-    if (pieces.length > 0) {
-      return pieces.join("\n")
-    }
   }
 
-  return ""
-}
-
-/**
- * Convert historical pattern-analysis rows
- * into compact evidence for Gemini.
- *
- * The server-calculated score remains authoritative.
- */
-function buildPatternEvidence(
-  patterns: PatternAnalysis[],
-  requestedPaper: RequestedPaper,
-) {
-  const allowedPapers =
-    requestedPaper === "Both"
-      ? new Set([
-          "Paper 1",
-          "Paper 2",
-        ])
-      : new Set([
-          requestedPaper,
-        ])
-
-  return patterns
-    .filter((pattern) =>
-      allowedPapers.has(
-        pattern.paper,
-      ),
-    )
-    .sort(
-      (a, b) =>
-        b.prediction_score -
-        a.prediction_score,
-    )
-    .map((pattern) => ({
-      id: pattern.id,
-
-      paper: pattern.paper,
-
-      topic: pattern.topic,
-
-      subtopic:
-        pattern.subtopic ??
-        "General",
-
-      concept_family:
-        pattern.concept_family ??
-        pattern.topic,
-
-      pattern_type:
-        pattern.pattern_type,
-
-      pattern_value:
-        pattern.pattern_value,
-
-      question_count:
-        pattern.question_count,
-
-      papers_appeared:
-        pattern.papers_appeared,
-
-      appearance_rate:
-        pattern.appearance_rate,
-
-      total_marks:
-        pattern.total_marks,
-
-      average_marks:
-        pattern.average_marks,
-
-      years_seen:
-        pattern.years_seen,
-
-      question_positions:
-        pattern.question_positions,
-
-      position_min:
-        pattern.position_min,
-
-      position_max:
-        pattern.position_max,
-
-      position_average:
-        pattern.position_average,
-
-      question_styles:
-        pattern.question_styles,
-
-      skills:
-        pattern.skills,
-
-      frequency_score:
-        pattern.frequency_score,
-
-      recency_score:
-        pattern.recency_score,
-
-      position_score:
-        pattern.position_score,
-
-      style_score:
-        pattern.style_score,
-
-      skill_score:
-        pattern.skill_score,
-
-      mark_weight_score:
-        pattern.mark_weight_score,
-
-      prediction_score:
-        pattern.prediction_score,
-
-      pattern_strength:
-        pattern.pattern_strength,
-    }))
-}
-
-/**
- * Build historical examples for Gemini.
- *
- * These examples are deliberately used to understand
- * structural variation, not to copy exact questions.
- */
-function buildQuestionEvidence(
-  questions: HistoricalQuestion[],
-  papers: HistoricalPaper[],
-): EvidenceQuestion[] {
-  return questions.map(
-    (question) => {
-      const paper =
-        papers.find(
-          (item) =>
-            item.id ===
-            question.paper_id,
-        )
-
-      return {
-        id: question.id,
-
-        year:
-          paper?.exam_year ??
-          0,
-
-        session:
-          paper?.session ?? "",
-
-        paper:
-          paper?.paper ?? "",
-
-        question_number:
-          question.question_number,
-
-        question_label:
-          question.question_label,
-
-        question_text:
-          question.question_text,
-
-        topic:
-          normalizeText(
-            question.topic,
-          ) || "Other",
-
-        subtopic:
-          normalizeText(
-            question.subtopic,
-          ) || "General",
-
-        concept_family:
-          normalizeText(
-            question.concept_family,
-          ) ||
-          normalizeText(
-            question.topic,
-          ) ||
-          "Other",
-
-        question_family:
-          normalizeText(
-            question.question_family,
-          ) ||
-          normalizeText(
-            question.question_type,
-          ) ||
-          "General question",
-
-        variation_patterns:
-          uniqueStrings(
-            question.variation_patterns,
-          ),
-
-        skills:
-          uniqueStrings(
-            question.skills,
-          ),
-
-        question_type:
-          normalizeText(
-            question.question_type,
-          ) || "Unknown",
-
-        difficulty:
-          normalizeText(
-            question.difficulty,
-          ) || "Unknown",
-
-        marks: Math.max(
-          toNumber(
-            question.marks,
-            0,
-          ),
-          0,
-        ),
-
-        paper_section:
-          normalizeText(
-            question.paper_section,
-          ),
-
-        diagram_dependency:
-          normalizeText(
-            question.diagram_dependency,
-          ) || "None",
-
-        position_band:
-          normalizeText(
-            question.position_band,
-          ) || "Unknown",
-      }
-    },
+  return pieces.join(
+    "\n"
   )
 }
 
-function buildGeminiPrompt(params: {
-  paper: RequestedPaper
-  papers: HistoricalPaper[]
-  questions: EvidenceQuestion[]
-  patternEvidence: ReturnType<
-    typeof buildPatternEvidence
-  >
-}) {
-  const allowedPapers =
-    params.paper === "Both"
-      ? Array.from(
-          new Set(
-            params.papers.map(
-              (paper) =>
-                paper.paper,
-            ),
-          ),
-        )
-      : [params.paper]
+/* ============================================================
+   QUESTION IDS FROM OCCURRENCES
+============================================================ */
 
-  const relevantQuestions =
-    params.questions.filter(
-      (question) =>
-        allowedPapers.includes(
-          question.paper,
-        ),
+function questionIdsFromOccurrences(
+  pattern: PatternRow
+): string[] {
+  const occurrences =
+    Array.isArray(
+      pattern.paper_occurrences
+    )
+      ? pattern.paper_occurrences
+      : []
+
+  const ids: string[] = []
+
+  for (
+    const occurrence of
+    occurrences
+  ) {
+    if (
+      !Array.isArray(
+        occurrence?.questions
+      )
+    ) {
+      continue
+    }
+
+    for (
+      const question of
+      occurrence.questions
+    ) {
+      const id =
+        normalizeText(
+          question?.question_id
+        )
+
+      if (id) {
+        ids.push(
+          id
+        )
+      }
+    }
+  }
+
+  return uniqueStrings(
+    ids
+  )
+}
+
+/* ============================================================
+   ALL HISTORICAL QUESTION IDS
+============================================================ */
+
+function getHistoricalQuestionIds(
+  patterns: PatternRow[]
+): string[] {
+  const ids: string[] = []
+
+  for (
+    const pattern of
+    patterns
+  ) {
+    ids.push(
+      ...questionIdsFromOccurrences(
+        pattern
+      )
+    )
+
+    ids.push(
+      ...(
+        Array.isArray(
+          pattern.example_question_ids
+        )
+          ? pattern.example_question_ids
+          : []
+      )
+    )
+  }
+
+  return uniqueStrings(
+    ids
+  )
+}
+
+/* ============================================================
+   DETERMINE WHETHER PATTERN HAS REAL DATABASE EVIDENCE
+============================================================ */
+
+function hasHistoricalEvidence(
+  pattern: PatternRow
+): boolean {
+  const occurrenceQuestionIds =
+    questionIdsFromOccurrences(
+      pattern
+    )
+
+  const exampleQuestionIds =
+    Array.isArray(
+      pattern.example_question_ids
+    )
+      ? uniqueStrings(
+          pattern.example_question_ids
+        )
+      : []
+
+  const questionCount =
+    toNumber(
+      pattern.question_count
+    )
+
+  const papersAppeared =
+    toNumber(
+      pattern.papers_appeared
+    )
+
+  return (
+    questionCount > 0 &&
+    papersAppeared > 0 &&
+    (
+      occurrenceQuestionIds.length > 0 ||
+      exampleQuestionIds.length > 0
+    )
+  )
+}
+
+/* ============================================================
+   DATABASE EVIDENCE RANK
+============================================================ */
+
+function databaseEvidenceRank(
+  pattern: PatternRow
+): number {
+  const predictionScore =
+    clamp(
+      toNumber(
+        pattern.prediction_score
+      )
+    )
+
+  const frequencyScore =
+    clamp(
+      toNumber(
+        pattern.frequency_score
+      )
+    )
+
+  const recencyScore =
+    clamp(
+      toNumber(
+        pattern.recency_score
+      )
+    )
+
+  const positionScore =
+    clamp(
+      toNumber(
+        pattern.position_score
+      )
+    )
+
+  const styleScore =
+    clamp(
+      toNumber(
+        pattern.style_score
+      )
+    )
+
+  const skillScore =
+    clamp(
+      toNumber(
+        pattern.skill_score
+      )
+    )
+
+  const markWeightScore =
+    clamp(
+      toNumber(
+        pattern.mark_weight_score
+      )
+    )
+
+  return (
+    predictionScore * 1000000 +
+    frequencyScore * 10000 +
+    recencyScore * 1000 +
+    positionScore * 100 +
+    styleScore * 10 +
+    skillScore +
+    markWeightScore / 100
+  )
+}
+
+/* ============================================================
+   BUILD OCCURRENCE VIEW
+============================================================ */
+
+function buildOccurrenceView(
+  pattern: PatternRow,
+  questions: HistoricalQuestion[],
+  papers: HistoricalPaper[]
+) {
+  const questionMap =
+    new Map<
+      string,
+      HistoricalQuestion
+    >(
+      questions.map(
+        (question) => [
+          question.id,
+          question,
+        ]
+      )
+    )
+
+  const paperMap =
+    new Map<
+      string,
+      HistoricalPaper
+    >(
+      papers.map(
+        (paper) => [
+          paper.id,
+          paper,
+        ]
+      )
+    )
+
+  const occurrences =
+    Array.isArray(
+      pattern.paper_occurrences
+    )
+      ? pattern.paper_occurrences
+      : []
+
+  return occurrences
+    .map(
+      (
+        occurrence
+      ) => {
+        const occurrenceQuestions =
+          Array.isArray(
+            occurrence.questions
+          )
+            ? occurrence.questions
+            : []
+
+        const resolvedQuestions =
+          occurrenceQuestions
+            .map(
+              (
+                occurrenceQuestion
+              ) => {
+                const id =
+                  normalizeText(
+                    occurrenceQuestion.question_id
+                  )
+
+                if (!id) {
+                  return null
+                }
+
+                const question =
+                  questionMap.get(
+                    id
+                  )
+
+                if (!question) {
+                  return null
+                }
+
+                const paper =
+                  paperMap.get(
+                    question.paper_id
+                  )
+
+                return {
+                  id:
+                    question.id,
+
+                  reference:
+                    questionReference(
+                      question
+                    ),
+
+                  year:
+                    paper?.exam_year ??
+                    occurrence.year ??
+                    null,
+
+                  session:
+                    paper?.session ??
+                    occurrence.session ??
+                    null,
+
+                  paper:
+                    paper?.paper ??
+                    occurrence.paper ??
+                    pattern.paper,
+
+                  paper_label:
+                    paper
+                      ? formatPaperLabel(
+                          paper
+                        )
+                      : null,
+
+                  question_number:
+                    question.question_number,
+
+                  question_label:
+                    question.question_label,
+
+                  question_text:
+                    question.question_text,
+
+                  marks:
+                    question.marks,
+
+                  topic:
+                    question.topic,
+
+                  subtopic:
+                    question.subtopic,
+
+                  concept_family:
+                    question.concept_family,
+
+                  question_family:
+                    question.question_family,
+
+                  skills:
+                    uniqueStrings(
+                      question.skills
+                    ),
+
+                  variation_patterns:
+                    uniqueStrings(
+                      question.variation_patterns
+                    ),
+
+                  difficulty:
+                    question.difficulty,
+
+                  question_type:
+                    question.question_type,
+
+                  diagram_dependency:
+                    question.diagram_dependency,
+
+                  position_band:
+                    question.position_band,
+                }
+              }
+            )
+            .filter(
+              Boolean
+            )
+
+        return {
+          paper_id:
+            occurrence.paper_id ??
+            null,
+
+          /*
+           * Keep the database label for internal/debugging,
+           * but also return normalized year/session/paper data.
+           */
+          paper_label:
+            occurrence.paper_label ??
+            null,
+
+          year:
+            occurrence.year ??
+            null,
+
+          session:
+            occurrence.session ??
+            null,
+
+          paper:
+            occurrence.paper ??
+            pattern.paper,
+
+          questions:
+            resolvedQuestions,
+        }
+      }
+    )
+    .filter(
+      (
+        occurrence
+      ) =>
+        Array.isArray(
+          occurrence.questions
+        ) &&
+        occurrence.questions.length > 0
+    )
+}
+
+/* ============================================================
+   BUILD STUDENT-FACING HISTORICAL EVIDENCE
+============================================================ */
+
+function buildStudentHistoricalEvidence(
+  questionIds: string[],
+  questions: HistoricalQuestion[],
+  papers: HistoricalPaper[]
+) {
+  const selectedIds =
+    new Set(
+      questionIds
+    )
+
+  return questions
+    .filter(
+      (
+        question
+      ) =>
+        selectedIds.has(
+          question.id
+        )
+    )
+    .map(
+      (
+        question
+      ) => {
+        const paper =
+          papers.find(
+            (
+              item
+            ) =>
+              item.id ===
+              question.paper_id
+          )
+
+        return {
+          id:
+            question.id,
+
+          question_number:
+            question.question_number,
+
+          year:
+            paper?.exam_year ??
+            null,
+
+          session:
+            paper?.session ??
+            null,
+
+          paper:
+            paper?.paper ??
+            null,
+
+          /*
+           * IMPORTANT:
+           *
+           * The student receives the actual question text
+           * stored in the database.
+           */
+          question_text:
+            question.question_text,
+
+          marks:
+            question.marks,
+
+          /*
+           * Normalized label used by the frontend.
+           *
+           * Example:
+           * "November 2025 P1"
+           */
+          paper_label:
+            paper
+              ? formatPaperLabel(
+                  paper
+                )
+              : null,
+        }
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) => {
+        if (
+          (b.year ?? 0) !==
+          (a.year ?? 0)
+        ) {
+          return (
+            (b.year ?? 0) -
+            (a.year ?? 0)
+          )
+        }
+
+        const sessionCompare =
+          normalizeText(
+            b.session
+          ).localeCompare(
+            normalizeText(
+              a.session
+            )
+          )
+
+        if (
+          sessionCompare !==
+          0
+        ) {
+          return sessionCompare
+        }
+
+        if (
+          a.paper !==
+          b.paper
+        ) {
+          return (
+            a.paper ===
+            "Paper 1"
+              ? -1
+              : 1
+          )
+        }
+
+        return (
+          (a.question_number ?? 0) -
+          (b.question_number ?? 0)
+        )
+      }
+    )
+}
+
+/* ============================================================
+   BUILD GEMINI PROMPT
+============================================================ */
+
+function buildGeminiPrompt(
+  patterns: PatternRow[],
+  questions: HistoricalQuestion[],
+  papers: HistoricalPaper[],
+  requestedPaper: RequestedPaper
+): string {
+  const questionMap =
+    new Map<
+      string,
+      HistoricalQuestion
+    >(
+      questions.map(
+        (question) => [
+          question.id,
+          question,
+        ]
+      )
+    )
+
+  const paperMap =
+    new Map<
+      string,
+      HistoricalPaper
+    >(
+      papers.map(
+        (paper) => [
+          paper.id,
+          paper,
+        ]
+      )
+    )
+
+  const evidence =
+    patterns.map(
+      (
+        pattern
+      ) => {
+        const occurrenceView =
+          buildOccurrenceView(
+            pattern,
+            questions,
+            papers
+          )
+
+        const allHistoricalIds =
+          getHistoricalQuestionIds(
+            [pattern]
+          )
+
+        const historicalQuestions =
+          allHistoricalIds
+            .map(
+              (
+                id
+              ) =>
+                questionMap.get(
+                  id
+                )
+            )
+            .filter(
+              (
+                question
+              ): question is HistoricalQuestion =>
+                Boolean(
+                  question
+                )
+            )
+            .map(
+              (
+                question
+              ) => {
+                const paper =
+                  paperMap.get(
+                    question.paper_id
+                  )
+
+                return {
+                  question_id:
+                    question.id,
+
+                  reference:
+                    questionReference(
+                      question
+                    ),
+
+                  year:
+                    paper?.exam_year ??
+                    null,
+
+                  session:
+                    paper?.session ??
+                    null,
+
+                  paper:
+                    paper?.paper ??
+                    pattern.paper,
+
+                  paper_label:
+                    paper
+                      ? formatPaperLabel(
+                          paper
+                        )
+                      : null,
+
+                  question_number:
+                    question.question_number,
+
+                  question_label:
+                    question.question_label,
+
+                  question_text:
+                    question.question_text,
+
+                  marks:
+                    question.marks,
+
+                  topic:
+                    question.topic,
+
+                  subtopic:
+                    question.subtopic,
+
+                  question_type:
+                    question.question_type,
+
+                  question_family:
+                    question.question_family,
+
+                  concept_family:
+                    question.concept_family,
+
+                  skills:
+                    uniqueStrings(
+                      question.skills
+                    ),
+
+                  variation_patterns:
+                    uniqueStrings(
+                      question.variation_patterns
+                    ),
+
+                  position_band:
+                    question.position_band,
+
+                  diagram_dependency:
+                    question.diagram_dependency,
+                }
+              }
+            )
+
+        return {
+          evidence_key:
+            evidenceKey(
+              pattern
+            ),
+
+          paper:
+            pattern.paper,
+
+          concept_family:
+            normalizeText(
+              pattern.concept_family
+            ) ||
+            pattern.topic,
+
+          /*
+           * Use the specific pattern value instead of
+           * broad concept_family as the question family.
+           */
+          question_family:
+            getSpecificQuestionFamily(
+              pattern
+            ),
+
+          topic:
+            pattern.topic,
+
+          subtopic:
+            pattern.subtopic,
+
+          pattern_type:
+            pattern.pattern_type,
+
+          pattern_strength:
+            pattern.pattern_strength,
+
+          question_count:
+            toNumber(
+              pattern.question_count
+            ),
+
+          papers_appeared:
+            toNumber(
+              pattern.papers_appeared
+            ),
+
+          appearance_rate:
+            toNumber(
+              pattern.appearance_rate
+            ),
+
+          years_seen:
+            Array.isArray(
+              pattern.years_seen
+            )
+              ? pattern.years_seen
+              : [],
+
+          question_positions:
+            Array.isArray(
+              pattern.question_positions
+            )
+              ? pattern.question_positions
+              : [],
+
+          position_min:
+            pattern.position_min,
+
+          position_max:
+            pattern.position_max,
+
+          position_average:
+            pattern.position_average,
+
+          average_marks:
+            toNumber(
+              pattern.average_marks
+            ),
+
+          total_marks:
+            toNumber(
+              pattern.total_marks
+            ),
+
+          frequency_score:
+            clamp(
+              toNumber(
+                pattern.frequency_score
+              )
+            ),
+
+          recency_score:
+            clamp(
+              toNumber(
+                pattern.recency_score
+              )
+            ),
+
+          position_score:
+            clamp(
+              toNumber(
+                pattern.position_score
+              )
+            ),
+
+          style_score:
+            clamp(
+              toNumber(
+                pattern.style_score
+              )
+            ),
+
+          skill_score:
+            clamp(
+              toNumber(
+                pattern.skill_score
+              )
+            ),
+
+          mark_weight_score:
+            clamp(
+              toNumber(
+                pattern.mark_weight_score
+              )
+            ),
+
+          prediction_score:
+            clamp(
+              toNumber(
+                pattern.prediction_score
+              )
+            ),
+
+          occurrence_table:
+            occurrenceView,
+
+          historical_questions:
+            historicalQuestions,
+        }
+      }
     )
 
   return `
-You are the ZIMSEC O-Level Mathematics historical-pattern analysis engine for GlobeDk Elite Academy.
+You are the historical-pattern explanation engine for GlobeDk Elite Academy.
 
-Your task is NOT to predict a leaked examination paper.
+SUBJECT
 
-You do NOT have access to any unreleased ZIMSEC examination.
+ZIMSEC O-Level Mathematics
 
-You must ONLY use the historical examination evidence supplied below.
+REQUESTED PAPER
 
-The student wants high-priority revision guidance based on recurring mathematical concepts, question families, structures, skills, marks, positions and variations found in uploaded ZIMSEC papers.
+${requestedPaper}
 
-IMPORTANT CORE PRINCIPLE
+============================================================
+YOUR ROLE
+============================================================
 
-ZIMSEC questions should NOT be treated as repeated only when the wording, numbers, names, diagram or exact format are identical.
+You explain historical examination patterns.
 
-You must recognize STRUCTURAL and CONCEPTUAL recurrence.
+You are NOT receiving leaked examination material.
 
-For example, these may belong to the same broader concept family:
+You do NOT know the future examination paper.
 
-- Find the inverse of a matrix.
-- Given a different matrix, calculate its inverse.
-- Determine whether a matrix is singular.
-- Perform matrix operations and then determine an inverse.
+You must NEVER claim that an exact future question will appear.
 
-These are not necessarily the same exact question, but they are related through the broader mathematical concept of MATRIX OPERATIONS.
+You must NEVER claim that a question number is guaranteed.
 
-Likewise:
+You must NEVER claim that a question has been leaked.
 
-- Find an intersection of sets.
-- Complete a Venn diagram.
-- Calculate the number of learners belonging to certain sets.
-- Work with complements and universal sets.
+You must NEVER claim that a historical question will repeat word-for-word.
 
-These should be recognized as related to SET THEORY AND VENN DIAGRAMS.
+You must NEVER create fake historical evidence.
 
-Another example:
+============================================================
+DATABASE GROUPING RULE
+============================================================
 
-- Calculate acceleration from a velocity-time graph.
-- Find distance travelled from a graph.
-- Calculate average speed.
-- Interpret acceleration and deceleration from a motion graph.
+The database has already selected the historical patterns.
 
-These belong to the broader MOTION AND KINEMATICS concept family.
+The database pattern is authoritative.
 
-Therefore:
+A broad concept such as:
 
-DO NOT use exact wording as the main method of recurrence.
+"Algebraic Manipulation and Equations"
 
-Use:
+is NOT automatically a single question family.
 
-1. Concept family
-2. Question family
-3. Subtopic
-4. Mathematical skills
-5. Variation patterns
-6. Marks
-7. Historical frequency
-8. Historical position
-9. Recency
-10. Different ways ZIMSEC has tested the same underlying concept
-
-CURRENT REQUEST
-
-Paper: ${params.paper}
-Curriculum: ZIMSEC
-Level: O-Level
-Subject: Mathematics
-
-AVAILABLE HISTORICAL PAPERS
-
-${JSON.stringify(
-  params.papers.map(
-    (paper) => ({
-      id: paper.id,
-      year: paper.exam_year,
-      session: paper.session,
-      paper: paper.paper,
-      title: paper.title,
-      question_count:
-        paper.question_count,
-    }),
-  ),
-  null,
-  2,
-)}
-
-SERVER-CALCULATED PATTERN ANALYSIS
-
-This is the most important evidence.
-
-The server has already analyzed the historical dataset and calculated evidence scores.
-
-DO NOT change these numerical scores.
-
-DO NOT invent new numerical scores.
-
-The prediction_score is an EVIDENCE SCORE, not the probability that the question will appear in the next examination.
-
-${JSON.stringify(
-  params.patternEvidence,
-  null,
-  2,
-)}
-
-HISTORICAL QUESTION EXAMPLES
-
-These historical questions are supplied so that you can understand how ZIMSEC has varied the same concepts and question families.
-
-DO NOT copy these questions.
-
-DO NOT reproduce the same numbers.
-
-DO NOT reproduce names, contexts or exact wording.
-
-Use them only to understand the mathematical structure and variation.
-
-${JSON.stringify(
-  relevantQuestions,
-  null,
-  2,
-)}
-
-IMPORTANT RULES
-
-1. Do NOT claim that you know what will appear in the next examination.
-
-2. Do NOT claim that any question is guaranteed.
-
-3. Do NOT claim access to leaked or unreleased papers.
-
-4. Do NOT invent historical evidence.
-
-5. Do NOT copy an historical question.
-
-6. Generate NEW realistic practice-question concepts inspired by the historical patterns.
-
-7. The prediction_score MUST come from the server-calculated pattern evidence.
-
-8. Confidence MUST describe the strength of historical evidence, NOT the probability of an examination question appearing.
-
-9. A strong historical pattern does NOT mean the same question will definitely appear again.
-
-10. Do not make exact future question-number claims.
-
-11. Historical question positions may be mentioned only as evidence.
+Prefer the specific question family/pattern supplied by the
+database.
 
 For example:
 
-GOOD:
-"Matrix-related questions have repeatedly appeared in the middle-to-late portion of Paper 1."
+Algebraic Fractions
+→ Simplifying algebraic fractions
 
-BAD:
-"Matrix inverse will be Question 22."
+Linear Equations
+→ Solving linear equations
 
-12. Treat Paper 1 and Paper 2 separately.
+Variation
+→ Direct and inverse variation
 
-13. Do not mix Paper 1 evidence with Paper 2 evidence.
+Matrices
+→ Matrix operations
 
-14. Prefer concept families over isolated wording.
+Do NOT merge unrelated mathematical skills simply because they
+belong to the same broad topic.
 
-15. Prefer question families over exact historical questions.
+For example, do NOT combine:
 
-16. Recognize that the same concept can be tested through different question families.
+- algebraic fractions
+- logarithms
+- ratio
+- variation
+- equations
+- factorisation
 
-17. Consider variation patterns carefully.
+into one prediction merely because they share a broad algebra
+concept.
 
-18. If a concept appeared several times but in different forms, that is useful evidence of structural recurrence.
+============================================================
+IMPORTANT DATABASE RULE
+============================================================
 
-19. If a topic appeared recently, do not automatically assume it must appear again.
+The evidence records below were selected by the application
+from the GlobeDk database.
 
-20. If evidence is weak, do not force the concept into the highest-priority predictions.
+The database has already decided which historical patterns
+are eligible for prediction analysis.
 
-21. Small datasets must be treated cautiously.
+DO NOT add new topics.
 
-22. Do not overstate confidence when only a few historical papers are available.
+DO NOT add new question families.
 
-23. Do not return duplicate predictions for the same concept family and paper unless they represent genuinely different question families.
+DO NOT remove evidence because you personally think another
+topic is more important.
 
-24. Prefer a useful mixture of high-priority concept families.
+DO NOT invent an evidence_key.
 
-25. The likely_question_styles field must describe NEW practice-question concepts, not copied historical questions.
+For every returned prediction, evidence_key MUST exactly match
+one of the supplied evidence_key values.
 
-26. The generated practice-question concepts must be realistic for ZIMSEC O-Level Mathematics.
+Your role is to EXPLAIN the supplied database evidence.
 
-27. Include different ways the learner should practise the concept.
+The database is authoritative.
 
-28. Use the historical evidence to explain WHY a concept is high priority.
+============================================================
+CORE PRINCIPLE
+============================================================
 
-29. Consider:
-    - recurring concept families
-    - recurring question families
-    - recurring subtopics
-    - variation patterns
-    - mathematical skills
-    - marks
-    - historical positions
-    - position bands
-    - recent appearances
-    - number of different papers in which the concept appeared
-    - Paper 1 versus Paper 2 behavior
+ZIMSEC may change:
 
-30. The server evidence fields have the following meanings:
+- numbers
+- variables
+- diagrams
+- names
+- wording
+- contexts
+- arrangement
+- subparts
 
-frequency_score:
-How consistently the pattern has appeared historically.
+while testing the same underlying mathematical skill.
 
-recency_score:
-How recently the pattern appeared.
+Therefore distinguish between:
 
-position_score:
-How consistently the concept/question family has appeared in particular historical position ranges.
+CONCEPT FAMILY
+↓
+SPECIFIC QUESTION FAMILY
+↓
+HISTORICAL OCCURRENCES
+↓
+WHAT REPEATS
+↓
+WHAT CHANGES
+↓
+REVISION ADVICE
+↓
+NEW PRACTICE QUESTION
 
-style_score:
-How many different question styles have historically been used for the pattern.
+============================================================
+HISTORICAL EVIDENCE
+============================================================
 
-skill_score:
-How many mathematical skills are associated with the pattern.
+The historical evidence supplied below comes directly from
+the GlobeDk database.
 
-mark_weight_score:
-How strongly the pattern is represented by marks in the historical dataset.
+The occurrence_table and historical_questions contain the
+actual historical questions.
 
-prediction_score:
-Combined server-calculated historical evidence score.
+Each historical question contains:
 
-31. DO NOT treat prediction_score as a true probability.
+- question number
+- actual question text
+- marks
+- year
+- session
+- paper
 
-32. Do not create an exact probability such as:
-"92% chance this will appear."
+Use ONLY the supplied evidence.
 
-33. Instead use language such as:
-"Strong historical evidence."
-"Frequently recurring concept."
-"Useful high-priority revision area."
-"Appeared across multiple historical papers."
+Do not invent missing papers.
 
-34. If the evidence shows that a concept family was tested through multiple question families, mention that in the reasoning.
+Do not invent missing question numbers.
 
-35. The purpose is to help the learner prepare for VARIATIONS of recurring mathematical concepts.
+Do not change historical question references.
 
+Do not invent years.
+
+Do not invent frequency values.
+
+Do not invent prediction scores.
+
+============================================================
+WHAT YOU MUST EXPLAIN
+============================================================
+
+For each supplied evidence record:
+
+1. Explain what mathematical structure repeats.
+
+2. Explain what changes between historical questions.
+
+3. Explain why the specific question family is worth revising.
+
+4. Give practical revision advice.
+
+5. Give realistic question styles to practise.
+
+6. Create a NEW practice question concept.
+
+The practice question must NOT copy a historical question.
+
+Use different numbers, arrangement, context or structure while
+testing the same mathematical skill.
+
+============================================================
+NUMERICAL EVIDENCE
+============================================================
+
+The database is authoritative for:
+
+- prediction_score
+- frequency_score
+- recency_score
+- position_score
+- style_score
+- skill_score
+- mark_weight_score
+- years_seen
+- question positions
+- historical question references
+- historical question IDs
+- papers_appeared
+- appearance_rate
+- question_count
+
+Do not change numerical evidence.
+
+prediction_score is a ranking score, NOT a probability.
+
+Do not convert prediction_score into a probability.
+
+============================================================
+LANGUAGE
+============================================================
+
+Use language such as:
+
+"This is a strong recurring pattern."
+
+"This question family has appeared repeatedly."
+
+"The underlying skill is worth revising."
+
+"Students should practise several variations."
+
+"A similar structure could be used for practice."
+
+Avoid:
+
+"This exact question will appear."
+
+"Question 22 will come."
+
+"This is guaranteed."
+
+"This has been leaked."
+
+============================================================
 OUTPUT
+============================================================
 
 Return ONLY valid JSON.
 
@@ -867,95 +1789,305 @@ Use exactly this structure:
 {
   "predictions": [
     {
-      "paper": "Paper 1",
-      "topic": "Algebra",
-      "subtopic": "Quadratic equations",
-      "concept_family": "Quadratic Equations",
-      "question_family": "Solving quadratic equations",
-      "prediction_score": 84,
-      "confidence": "High",
-      "historical_frequency": 80,
-      "recency_score": 75,
-      "position_score": 70,
-      "variation_score": 85,
-      "skill_score": 80,
-      "mark_weight_score": 65,
-      "reasoning": "Explain the recurring historical concept and how ZIMSEC has varied the question family.",
+      "evidence_key": "Paper 1|matrices|matrices (operations, inverse and singular)",
+      "reasoning": "Explanation of the historical pattern.",
+      "what_repeats": "The underlying mathematical structure that recurs.",
+      "what_changes": "How the historical questions vary.",
+      "revision_advice": "Specific revision advice.",
       "likely_question_styles": [
-        "A new quadratic equation requiring factorisation.",
-        "A new contextual problem that leads to a quadratic equation.",
-        "A new question requiring the learner to solve and interpret the roots."
+        "Realistic question style 1",
+        "Realistic question style 2"
       ],
-      "revision_advice": "Revise factorisation, solving quadratic equations, interpreting roots and practising different question structures."
+      "practice_question_concept": "A new practice-question concept that is not copied from the historical examples.",
+      "practice_question": "A complete NEW practice question for the student to attempt."
     }
   ]
 }
 
-Return between 6 and 12 predictions.
+IMPORTANT:
 
-If only one paper type exists in the evidence, return predictions only for that paper.
+practice_question must be a NEW question.
 
-If both Paper 1 and Paper 2 exist, distribute predictions reasonably between them.
+It must NOT be copied word-for-word from historical evidence.
+
+It must test the same underlying mathematical skill.
+
+It must use different values, wording, arrangement or context.
+
+Do not claim that the practice question is the future ZIMSEC
+question.
+
+You may return one prediction for each supplied evidence record.
+
+Do not return an evidence_key that was not supplied.
 
 Do not include markdown.
 
-Do not include code fences.
-`.trim()
+============================================================
+HISTORICAL PAPERS
+============================================================
+
+${JSON.stringify(
+  papers,
+  null,
+  2
+)}
+
+============================================================
+DATABASE-SELECTED HISTORICAL PATTERN EVIDENCE
+============================================================
+
+${JSON.stringify(
+  evidence,
+  null,
+  2
+)}
+
+============================================================
+FINAL REMINDER
+============================================================
+
+The database selected the evidence.
+
+Your job is to explain it.
+
+Do not select unrelated topics.
+
+Do not invent evidence.
+
+Do not change numerical evidence.
+
+Do not reveal or claim knowledge of a future examination.
+
+Do not predict exact future question numbers.
+
+Focus on specific concept families and specific question
+families.
+
+Keep unrelated mathematical skills in separate predictions.
+`
 }
 
+/* ============================================================
+   SERVER-SIDE FALLBACK PREDICTION
+============================================================ */
+
+function buildFallbackPrediction(
+  evidence: PatternRow
+): PredictionInsert {
+  const predictionScore =
+    clamp(
+      Math.round(
+        toNumber(
+          evidence.prediction_score
+        )
+      )
+    )
+
+  const concept =
+    normalizeText(
+      evidence.concept_family
+    ) ||
+    normalizeText(
+      evidence.topic
+    ) ||
+    "Other"
+
+  /*
+   * IMPORTANT:
+   *
+   * Do not use broad concept_family as the question_family.
+   */
+  const family =
+    getSpecificQuestionFamily(
+      evidence
+    )
+
+  const topic =
+    normalizeText(
+      evidence.topic
+    ) ||
+    concept
+
+  const subtopic =
+    normalizeText(
+      evidence.subtopic
+    ) ||
+    family
+
+  const historicalIds =
+    getHistoricalQuestionIds(
+      [evidence]
+    )
+
+  return {
+    prediction_run_id:
+      "",
+
+    ai_student_id:
+      "",
+
+    topic,
+
+    subtopic,
+
+    paper:
+      evidence.paper,
+
+    prediction_score:
+      predictionScore,
+
+    confidence:
+      confidenceFromScore(
+        predictionScore
+      ),
+
+    historical_frequency:
+      clamp(
+        toNumber(
+          evidence.frequency_score
+        )
+      ),
+
+    recency_score:
+      clamp(
+        toNumber(
+          evidence.recency_score
+        )
+      ),
+
+    variation_score:
+      clamp(
+        toNumber(
+          evidence.style_score
+        )
+      ),
+
+    mark_weight_score:
+      clamp(
+        toNumber(
+          evidence.mark_weight_score
+        )
+      ),
+
+    reasoning:
+      `This question family has appeared in ${toNumber(
+        evidence.papers_appeared
+      )} analysed paper(s). The recurrence makes it a useful revision priority, but it is not a guaranteed future question.`,
+
+    likely_question_styles:
+      uniqueStrings(
+        evidence.question_styles
+      ),
+
+    revision_advice:
+      `Revise ${concept}, especially ${family}, and practise several different variations rather than memorising one historical question.`,
+
+    concept_family:
+      concept,
+
+    question_family:
+      family,
+
+    historical_question_ids:
+      historicalIds,
+
+    practice_question_concept:
+      `Create a new practice question testing ${family} with different numbers and a different arrangement from the historical examples.`,
+  }
+}
+
+/* ============================================================
+   POST
+============================================================ */
+
 export async function POST(
-  request: NextRequest,
+  request: NextRequest
 ) {
-  let runId: string | null = null
+  let runId:
+    | string
+    | null = null
 
   try {
-    /**
-     * ----------------------------------------------------------
-     * 1. AUTHENTICATE AI STUDENT
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       1. AUTHENTICATE STUDENT
+    ======================================================== */
+
     const session =
       await getAIStudentSession()
 
-    if (!session?.id) {
+    if (
+      !session?.id
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           error:
             "You must be signed in to use the AI Exam Predictor.",
-          code: "UNAUTHENTICATED",
+
+          code:
+            "UNAUTHENTICATED",
         },
-        { status: 401 },
+        {
+          status: 401,
+        }
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 2. READ REQUEST
-     * ----------------------------------------------------------
-     */
-    const body =
-      await request.json()
+    /* ========================================================
+       2. READ REQUEST
+    ======================================================== */
+
+    let body: any
+
+    try {
+      body =
+        await request.json()
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "Invalid request body.",
+
+          code:
+            "INVALID_REQUEST",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
     const requestedPaper =
       normalizePaper(
-        body?.paper,
+        body?.paper
       )
 
     const subject =
       normalizeText(
-        body?.subject,
-      ) || "Mathematics"
+        body?.subject
+      ) ||
+      "Mathematics"
 
-    if (!requestedPaper) {
+    if (
+      !requestedPaper
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           error:
             "Please select Paper 1, Paper 2, or Both.",
-          code: "INVALID_PAPER",
+
+          code:
+            "INVALID_PAPER",
         },
-        { status: 400 },
+        {
+          status: 400,
+        }
       )
     }
 
@@ -966,59 +2098,74 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error:
             "The ZIMSEC AI Exam Predictor currently supports Mathematics only.",
-          code: "UNSUPPORTED_SUBJECT",
+
+          code:
+            "UNSUPPORTED_SUBJECT",
         },
-        { status: 400 },
+        {
+          status: 400,
+        }
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 3. GET AI STUDENT
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       3. GET AI STUDENT
+    ======================================================== */
+
     const {
       data: student,
       error: studentError,
     } =
       await supabaseAdmin
-        .from("ai_students")
+        .from(
+          "ai_students"
+        )
         .select(
-          "id,email,first_name,last_name,level,curriculum",
+          `
+            id,
+            email,
+            first_name,
+            last_name,
+            level,
+            curriculum
+          `
         )
         .eq(
           "id",
-          session.id,
+          session.id
         )
         .maybeSingle()
 
-    if (studentError) {
+    if (
+      studentError
+    ) {
       throw new Error(
-        `Failed to retrieve AI student: ${studentError.message}`,
+        `Failed to retrieve AI student: ${studentError.message}`
       )
     }
 
-    if (!student) {
+    if (
+      !student
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           error:
             "AI student account could not be found.",
-          code: "STUDENT_NOT_FOUND",
+
+          code:
+            "STUDENT_NOT_FOUND",
         },
-        { status: 404 },
+        {
+          status: 404,
+        }
       )
     }
 
-    /**
-     * Current predictor is specifically for:
-     *
-     * ZIMSEC
-     * O-Level
-     * Mathematics
-     */
     if (
       student.level !==
         "O-Level" ||
@@ -1028,113 +2175,133 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error:
             "The current predictor is available for ZIMSEC O-Level Mathematics.",
-          code: "UNSUPPORTED_LEVEL",
+
+          code:
+            "UNSUPPORTED_LEVEL",
         },
-        { status: 400 },
+        {
+          status: 400,
+        }
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 4. CHECK CREDITS
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       4. CHECK CREDITS BEFORE EXPENSIVE WORK
+    ======================================================== */
+
     const {
       data: creditBalance,
       error: creditError,
     } =
       await supabaseAdmin
         .from(
-          "ai_credit_balances",
+          "ai_credit_balances"
         )
-        .select("balance")
+        .select(
+          "balance"
+        )
         .eq(
           "ai_student_id",
-          student.id,
+          student.id
         )
         .maybeSingle()
 
-    if (creditError) {
+    if (
+      creditError
+    ) {
       throw new Error(
-        `Failed to retrieve AI credits: ${creditError.message}`,
+        `Failed to retrieve AI credits: ${creditError.message}`
       )
     }
 
     const balance =
-      Number(
-        creditBalance?.balance ??
-          0,
+      toNumber(
+        creditBalance?.balance
       )
 
-    if (balance < 1) {
+    const creditsRequired =
+      1
+
+    if (
+      balance <
+      creditsRequired
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           error:
             "You do not have enough AI credits to run the Exam Predictor.",
+
           code:
             "INSUFFICIENT_CREDITS",
-          requiresPayment: true,
-          credits: balance,
+
+          requiresPayment:
+            true,
+
+          credits:
+            balance,
+
+          creditsRequired,
         },
-        { status: 402 },
+        {
+          status: 402,
+        }
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 5. GET HISTORICAL PAPERS
-     * ----------------------------------------------------------
-     */
-    let papersQuery =
+    /* ========================================================
+       5. GET COMPLETED HISTORICAL PAPERS
+    ======================================================== */
+
+    let paperQuery =
       supabaseAdmin
         .from(
-          "ai_zimsec_math_papers",
+          "ai_zimsec_math_papers"
         )
         .select(
           `
-          id,
-          exam_year,
-          session,
-          paper,
-          title,
-          original_file_name,
-          question_count
-          `,
+            id,
+            exam_year,
+            session,
+            paper
+          `
         )
         .eq(
           "subject",
-          "Mathematics",
+          "Mathematics"
         )
         .eq(
           "level",
-          "O-Level",
+          "O-Level"
         )
         .eq(
           "curriculum",
-          "ZIMSEC",
+          "ZIMSEC"
         )
         .eq(
           "extraction_status",
-          "completed",
+          "completed"
         )
         .order(
           "exam_year",
           {
-            ascending: false,
-          },
+            ascending:
+              false,
+          }
         )
 
     if (
       requestedPaper !==
       "Both"
     ) {
-      papersQuery =
-        papersQuery.eq(
+      paperQuery =
+        paperQuery.eq(
           "paper",
-          requestedPaper,
+          requestedPaper
         )
     }
 
@@ -1142,17 +2309,21 @@ export async function POST(
       data: rawPapers,
       error: papersError,
     } =
-      await papersQuery
+      await paperQuery
 
-    if (papersError) {
+    if (
+      papersError
+    ) {
       throw new Error(
-        `Failed to retrieve historical papers: ${papersError.message}`,
+        `Failed to retrieve historical papers: ${papersError.message}`
       )
     }
 
     const papers =
-      (rawPapers ??
-        []) as HistoricalPaper[]
+      (
+        rawPapers ||
+        []
+      ) as HistoricalPaper[]
 
     if (
       papers.length ===
@@ -1161,82 +2332,310 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error:
-            requestedPaper ===
-            "Both"
-              ? "No completed ZIMSEC O-Level Mathematics papers are available in the AI knowledge base."
-              : `No completed ZIMSEC O-Level Mathematics ${requestedPaper} papers are available in the AI knowledge base.`,
+            "No completed ZIMSEC O-Level Mathematics papers are available in the AI knowledge base.",
+
           code:
             "NO_HISTORICAL_DATA",
         },
-        { status: 404 },
+        {
+          status: 404,
+        }
       )
     }
 
-    const paperIds =
-      papers.map(
-        (paper) =>
-          paper.id,
-      )
+    /* ========================================================
+       6. GET DATABASE PATTERN EVIDENCE
+    ======================================================== */
 
-    /**
-     * ----------------------------------------------------------
-     * 6. GET QUESTIONS
-     * ----------------------------------------------------------
-     */
-    const {
-      data: rawQuestions,
-      error: questionsError,
-    } =
-      await supabaseAdmin
+    let patternQuery =
+      supabaseAdmin
         .from(
-          "ai_zimsec_math_questions",
+          "ai_zimsec_math_pattern_analysis"
         )
         .select(
           `
-          id,
-          paper_id,
-          question_number,
-          question_label,
-          question_text,
-          topic,
-          subtopic,
-          concept_family,
-          question_family,
-          variation_patterns,
-          skills,
-          question_type,
-          difficulty,
-          marks,
-          paper_section,
-          mathematical_objects,
-          diagram_dependency,
-          position_band,
-          source_page_start,
-          source_page_end,
-          ai_classification_confidence
-          `,
+            id,
+            paper,
+            topic,
+            subtopic,
+            pattern_type,
+            pattern_value,
+            position_min,
+            position_max,
+            position_average,
+            question_count,
+            papers_appeared,
+            appearance_rate,
+            total_marks,
+            average_marks,
+            years_seen,
+            question_positions,
+            question_styles,
+            skills,
+            example_question_ids,
+            frequency_score,
+            recency_score,
+            position_score,
+            style_score,
+            skill_score,
+            mark_weight_score,
+            prediction_score,
+            pattern_strength,
+            concept_family,
+            paper_occurrences
+          `
         )
-        .in(
-          "paper_id",
-          paperIds,
+        .eq(
+          "subject",
+          "Mathematics"
         )
-        .order(
-          "question_number",
-          {
-            ascending: true,
-          },
+        .eq(
+          "level",
+          "O-Level"
+        )
+        .eq(
+          "curriculum",
+          "ZIMSEC"
         )
 
-    if (questionsError) {
+    if (
+      requestedPaper !==
+      "Both"
+    ) {
+      patternQuery =
+        patternQuery.eq(
+          "paper",
+          requestedPaper
+        )
+    }
+
+    const {
+      data: rawPatterns,
+      error: patternError,
+    } =
+      await patternQuery
+
+    if (
+      patternError
+    ) {
       throw new Error(
-        `Failed to retrieve historical questions: ${questionsError.message}`,
+        `Failed to retrieve historical pattern analysis: ${patternError.message}`
       )
     }
 
-    const questions =
-      (rawQuestions ??
-        []) as HistoricalQuestion[]
+    const allPatterns =
+      (
+        rawPatterns ||
+        []
+      ) as PatternRow[]
+
+    /* ========================================================
+       7. DATABASE AUTHORITATIVE EVIDENCE FILTER
+    ======================================================== */
+
+    const evidencePatterns =
+      allPatterns.filter(
+        (
+          pattern
+        ) =>
+          hasHistoricalEvidence(
+            pattern
+          )
+      )
+
+    /*
+     * IMPORTANT:
+     *
+     * Use the specific pattern family in the evidence key.
+     *
+     * This is what prevents broad "Algebraic Manipulation and
+     * Equations" records from swallowing unrelated patterns
+     * where the database has a more specific pattern_value.
+     */
+
+    const evidenceByKey =
+      new Map<
+        string,
+        PatternRow
+      >()
+
+    for (
+      const pattern of
+      evidencePatterns
+    ) {
+      const key =
+        evidenceKey(
+          pattern
+        )
+
+      const existing =
+        evidenceByKey.get(
+          key
+        )
+
+      if (
+        !existing ||
+        databaseEvidenceRank(
+          pattern
+        ) >
+          databaseEvidenceRank(
+            existing
+          )
+      ) {
+        evidenceByKey.set(
+          key,
+          pattern
+        )
+      }
+    }
+
+    const patterns =
+      Array.from(
+        evidenceByKey.values()
+      )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            databaseEvidenceRank(
+              b
+            ) -
+            databaseEvidenceRank(
+              a
+            )
+        )
+        .slice(
+          0,
+          16
+        )
+
+    /* ========================================================
+       8. INSUFFICIENT EVIDENCE DIAGNOSTICS
+    ======================================================== */
+
+    if (
+      patterns.length ===
+      0
+    ) {
+      const highestPredictionScore =
+        allPatterns.length > 0
+          ? Math.max(
+              ...allPatterns.map(
+                (
+                  pattern
+                ) =>
+                  clamp(
+                    toNumber(
+                      pattern.prediction_score
+                    )
+                  )
+              )
+            )
+          : 0
+
+      const patternsWithQuestionEvidence =
+        allPatterns.filter(
+          (
+            pattern
+          ) =>
+            hasHistoricalEvidence(
+              pattern
+            )
+        ).length
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "There is not enough classified historical pattern evidence yet. Please process more ZIMSEC Mathematics papers.",
+
+          code:
+            "INSUFFICIENT_PATTERN_EVIDENCE",
+
+          diagnostics: {
+            patternRowsFound:
+              allPatterns.length,
+
+            historicalEvidencePatternsFound:
+              patternsWithQuestionEvidence,
+
+            highestPredictionScore,
+          },
+        },
+        {
+          status: 422,
+        }
+      )
+    }
+
+    /* ========================================================
+       9. COLLECT ALL HISTORICAL QUESTION IDS
+    ======================================================== */
+
+    const historicalQuestionIds =
+      getHistoricalQuestionIds(
+        patterns
+      )
+
+    let questions:
+      HistoricalQuestion[] = []
+
+    if (
+      historicalQuestionIds.length >
+      0
+    ) {
+      const {
+        data: rawQuestions,
+        error: questionsError,
+      } =
+        await supabaseAdmin
+          .from(
+            "ai_zimsec_math_questions"
+          )
+          .select(
+            `
+              id,
+              paper_id,
+              question_number,
+              question_label,
+              question_text,
+              topic,
+              subtopic,
+              skills,
+              question_type,
+              difficulty,
+              marks,
+              paper_section,
+              concept_family,
+              question_family,
+              variation_patterns,
+              diagram_dependency,
+              position_band
+            `
+          )
+          .in(
+            "id",
+            historicalQuestionIds
+          )
+
+      if (
+        questionsError
+      ) {
+        throw new Error(
+          `Failed to retrieve historical evidence questions: ${questionsError.message}`
+        )
+      }
+
+      questions =
+        (
+          rawQuestions ||
+          []
+        ) as HistoricalQuestion[]
+    }
 
     if (
       questions.length ===
@@ -1245,167 +2644,37 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error:
-            "The uploaded papers do not contain any indexed questions yet. Please check that their extraction status is completed.",
-          code:
-            "NO_INDEXED_QUESTIONS",
-        },
-        { status: 404 },
-      )
-    }
 
-    /**
-     * ----------------------------------------------------------
-     * 7. GET AGGREGATED PATTERN ANALYSIS
-     * ----------------------------------------------------------
-     *
-     * This is now the main evidence source.
-     *
-     * The raw questions remain available to Gemini so that
-     * it can understand how concepts were varied historically.
-     */
-    const {
-      data: rawPatternAnalysis,
-      error:
-        patternAnalysisError,
-    } =
-      await supabaseAdmin
-        .from(
-          "ai_zimsec_math_pattern_analysis",
-        )
-        .select(
-          `
-          id,
-          subject,
-          level,
-          curriculum,
-          paper,
-          topic,
-          subtopic,
-          concept_family,
-          pattern_type,
-          pattern_value,
-          position_min,
-          position_max,
-          position_average,
-          question_count,
-          papers_appeared,
-          appearance_rate,
-          total_marks,
-          average_marks,
-          years_seen,
-          question_positions,
-          question_styles,
-          skills,
-          example_question_ids,
-          frequency_score,
-          recency_score,
-          position_score,
-          style_score,
-          skill_score,
-          mark_weight_score,
-          prediction_score,
-          pattern_strength,
-          updated_at
-          `,
-        )
-        .eq(
-          "subject",
-          "Mathematics",
-        )
-        .eq(
-          "level",
-          "O-Level",
-        )
-        .eq(
-          "curriculum",
-          "ZIMSEC",
-        )
-        .order(
-          "prediction_score",
-          {
-            ascending: false,
+          error:
+            "Historical pattern records exist, but their historical questions could not be resolved. Please reprocess the ZIMSEC Mathematics papers.",
+
+          code:
+            "HISTORICAL_QUESTIONS_UNRESOLVED",
+
+          diagnostics: {
+            patternRowsFound:
+              allPatterns.length,
+
+            historicalEvidencePatternsFound:
+              patterns.length,
+
+            historicalQuestionIdsFound:
+              historicalQuestionIds.length,
+
+            resolvedHistoricalQuestions:
+              questions.length,
           },
-        )
-
-    if (
-      patternAnalysisError
-    ) {
-      throw new Error(
-        `Failed to retrieve ZIMSEC mathematical pattern analysis: ${patternAnalysisError.message}`,
-      )
-    }
-
-    const patternAnalysis =
-      (rawPatternAnalysis ??
-        []) as PatternAnalysis[]
-
-    /**
-     * Only use patterns belonging to the papers
-     * included in the current request.
-     */
-    const relevantPatterns =
-      patternAnalysis.filter(
-        (pattern) =>
-          requestedPaper ===
-          "Both"
-            ? pattern.paper ===
-                "Paper 1" ||
-              pattern.paper ===
-                "Paper 2"
-            : pattern.paper ===
-              requestedPaper,
-      )
-
-    if (
-      relevantPatterns.length ===
-      0
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Historical pattern analysis has not been generated for the selected ZIMSEC Mathematics paper yet. Please run the Mathematics pattern analysis after uploading or reprocessing the historical papers.",
-          code:
-            "NO_PATTERN_ANALYSIS",
         },
-        { status: 404 },
-      )
-    }
-
-    const patternEvidence =
-      buildPatternEvidence(
-        relevantPatterns,
-        requestedPaper,
-      )
-
-    if (
-      patternEvidence.length ===
-      0
-    ) {
-      return NextResponse.json(
         {
-          success: false,
-          error:
-            "No usable mathematical pattern evidence was found for the selected paper.",
-          code:
-            "NO_USABLE_PATTERN_EVIDENCE",
-        },
-        { status: 404 },
+          status: 422,
+        }
       )
     }
 
-    const questionEvidence =
-      buildQuestionEvidence(
-        questions,
-        papers,
-      )
+    /* ========================================================
+       10. CREATE PREDICTION RUN
+    ======================================================== */
 
-    /**
-     * ----------------------------------------------------------
-     * 8. CREATE PREDICTION RUN
-     * ----------------------------------------------------------
-     */
     const model =
       getGeminiModelName()
 
@@ -1415,13 +2684,14 @@ export async function POST(
     } =
       await supabaseAdmin
         .from(
-          "ai_prediction_runs",
+          "ai_prediction_runs"
         )
         .insert({
           ai_student_id:
             student.id,
 
-          user_id: null,
+          user_id:
+            null,
 
           subject:
             "Mathematics",
@@ -1459,7 +2729,9 @@ export async function POST(
           paper_2_prediction_count:
             0,
         })
-        .select("id")
+        .select(
+          "id"
+        )
         .single()
 
     if (
@@ -1468,32 +2740,30 @@ export async function POST(
     ) {
       throw new Error(
         `Failed to create prediction run: ${
-          runError?.message ??
+          runError?.message ||
           "Unknown error"
-        }`,
+        }`
       )
     }
 
     runId =
       run.id
 
-    /**
-     * ----------------------------------------------------------
-     * 9. ASK GEMINI TO INTERPRET THE EVIDENCE
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       11. BUILD GEMINI PROMPT
+    ======================================================== */
+
     const prompt =
-      buildGeminiPrompt({
-        paper:
-          requestedPaper,
-
+      buildGeminiPrompt(
+        patterns,
+        questions,
         papers,
+        requestedPaper
+      )
 
-        questions:
-          questionEvidence,
-
-        patternEvidence,
-      })
+    /* ========================================================
+       12. GEMINI
+    ======================================================== */
 
     const interaction =
       await gemini.interactions.create(
@@ -1502,632 +2772,417 @@ export async function POST(
 
           input: [
             {
-              type: "text",
-              text: prompt,
+              type:
+                "text",
+
+              text:
+                prompt,
             },
           ],
-        },
+        }
       )
 
     const responseText =
-      extractTextFromInteraction(
-        interaction,
+      extractInteractionText(
+        interaction
       )
 
-    if (!responseText) {
+    if (
+      !responseText
+    ) {
       throw new Error(
-        "Gemini returned an empty response.",
+        "Gemini returned an empty response."
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 10. PARSE GEMINI JSON
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       13. PARSE GEMINI
+    ======================================================== */
+
     let parsed: {
       predictions?:
         GeminiPrediction[]
     }
 
     try {
+      const cleaned =
+        cleanJsonText(
+          responseText
+        )
+
       parsed =
         JSON.parse(
-          cleanJsonText(
-            responseText,
-          ),
+          cleaned
         )
-    } catch {
+    } catch (
+      parseError
+    ) {
       console.error(
-        "Invalid Gemini JSON:",
-        responseText,
+        "Invalid Gemini prediction JSON:",
+        responseText
       )
 
-      throw new Error(
-        "The AI model returned an invalid prediction response.",
-      )
-    }
-
-    if (
-      !Array.isArray(
-        parsed.predictions,
-      )
-    ) {
-      throw new Error(
-        "The AI model did not return a predictions array.",
-      )
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * 11. VALIDATE PREDICTIONS AGAINST PATTERN ANALYSIS
-     * ----------------------------------------------------------
-     *
-     * Gemini is NOT allowed to invent the evidence score.
-     *
-     * It identifies the relevant concept/question family,
-     * while the server finds the actual historical evidence.
-     */
-    const validPapers =
-      new Set(
-        papers.map(
-          (paper) =>
-            paper.paper,
-        ),
+      console.error(
+        "JSON parse error:",
+        parseError
       )
 
-    const validPatternKeys =
-      new Map<
-        string,
-        PatternAnalysis
-      >()
-
-    for (
-      const pattern of relevantPatterns
-    ) {
-      const conceptFamily =
-        normalizeText(
-          pattern.concept_family,
-        ) ||
-        normalizeText(
-          pattern.topic,
-        )
-
-      const questionFamily =
-        normalizeText(
-          pattern.pattern_value,
-        )
-
-      const key = [
-        pattern.paper,
-
-        pattern.topic
-          .toLowerCase(),
-
-        (
-          pattern.subtopic ??
-          "General"
-        ).toLowerCase(),
-
-        conceptFamily.toLowerCase(),
-
-        questionFamily.toLowerCase(),
-      ].join("|")
-
-      validPatternKeys.set(
-        key,
-        pattern,
-      )
-    }
-
-    /**
-     * Additional concept-level index.
-     *
-     * This allows Gemini to use:
-     *
-     * "Matrix Operations"
-     *
-     * even when the exact subtopic/question family
-     * wording is slightly different.
-     */
-    const conceptPatternIndex =
-      new Map<
-        string,
-        PatternAnalysis[]
-      >()
-
-    for (
-      const pattern of relevantPatterns
-    ) {
-      const concept =
-        (
-          normalizeText(
-            pattern.concept_family,
-          ) ||
-          normalizeText(
-            pattern.topic,
-          )
-        ).toLowerCase()
-
-      const key = [
-        pattern.paper,
-        concept,
-      ].join("|")
-
-      const existing =
-        conceptPatternIndex.get(
-          key,
-        )
-
-      if (existing) {
-        existing.push(
-          pattern,
-        )
-      } else {
-        conceptPatternIndex.set(
-          key,
-          [pattern],
-        )
+      parsed = {
+        predictions:
+          [],
       }
     }
 
-    const predictionsForInsert:
-      Array<{
-        prediction_run_id: string
-        ai_student_id: string
+    const geminiPredictions =
+      Array.isArray(
+        parsed.predictions
+      )
+        ? parsed.predictions
+        : []
 
-        topic: string
-        subtopic: string
+    /* ========================================================
+       14. CREATE VALID EVIDENCE MAP
+    ======================================================== */
 
-        paper:
-          | "Paper 1"
-          | "Paper 2"
+    const validEvidence =
+      new Map<
+        string,
+        PatternRow
+      >()
 
-        prediction_score: number
+    for (
+      const pattern of
+      patterns
+    ) {
+      validEvidence.set(
+        evidenceKey(
+          pattern
+        ),
+        pattern
+      )
+    }
 
-        confidence:
-          | "Low"
-          | "Medium"
-          | "High"
-
-        historical_frequency: number
-
-        recency_score: number
-
-        variation_score: number
-
-        mark_weight_score: number
-
-        reasoning: string
-
-        likely_question_styles:
-          string[]
-
-        revision_advice: string
-      }> = []
-
-    const seen =
-      new Set<string>()
+    const geminiByEvidenceKey =
+      new Map<
+        string,
+        GeminiPrediction
+      >()
 
     for (
       const prediction of
-        parsed.predictions
+      geminiPredictions
     ) {
+      const key =
+        normalizeText(
+          prediction.evidence_key
+        )
+
       if (
-        prediction.paper !==
-          "Paper 1" &&
-        prediction.paper !==
-          "Paper 2"
+        !key
       ) {
         continue
       }
 
       if (
-        !validPapers.has(
-          prediction.paper,
+        !validEvidence.has(
+          key
         )
       ) {
+        console.warn(
+          "Ignoring Gemini prediction with unknown evidence key:",
+          key
+        )
+
         continue
       }
 
       if (
-        requestedPaper !==
-          "Both" &&
-        prediction.paper !==
-          requestedPaper
+        !geminiByEvidenceKey.has(
+          key
+        )
       ) {
-        continue
+        geminiByEvidenceKey.set(
+          key,
+          prediction
+        )
       }
+    }
+
+    /* ========================================================
+       15. BUILD PREDICTIONS FROM DATABASE EVIDENCE
+    ======================================================== */
+
+    const predictionsForInsert:
+      PredictionInsert[] = []
+
+    const evidenceForPrediction =
+      new Map<
+        string,
+        PatternRow
+      >()
+
+    for (
+      const evidence of
+      patterns
+    ) {
+      const key =
+        evidenceKey(
+          evidence
+        )
+
+      const geminiPrediction =
+        geminiByEvidenceKey.get(
+          key
+        )
+
+      const fallback =
+        buildFallbackPrediction(
+          evidence
+        )
+
+      const concept =
+        normalizeText(
+          evidence.concept_family
+        ) ||
+        normalizeText(
+          evidence.topic
+        ) ||
+        "Other"
+
+      /*
+       * IMPORTANT:
+       *
+       * This is now the specific question family rather than
+       * automatically using concept_family.
+       */
+      const family =
+        getSpecificQuestionFamily(
+          evidence
+        )
 
       const topic =
         normalizeText(
-          prediction.topic,
-        )
+          evidence.topic
+        ) ||
+        concept
 
       const subtopic =
         normalizeText(
-          prediction.subtopic,
-        ) || "General"
-
-      const conceptFamily =
-        normalizeText(
-          prediction.concept_family,
-        )
-
-      const questionFamily =
-        normalizeText(
-          prediction.question_family,
-        )
+          evidence.subtopic
+        ) ||
+        family
 
       const reasoning =
         normalizeText(
-          prediction.reasoning,
+          geminiPrediction?.reasoning
+        )
+
+      const whatRepeats =
+        normalizeText(
+          geminiPrediction?.what_repeats
+        )
+
+      const whatChanges =
+        normalizeText(
+          geminiPrediction?.what_changes
+        )
+
+      const combinedReasoning =
+        [
+          reasoning,
+
+          whatRepeats
+            ? `What repeats: ${whatRepeats}`
+            : "",
+
+          whatChanges
+            ? `What changes: ${whatChanges}`
+            : "",
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            " "
+          )
+
+      const styles =
+        uniqueStrings(
+          geminiPrediction?.likely_question_styles
+        )
+
+      const fallbackStyles =
+        uniqueStrings(
+          evidence.question_styles
         )
 
       const revisionAdvice =
         normalizeText(
-          prediction.revision_advice,
+          geminiPrediction?.revision_advice
         )
 
-      if (
-        !topic ||
-        !reasoning
-      ) {
-        continue
-      }
-
-      /**
-       * --------------------------------------------------------
-       * First attempt:
-       *
-       * Exact paper + topic + subtopic +
-       * concept family + question family
-       * --------------------------------------------------------
-       */
-      let matchedPattern:
-        | PatternAnalysis
-        | undefined
-
-      if (
-        conceptFamily ||
-        questionFamily
-      ) {
-        const exactKey = [
-          prediction.paper,
-
-          topic.toLowerCase(),
-
-          subtopic.toLowerCase(),
-
-          (
-            conceptFamily ||
-            topic
-          ).toLowerCase(),
-
-          questionFamily.toLowerCase(),
-        ].join("|")
-
-        matchedPattern =
-          validPatternKeys.get(
-            exactKey,
-          )
-      }
-
-      /**
-       * --------------------------------------------------------
-       * Second attempt:
-       *
-       * Match concept family within the requested paper.
-       * --------------------------------------------------------
-       */
-      if (
-        !matchedPattern &&
-        conceptFamily
-      ) {
-        const conceptKey = [
-          prediction.paper,
-
-          conceptFamily.toLowerCase(),
-        ].join("|")
-
-        const candidates =
-          conceptPatternIndex.get(
-            conceptKey,
-          ) ?? []
-
-        if (
-          candidates.length >
-          0
-        ) {
-          /**
-           * Prefer the highest evidence pattern
-           * inside the same concept family.
-           */
-          matchedPattern =
-            [...candidates].sort(
-              (a, b) =>
-                b.prediction_score -
-                a.prediction_score,
-            )[0]
-        }
-      }
-
-      /**
-       * --------------------------------------------------------
-       * Third attempt:
-       *
-       * Topic + subtopic.
-       * --------------------------------------------------------
-       */
-      if (
-        !matchedPattern
-      ) {
-        matchedPattern =
-          relevantPatterns.find(
-            (pattern) =>
-              pattern.paper ===
-                prediction.paper &&
-              pattern.topic
-                .toLowerCase() ===
-                topic.toLowerCase() &&
-              (
-                pattern.subtopic ??
-                "General"
-              )
-                .toLowerCase() ===
-                subtopic.toLowerCase(),
-          )
-      }
-
-      /**
-       * --------------------------------------------------------
-       * Fourth attempt:
-       *
-       * Topic only.
-       *
-       * This remains as a compatibility fallback.
-       */
-      if (
-        !matchedPattern
-      ) {
-        matchedPattern =
-          relevantPatterns
-            .filter(
-              (pattern) =>
-                pattern.paper ===
-                  prediction.paper &&
-                pattern.topic
-                  .toLowerCase() ===
-                  topic.toLowerCase(),
-            )
-            .sort(
-              (a, b) =>
-                b.prediction_score -
-                a.prediction_score,
-            )[0]
-      }
-
-      if (
-        !matchedPattern
-      ) {
-        continue
-      }
-
-      /**
-       * IMPORTANT:
-       *
-       * The server remains responsible for all
-       * numerical evidence.
-       */
-      const predictionScore =
-        clamp(
-          Math.round(
-            matchedPattern.prediction_score,
-          ),
-        )
-
-      const historicalFrequency =
-        clamp(
-          Math.round(
-            matchedPattern.frequency_score,
-          ),
-        )
-
-      const recencyScore =
-        clamp(
-          Math.round(
-            matchedPattern.recency_score,
-          ),
-        )
-
-      const variationScore =
-        clamp(
-          Math.round(
-            matchedPattern.style_score,
-          ),
-        )
-
-      const markWeightScore =
-        clamp(
-          Math.round(
-            matchedPattern.mark_weight_score,
-          ),
-        )
-
-      const confidence =
-        confidenceFromScore(
-          predictionScore,
-        )
-
-      const styles =
-        uniqueStrings(
-          prediction.likely_question_styles,
-        )
-
-      /**
-       * Deduplicate primarily by:
-       *
-       * Paper + concept family + question family.
-       *
-       * This prevents Gemini from returning several
-       * almost-identical predictions for the same concept.
-       */
-      const dedupeConcept =
+      const practiceConcept =
         normalizeText(
-          matchedPattern.concept_family,
-        ) ||
-        matchedPattern.topic
+          geminiPrediction?.practice_question_concept
+        )
 
-      const dedupeQuestionFamily =
-        normalizeText(
-          prediction.question_family,
-        ) ||
-        normalizeText(
-          matchedPattern.pattern_value,
-        ) ||
-        matchedPattern.subtopic ||
-        "General"
+      const historicalIds =
+        getHistoricalQuestionIds(
+          [evidence]
+        )
 
-      const key = [
-        prediction.paper,
+      const finalReasoning =
+        combinedReasoning ||
+        fallback.reasoning
 
-        dedupeConcept.toLowerCase(),
+      const finalRevisionAdvice =
+        revisionAdvice ||
+        fallback.revision_advice
 
-        dedupeQuestionFamily.toLowerCase(),
-      ].join("|")
-
-      if (
-        seen.has(key)
-      ) {
-        continue
-      }
-
-      seen.add(key)
+      const finalPracticeConcept =
+        practiceConcept ||
+        fallback.practice_question_concept
 
       predictionsForInsert.push({
         prediction_run_id:
-          runId,
+          runId as string,
 
         ai_student_id:
           student.id,
 
-        topic:
-          normalizeText(
-            matchedPattern.topic,
-          ) ||
-          topic,
+        topic,
 
-        subtopic:
-          normalizeText(
-            matchedPattern.subtopic,
-          ) ||
-          subtopic,
+        subtopic,
 
         paper:
-          prediction.paper,
+          evidence.paper,
 
         prediction_score:
-          predictionScore,
+          fallback.prediction_score,
 
-        confidence,
+        confidence:
+          fallback.confidence,
 
         historical_frequency:
-          historicalFrequency,
+          fallback.historical_frequency,
 
         recency_score:
-          recencyScore,
+          fallback.recency_score,
 
         variation_score:
-          variationScore,
+          fallback.variation_score,
 
         mark_weight_score:
-          markWeightScore,
+          fallback.mark_weight_score,
 
-        reasoning,
+        reasoning:
+          finalReasoning,
 
         likely_question_styles:
           styles.length > 0
             ? styles
-            : uniqueStrings(
-                matchedPattern.question_styles,
-              ),
+            : fallbackStyles,
 
         revision_advice:
-          revisionAdvice ||
-          `Revise ${matchedPattern.topic}, especially ${
-            matchedPattern.subtopic ??
-            "the related concept family"
-          }, and practise different question families and variations from this area.`,
-      })
-    }
+          finalRevisionAdvice,
 
-    if (
-      predictionsForInsert.length ===
-      0
-    ) {
-      throw new Error(
-        "No valid predictions were produced from the historical pattern analysis.",
+        concept_family:
+          concept,
+
+        question_family:
+          family,
+
+        historical_question_ids:
+          historicalIds,
+
+        practice_question_concept:
+          finalPracticeConcept,
+      })
+
+      evidenceForPrediction.set(
+        key,
+        evidence
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 12. LIMIT PREDICTIONS
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       16. SORT AND LIMIT
+    ======================================================== */
+
     const finalPredictions =
       predictionsForInsert
         .sort(
-          (a, b) =>
+          (
+            a,
+            b
+          ) =>
             b.prediction_score -
-            a.prediction_score,
+            a.prediction_score
         )
-        .slice(0, 12)
+        .slice(
+          0,
+          12
+        )
 
-    /**
-     * ----------------------------------------------------------
-     * 13. SAVE PREDICTIONS
-     * ----------------------------------------------------------
-     */
+    if (
+      finalPredictions.length ===
+      0
+    ) {
+      throw new Error(
+        "No usable predictions could be created from the historical evidence."
+      )
+    }
+
+    /* ========================================================
+       17. SAVE PREDICTIONS
+    ======================================================== */
+
     const {
       error:
         predictionInsertError,
     } =
       await supabaseAdmin
         .from(
-          "ai_predictions",
+          "ai_predictions"
         )
         .insert(
-          finalPredictions,
+          finalPredictions
         )
 
     if (
       predictionInsertError
     ) {
       throw new Error(
-        `Failed to save predictions: ${predictionInsertError.message}`,
+        `Failed to save predictions: ${predictionInsertError.message}`
       )
     }
 
+    /* ========================================================
+       18. COUNT PAPER PREDICTIONS
+    ======================================================== */
+
     const paper1Count =
       finalPredictions.filter(
-        (prediction) =>
+        (
+          prediction
+        ) =>
           prediction.paper ===
-          "Paper 1",
+          "Paper 1"
       ).length
 
     const paper2Count =
       finalPredictions.filter(
-        (prediction) =>
+        (
+          prediction
+        ) =>
           prediction.paper ===
-          "Paper 2",
+          "Paper 2"
       ).length
 
-    /**
-     * ----------------------------------------------------------
-     * 14. CONSUME ONE CREDIT
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       19. CONSUME CREDIT
+    ======================================================== */
+
     const {
       error:
         creditConsumeError,
@@ -2138,43 +3193,43 @@ export async function POST(
           p_ai_student_id:
             student.id,
 
-          p_amount: 1,
+          p_amount:
+            creditsRequired,
 
           p_feature:
             "exam_predictor",
 
           p_description:
             `ZIMSEC O-Level Mathematics ${requestedPaper} prediction`,
-        },
+        }
       )
 
     if (
       creditConsumeError
     ) {
       throw new Error(
-        `Prediction was generated, but the AI credit could not be consumed: ${creditConsumeError.message}`,
+        `Prediction was generated, but the AI credit could not be consumed: ${creditConsumeError.message}`
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 15. MARK RUN COMPLETE
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       20. COMPLETE RUN
+    ======================================================== */
+
     const {
       error:
         updateRunError,
     } =
       await supabaseAdmin
         .from(
-          "ai_prediction_runs",
+          "ai_prediction_runs"
         )
         .update({
           status:
             "completed",
 
           credits_used:
-            1,
+            creditsRequired,
 
           paper_1_prediction_count:
             paper1Count,
@@ -2187,49 +3242,277 @@ export async function POST(
         })
         .eq(
           "id",
-          runId,
+          runId
         )
 
     if (
       updateRunError
     ) {
       throw new Error(
-        `Predictions were saved, but the prediction run could not be completed: ${updateRunError.message}`,
+        `Predictions were saved, but the prediction run could not be completed: ${updateRunError.message}`
       )
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 16. GET UPDATED CREDIT BALANCE
-     * ----------------------------------------------------------
-     */
+    /* ========================================================
+       21. UPDATED CREDIT BALANCE
+    ======================================================== */
+
     const {
-      data: updatedBalance,
+      data:
+        updatedBalance,
     } =
       await supabaseAdmin
         .from(
-          "ai_credit_balances",
+          "ai_credit_balances"
         )
-        .select("balance")
+        .select(
+          "balance"
+        )
         .eq(
           "ai_student_id",
-          student.id,
+          student.id
         )
         .maybeSingle()
 
-    /**
-     * ----------------------------------------------------------
-     * 17. RETURN RESULT
-     * ----------------------------------------------------------
-     */
-    return NextResponse.json({
-      success: true,
+    const remainingCredits =
+      toNumber(
+        updatedBalance?.balance,
+        Math.max(
+          balance -
+            creditsRequired,
+          0
+        )
+      )
 
-      runId,
+    /* ========================================================
+       22. BUILD STUDENT RESPONSE
+    ======================================================== */
 
-      predictions:
-        finalPredictions.map(
-          (prediction) => ({
+    const predictionResponse =
+      finalPredictions.map(
+        (
+          prediction
+        ) => {
+          const key =
+            [
+              prediction.paper,
+
+              prediction.concept_family
+                .toLowerCase(),
+
+              prediction.question_family
+                .toLowerCase(),
+            ].join(
+              "|"
+            )
+
+          const evidence =
+            evidenceForPrediction.get(
+              key
+            ) ||
+            patterns.find(
+              (
+                pattern
+              ) =>
+                evidenceKey(
+                  pattern
+                ) ===
+                key
+            ) ||
+            null
+
+          /* --------------------------------------------------
+             RESOLVE ALL HISTORICAL QUESTIONS
+          -------------------------------------------------- */
+
+          const historicalQuestions =
+            questions
+              .filter(
+                (
+                  question
+                ) =>
+                  prediction.historical_question_ids.includes(
+                    question.id
+                  )
+              )
+              .map(
+                (
+                  question
+                ) => {
+                  const paper =
+                    papers.find(
+                      (
+                        item
+                      ) =>
+                        item.id ===
+                        question.paper_id
+                    )
+
+                  return {
+                    id:
+                      question.id,
+
+                    reference:
+                      questionReference(
+                        question
+                      ),
+
+                    year:
+                      paper?.exam_year ??
+                      null,
+
+                    session:
+                      paper?.session ??
+                      null,
+
+                    paper:
+                      paper?.paper ??
+                      prediction.paper,
+
+                    paper_label:
+                      paper
+                        ? formatPaperLabel(
+                            paper
+                          )
+                        : null,
+
+                    question_number:
+                      question.question_number,
+
+                    question_label:
+                      question.question_label,
+
+                    question_text:
+                      question.question_text,
+
+                    marks:
+                      question.marks,
+
+                    topic:
+                      question.topic,
+
+                    subtopic:
+                      question.subtopic,
+
+                    skills:
+                      uniqueStrings(
+                        question.skills
+                      ),
+
+                    question_type:
+                      question.question_type,
+
+                    difficulty:
+                      question.difficulty,
+
+                    concept_family:
+                      question.concept_family,
+
+                    question_family:
+                      question.question_family,
+
+                    variation_patterns:
+                      uniqueStrings(
+                        question.variation_patterns
+                      ),
+
+                    diagram_dependency:
+                      question.diagram_dependency,
+
+                    position_band:
+                      question.position_band,
+                  }
+                }
+              )
+              .sort(
+                (
+                  a,
+                  b
+                ) => {
+                  if (
+                    (b.year ?? 0) !==
+                    (a.year ?? 0)
+                  ) {
+                    return (
+                      (b.year ?? 0) -
+                      (a.year ?? 0)
+                    )
+                  }
+
+                  const sessionCompare =
+                    normalizeText(
+                      b.session
+                    ).localeCompare(
+                      normalizeText(
+                        a.session
+                      )
+                    )
+
+                  if (
+                    sessionCompare !==
+                    0
+                  ) {
+                    return sessionCompare
+                  }
+
+                  if (
+                    a.paper !==
+                    b.paper
+                  ) {
+                    return (
+                      a.paper ===
+                      "Paper 1"
+                        ? -1
+                        : 1
+                    )
+                  }
+
+                  return (
+                    (a.question_number ?? 0) -
+                    (b.question_number ?? 0)
+                  )
+                }
+              )
+
+          /* --------------------------------------------------
+             STUDENT-FACING HISTORICAL EVIDENCE
+          -------------------------------------------------- */
+
+          const historicalEvidence =
+            buildStudentHistoricalEvidence(
+              prediction.historical_question_ids,
+              questions,
+              papers
+            )
+
+          /* --------------------------------------------------
+             OCCURRENCE TABLE
+          -------------------------------------------------- */
+
+          const occurrenceTable =
+            evidence
+              ? buildOccurrenceView(
+                  evidence,
+                  questions,
+                  papers
+                )
+              : []
+
+          /* --------------------------------------------------
+             GEMINI PRACTICE QUESTION
+          -------------------------------------------------- */
+
+          const matchingGeminiPrediction =
+            geminiByEvidenceKey.get(
+              key
+            )
+
+          const practiceQuestion =
+            normalizeText(
+              matchingGeminiPrediction?.practice_question
+            )
+
+          return {
             paper:
               prediction.paper,
 
@@ -2238,6 +3521,16 @@ export async function POST(
 
             subtopic:
               prediction.subtopic,
+
+            concept_family:
+              prediction.concept_family,
+
+            /*
+             * Specific family is what the UI should display
+             * as the recurring pattern.
+             */
+            question_family:
+              prediction.question_family,
 
             prediction_score:
               prediction.prediction_score,
@@ -2265,23 +3558,142 @@ export async function POST(
 
             revision_advice:
               prediction.revision_advice,
-          }),
-        ),
+
+            practice_question_concept:
+              prediction.practice_question_concept,
+
+            practice_question:
+              practiceQuestion ||
+              null,
+
+            historical_question_ids:
+              prediction.historical_question_ids,
+
+            /*
+             * REAL HISTORICAL QUESTIONS
+             *
+             * These contain:
+             *
+             * - actual Q number
+             * - actual question text
+             * - actual marks
+             * - year
+             * - session
+             * - paper
+             * - normalized paper label
+             */
+            historical_evidence:
+              historicalEvidence,
+
+            paper_occurrences:
+              occurrenceTable,
+
+            evidence: {
+              papers_appeared:
+                evidence
+                  ?.papers_appeared ??
+                0,
+
+              appearance_rate:
+                evidence
+                  ?.appearance_rate ??
+                0,
+
+              years_seen:
+                Array.isArray(
+                  evidence?.years_seen
+                )
+                  ? evidence.years_seen
+                  : [],
+
+              position_min:
+                evidence
+                  ?.position_min ??
+                null,
+
+              position_max:
+                evidence
+                  ?.position_max ??
+                null,
+
+              position_average:
+                evidence
+                  ?.position_average ??
+                null,
+
+              average_marks:
+                evidence
+                  ?.average_marks ??
+                0,
+
+              total_marks:
+                evidence
+                  ?.total_marks ??
+                0,
+
+              question_count:
+                evidence
+                  ?.question_count ??
+                0,
+
+              pattern_strength:
+                evidence
+                  ?.pattern_strength ??
+                confidenceFromScore(
+                  prediction.prediction_score
+                ),
+
+              question_positions:
+                Array.isArray(
+                  evidence?.question_positions
+                )
+                  ? evidence.question_positions
+                  : [],
+
+              skills:
+                uniqueStrings(
+                  evidence?.skills
+                ),
+
+              question_styles:
+                uniqueStrings(
+                  evidence?.question_styles
+                ),
+
+              historical_questions:
+                historicalQuestions,
+            },
+          }
+        }
+      )
+
+    /* ========================================================
+       23. RETURN SUCCESS
+    ======================================================== */
+
+    return NextResponse.json({
+      success:
+        true,
+
+      runId,
+
+      predictions:
+        predictionResponse,
 
       credits:
-        Number(
-          updatedBalance?.balance ??
-            Math.max(
-              balance - 1,
-              0,
-            ),
-        ),
+        remainingCredits,
+
+      creditsUsed:
+        creditsRequired,
 
       source: {
         papers:
           papers.map(
-            (paper) => ({
-              id: paper.id,
+            (
+              paper
+            ) => ({
+              id:
+                paper.id,
 
               year:
                 paper.exam_year,
@@ -2292,12 +3704,11 @@ export async function POST(
               paper:
                 paper.paper,
 
-              file:
-                paper.original_file_name,
-
-              questionCount:
-                paper.question_count,
-            }),
+              label:
+                formatPaperLabel(
+                  paper
+                ),
+            })
           ),
 
         paperCount:
@@ -2307,57 +3718,88 @@ export async function POST(
           questions.length,
 
         patternCount:
-          relevantPatterns.length,
+          patterns.length,
+      },
 
-        analysisType:
-          "concept_and_question_family",
+      summary: {
+        paper:
+          requestedPaper,
+
+        papersAnalysed:
+          papers.length,
+
+        questionsAnalysed:
+          questions.length,
+
+        predictionsGenerated:
+          finalPredictions.length,
+
+        paper1Predictions:
+          paper1Count,
+
+        paper2Predictions:
+          paper2Count,
       },
     })
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "AI Exam Predictor error:",
-      error,
+      error
     )
 
-    /**
-     * Mark an existing run as failed.
-     */
-    if (runId) {
-      await supabaseAdmin
-        .from(
-          "ai_prediction_runs",
-        )
-        .update({
-          status:
-            "failed",
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to generate exam predictions."
 
-          error_message:
-            error instanceof Error
-              ? error.message
-              : "Unknown prediction error",
+    if (
+      runId
+    ) {
+      try {
+        await supabaseAdmin
+          .from(
+            "ai_prediction_runs"
+          )
+          .update({
+            status:
+              "failed",
 
-          completed_at:
-            new Date().toISOString(),
-        })
-        .eq(
-          "id",
-          runId,
+            error_message:
+              errorMessage,
+
+            completed_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "id",
+            runId
+          )
+      } catch (
+        runUpdateError
+      ) {
+        console.error(
+          "Failed to mark prediction run as failed:",
+          runUpdateError
         )
+      }
     }
 
     return NextResponse.json(
       {
-        success: false,
+        success:
+          false,
 
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate exam predictions.",
+          errorMessage,
 
         code:
           "PREDICTION_FAILED",
       },
-      { status: 500 },
+      {
+        status: 500,
+      }
     )
   }
 }

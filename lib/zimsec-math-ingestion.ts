@@ -3,6 +3,39 @@ import {
   getGeminiModelName,
 } from "@/lib/gemini"
 
+/*
+ * ============================================================
+ * ZIMSEC O-LEVEL MATHEMATICS INGESTION
+ * ============================================================
+ *
+ * Responsibilities:
+ *
+ * 1. Send a historical ZIMSEC Mathematics PDF to Gemini.
+ * 2. Extract the ACTUAL questions from the paper.
+ * 3. Preserve question numbers and labels.
+ * 4. Classify questions using a stable taxonomy.
+ * 5. Normalise Gemini's output.
+ * 6. Return structured questions to the upload API.
+ *
+ * IMPORTANT:
+ *
+ * This file DOES NOT insert anything into Supabase.
+ *
+ * The upload API is responsible for:
+ *
+ *   PDF
+ *     ↓
+ *   analyseZimsecMathPaper()
+ *     ↓
+ *   ai_zimsec_math_questions
+ *     ↓
+ *   pattern analysis
+ *     ↓
+ *   ai_zimsec_math_pattern_analysis
+ *
+ * ============================================================
+ */
+
 export type ExtractedMathQuestion = {
   question_number: number
   question_label?: string
@@ -11,64 +44,23 @@ export type ExtractedMathQuestion = {
   topic: string
   subtopic?: string
 
-  /**
-   * Broad mathematical concept family.
-   *
-   * Examples:
-   * - Matrix Operations
-   * - Set Theory
-   * - Functions
-   * - Kinematics
-   * - Statistics
-   * - Similar Triangles
-   */
   concept_family?: string
-
-  /**
-   * Specific recurring question structure.
-   *
-   * Examples:
-   * - Matrix inverse / determinant
-   * - Venn diagram set operations
-   * - Function evaluation and inverse
-   * - Velocity-time graph interpretation
-   */
   question_family?: string
 
-  /**
-   * Common ways the same mathematical concept
-   * can be tested.
-   */
   variation_patterns?: string[]
-
   skills?: string[]
+
   question_type?: string
   difficulty?: string
+
   marks?: number | null
+
   paper_section?: string
 
-  /**
-   * Important mathematical entities appearing
-   * in the question.
-   */
   mathematical_objects?: string[]
 
-  /**
-   * Whether understanding a diagram is important
-   * to solving the question.
-   */
   diagram_dependency?: string
 
-  /**
-   * Broad position description within the paper.
-   *
-   * Examples:
-   * - Early
-   * - Early-Middle
-   * - Middle
-   * - Middle-Late
-   * - Late
-   */
   position_band?: string
 
   source_page_start?: number | null
@@ -84,766 +76,1869 @@ export type ExtractedMathPaper = {
   questions: ExtractedMathQuestion[]
 }
 
-function cleanJson(text: string) {
-  let cleaned = text.trim()
+/*
+ * ============================================================
+ * VALID VALUES
+ * ============================================================
+ */
 
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned
-      .replace(/^```(?:json)?/i, "")
-      .replace(/```$/i, "")
-      .trim()
+const VALID_DIFFICULTIES = [
+  "Easy",
+  "Moderate",
+  "Difficult",
+  "Very Difficult",
+] as const
+
+const VALID_DIAGRAM_DEPENDENCIES = [
+  "None",
+  "Helpful",
+  "Essential",
+] as const
+
+const VALID_POSITION_BANDS = [
+  "Early",
+  "Early-Middle",
+  "Middle",
+  "Middle-Late",
+  "Late",
+] as const
+
+const VALID_QUESTION_TYPES = [
+  "Multiple Choice",
+  "Short Answer",
+  "Structured Problem",
+  "Calculation",
+  "Proof",
+  "Construction",
+  "Graph Interpretation",
+  "Data Interpretation",
+  "Word Problem",
+  "Application",
+  "Mixed",
+] as const
+
+/*
+ * ============================================================
+ * CANONICAL TOPICS
+ * ============================================================
+ */
+
+const CANONICAL_TOPICS = [
+  "Number",
+  "Fractions",
+  "Decimals",
+  "Percentages",
+  "Ratio and Proportion",
+  "Indices",
+  "Surds",
+  "Algebra",
+  "Factorisation",
+  "Equations",
+  "Simultaneous Equations",
+  "Inequalities",
+  "Sequences",
+  "Functions",
+  "Graphs",
+  "Coordinate Geometry",
+  "Geometry",
+  "Circle Geometry",
+  "Angles",
+  "Constructions",
+  "Transformations",
+  "Vectors",
+  "Matrices",
+  "Mensuration",
+  "Trigonometry",
+  "Statistics",
+  "Probability",
+  "Sets",
+  "Financial Mathematics",
+  "Measurement",
+  "Kinematics",
+  "Map Scales",
+  "Bearings",
+  "Other",
+] as const
+
+/*
+ * ============================================================
+ * BASIC HELPERS
+ * ============================================================
+ */
+
+function cleanJson(
+  value: string
+): string {
+  return value
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim()
+}
+
+function cleanText(
+  value: unknown
+): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+}
+
+function lower(
+  value: unknown
+): string {
+  return cleanText(value).toLowerCase()
+}
+
+function uniqueStrings(
+  values: unknown
+): string[] {
+  if (!Array.isArray(values)) {
+    return []
   }
 
-  return cleaned
+  return Array.from(
+    new Set(
+      values
+        .map((value) =>
+          cleanText(value)
+        )
+        .filter(Boolean)
+    )
+  )
 }
+
+function clamp(
+  value: number,
+  min = 0,
+  max = 100
+): number {
+  return Math.max(
+    min,
+    Math.min(max, value)
+  )
+}
+
+/*
+ * ============================================================
+ * CANONICAL TOPIC
+ * ============================================================
+ *
+ * IMPORTANT:
+ *
+ * We deliberately check specific concepts BEFORE broad concepts.
+ *
+ * For example:
+ *
+ * Coordinate Geometry
+ * must be detected before Graphs.
+ *
+ * Matrix questions must always remain Matrices.
+ *
+ * Number-base questions must remain Number.
+ * ============================================================
+ */
+
+function canonicalTopic(
+  question: Partial<ExtractedMathQuestion>
+): string {
+  const combined = [
+    question.topic,
+    question.subtopic,
+    question.concept_family,
+    question.question_family,
+    question.question_text,
+  ]
+    .map(lower)
+    .join(" ")
+
+  /*
+   * ----------------------------------------------------------
+   * SPECIALISED TOPICS FIRST
+   * ----------------------------------------------------------
+   */
+
+  if (
+    /\bmatrix\b|\bmatrices\b|\binverse matrix\b|\bsingular matrix\b|\bdeterminant\b/.test(
+      combined
+    )
+  ) {
+    return "Matrices"
+  }
+
+  if (
+    /\bnumber base\b|\bmixed base\b|\bbase arithmetic\b|\bbinary\b|\bdenary\b|\bbase\s*[2-9]\b/.test(
+      combined
+    )
+  ) {
+    return "Number"
+  }
+
+  if (
+    /\bvenn\b|\bset theory\b|\bsets\b|\bunion\b|\bintersection\b|\bcomplement\b/.test(
+      combined
+    )
+  ) {
+    return "Sets"
+  }
+
+  if (
+    /\bkinematic\b|\bvelocity\b|\bspeed[- ]time\b|\bvelocity[- ]time\b|\bacceleration\b|\bdisplacement\b/.test(
+      combined
+    )
+  ) {
+    return "Kinematics"
+  }
+
+  if (
+    /\bstatistics\b|\bstatistical\b|\bfrequency table\b|\bfrequency distribution\b|\bmean\b|\bmedian\b|\bmode\b|\bquartile\b|\binterquartile\b|\bhistogram\b|\bbox[- ]and[- ]whisker\b/.test(
+      combined
+    )
+  ) {
+    return "Statistics"
+  }
+
+  if (
+    /\bprobability\b|\bevent\b|\boutcome\b|\btree diagram\b/.test(
+      combined
+    )
+  ) {
+    return "Probability"
+  }
+
+  if (
+    /\bbearing\b|\bthree[- ]figure bearing\b|\bback bearing\b|\btrue bearing\b/.test(
+      combined
+    )
+  ) {
+    return "Bearings"
+  }
+
+  if (
+    /\bvector\b|\bcolumn vector\b|\bposition vector\b|\bmagnitude of.*vector\b/.test(
+      combined
+    )
+  ) {
+    return "Vectors"
+  }
+
+  if (
+    /\bcircle theorem\b|\bcircle geometry\b|\btangent to.*circle\b|\bangle at the centre\b|\bangle in a semicircle\b|\bsubtended\b/.test(
+      combined
+    )
+  ) {
+    return "Circle Geometry"
+  }
+
+  if (
+    /\bmap scale\b|\bscale drawing\b|\bscale of a map\b|\barea scale\b|\bscale factor.*area\b/.test(
+      combined
+    )
+  ) {
+    return "Map Scales"
+  }
+
+  if (
+    /\bcoordinate geometry\b|\bgradient\b|\by[- ]intercept\b|\bx[- ]intercept\b|\bmidpoint\b|\bdistance between.*points\b|\bequation of a line\b/.test(
+      combined
+    )
+  ) {
+    return "Coordinate Geometry"
+  }
+
+  if (
+    /\btrigonometry\b|\btrigonometric\b|\bsine rule\b|\bcosine rule\b|\bsine\b|\bcosine\b|\btangent ratio\b|\bopposite\b.*\badjacent\b/.test(
+      combined
+    )
+  ) {
+    return "Trigonometry"
+  }
+
+  if (
+    /\bsimultaneous equation\b|\bsimultaneous equations\b/.test(
+      combined
+    )
+  ) {
+    return "Simultaneous Equations"
+  }
+
+  if (
+    /\binequalit(?:y|ies)\b|\bgreater than\b|\bless than\b|\bsolution set\b/.test(
+      combined
+    )
+  ) {
+    return "Inequalities"
+  }
+
+  if (
+    /\bfactorisation\b|\bfactorization\b|\bfactorise\b|\bfactorize\b|\bcommon factor\b|\bquadratic factor\b/.test(
+      combined
+    )
+  ) {
+    return "Factorisation"
+  }
+
+  if (
+    /\bsequence\b|\barithmetic progression\b|\bgeometric progression\b|\bnth term\b|\bterm to term\b/.test(
+      combined
+    )
+  ) {
+    return "Sequences"
+  }
+
+  if (
+    /\bfunction\b|\bf\(x\)\b|\binverse function\b|\bcomposite function\b|\bexponential function\b/.test(
+      combined
+    )
+  ) {
+    return "Functions"
+  }
+
+  if (
+    /\bindex\b|\bindices\b|\bindicial\b|\bnegative index\b|\bfractional index\b|\bpower law\b/.test(
+      combined
+    )
+  ) {
+    return "Indices"
+  }
+
+  if (
+    /\bsurd\b|\bsimplify.*root\b|\bsquare root\b|\brationalis.*denominator\b/.test(
+      combined
+    )
+  ) {
+    return "Surds"
+  }
+
+  if (
+    /\bpercentage\b|\bpercent\b|\bprofit percentage\b|\bloss percentage\b|\bpercentage increase\b|\bpercentage decrease\b/.test(
+      combined
+    )
+  ) {
+    return "Percentages"
+  }
+
+  if (
+    /\bfraction\b|\bfractions\b|\bmixed number\b|\bproper fraction\b|\bimproper fraction\b/.test(
+      combined
+    )
+  ) {
+    return "Fractions"
+  }
+
+  if (
+    /\bdecimal\b|\bdecimals\b/.test(
+      combined
+    )
+  ) {
+    return "Decimals"
+  }
+
+  if (
+    /\bratio\b|\bproportion\b|\bdirect variation\b|\binverse variation\b|\bjoint variation\b/.test(
+      combined
+    )
+  ) {
+    return "Ratio and Proportion"
+  }
+
+  if (
+    /\btransformation\b|\btranslation\b|\breflection\b|\brotation\b|\benlargement\b/.test(
+      combined
+    )
+  ) {
+    return "Transformations"
+  }
+
+  if (
+    /\bconstruction\b|\bconstruct\b|\bperpendicular bisector\b|\bangle bisector\b/.test(
+      combined
+    )
+  ) {
+    return "Constructions"
+  }
+
+  if (
+    /\bmensauration\b|\bmensuration\b|\barea\b|\bperimeter\b|\bvolume\b|\bsurface area\b|\bcircumference\b/.test(
+      combined
+    )
+  ) {
+    return "Mensuration"
+  }
+
+  if (
+    /\bfinancial mathematics\b|\bsimple interest\b|\bcompound interest\b|\bhire purchase\b|\bdepreciation\b|\bexchange rate\b|\bprofit\b|\bloss\b|\bcommission\b/.test(
+      combined
+    )
+  ) {
+    return "Financial Mathematics"
+  }
+
+  /*
+   * Graphs are deliberately checked AFTER coordinate geometry.
+   */
+  if (
+    /\bgraph\b|\bplot\b|\bgradient\b|\bintercept\b|\blinear graph\b|\bquadratic graph\b/.test(
+      combined
+    )
+  ) {
+    return "Graphs"
+  }
+
+  if (
+    /\balgebra\b|\balgebraic\b|\bexpression\b|\bexpand\b|\bsimplify\b/.test(
+      combined
+    )
+  ) {
+    return "Algebra"
+  }
+
+  if (
+    /\bequation\b|\bsolve for\b|\bsolve.*x\b|\bquadratic equation\b/.test(
+      combined
+    )
+  ) {
+    return "Equations"
+  }
+
+  if (
+    /\bangle\b|\bparallel lines\b|\bpolygon\b|\btriangle\b|\bquadrilateral\b|\bgeometry\b/.test(
+      combined
+    )
+  ) {
+    return "Geometry"
+  }
+
+  if (
+    /\bmeasurement\b|\bunit conversion\b|\blength\b|\bmass\b|\btime\b/.test(
+      combined
+    )
+  ) {
+    return "Measurement"
+  }
+
+  /*
+   * Exact supplied canonical topic.
+   */
+  const supplied =
+    cleanText(
+      question.topic
+    )
+
+  const exact =
+    CANONICAL_TOPICS.find(
+      (topic) =>
+        lower(topic) ===
+        lower(supplied)
+    )
+
+  if (exact) {
+    return exact
+  }
+
+  return "Other"
+}
+
+/*
+ * ============================================================
+ * CANONICAL CONCEPT FAMILY
+ * ============================================================
+ */
+
+function canonicalConceptFamily(
+  question: Partial<ExtractedMathQuestion>,
+  topic: string
+): string {
+  const combined = [
+    question.concept_family,
+    question.question_family,
+    question.subtopic,
+    question.question_text,
+  ]
+    .map(lower)
+    .join(" ")
+
+  if (topic === "Matrices") {
+    return "Matrices"
+  }
+
+  if (topic === "Number") {
+    if (
+      /\bbase\b|\bbinary\b|\bdenary\b|\bmixed base\b/.test(
+        combined
+      )
+    ) {
+      return (
+        "Number Bases and Mixed Base Arithmetic"
+      )
+    }
+
+    return "Number"
+  }
+
+  if (topic === "Sets") {
+    return "Set Theory and Venn"
+  }
+
+  if (topic === "Statistics") {
+    return "Statistics"
+  }
+
+  if (topic === "Kinematics") {
+    return "Motion and Kinematics"
+  }
+
+  if (
+    topic === "Geometry" &&
+    /\bsimilar\b|\bsimilarity\b|\bcongruen/.test(
+      combined
+    )
+  ) {
+    return "Similarity and Congruency"
+  }
+
+  if (
+    topic === "Functions" ||
+    topic === "Indices"
+  ) {
+    return "Functions and Exponential"
+  }
+
+  if (topic === "Map Scales") {
+    return "Map Scales and Measurement"
+  }
+
+  if (topic === "Bearings") {
+    return "Bearings"
+  }
+
+  if (topic === "Vectors") {
+    return "Vectors"
+  }
+
+  if (topic === "Circle Geometry") {
+    return "Circle Geometry"
+  }
+
+  if (topic === "Simultaneous Equations") {
+    return "Simultaneous Linear Equations"
+  }
+
+  if (topic === "Trigonometry") {
+    return "Trigonometry"
+  }
+
+  if (topic === "Probability") {
+    return "Probability"
+  }
+
+  if (topic === "Mensuration") {
+    return "Mensuration"
+  }
+
+  if (topic === "Financial Mathematics") {
+    return "Financial Mathematics"
+  }
+
+  if (
+    topic === "Algebra" ||
+    topic === "Factorisation" ||
+    topic === "Equations"
+  ) {
+    return "Algebraic Manipulation and Equations"
+  }
+
+  const supplied =
+    cleanText(
+      question.concept_family
+    )
+
+  return (
+    supplied ||
+    topic ||
+    "Other"
+  )
+}
+
+/*
+ * ============================================================
+ * CANONICAL QUESTION FAMILY
+ * ============================================================
+ */
+
+function canonicalQuestionFamily(
+  question: Partial<ExtractedMathQuestion>,
+  conceptFamily: string
+): string {
+  const combined = [
+    question.question_family,
+    question.subtopic,
+    question.question_text,
+  ]
+    .map(lower)
+    .join(" ")
+
+  if (
+    conceptFamily ===
+    "Matrices"
+  ) {
+    return (
+      "Matrices (Operations, Inverse and Singular)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Number Bases and Mixed Base Arithmetic"
+  ) {
+    return (
+      "Number Bases & Mixed Base Arithmetic"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Set Theory and Venn"
+  ) {
+    return (
+      "Set Theory and Venn Diagrams"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Statistics"
+  ) {
+    return (
+      "Statistics (Mean, Median, Mode and Data Interpretation)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Motion and Kinematics"
+  ) {
+    return (
+      "Kinematics (Velocity/Speed-Time Graphs, Motion and Acceleration)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Similarity and Congruency"
+  ) {
+    return (
+      "Similar Triangles and Scale Factors"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Functions and Exponential"
+  ) {
+    if (
+      /\binverse function\b|\bcomposite function\b/.test(
+        combined
+      )
+    ) {
+      return (
+        "Functions (Evaluation, Inverse and Composite)"
+      )
+    }
+
+    return (
+      "Functions and Index/Exponential Equations"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Map Scales and Measurement"
+  ) {
+    return (
+      "Map Scales & Area Scale Conversions"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Bearings"
+  ) {
+    return "Bearings & Navigation"
+  }
+
+  if (
+    conceptFamily ===
+    "Vectors"
+  ) {
+    return (
+      "Vectors (Column Vectors, Magnitude & Geometry)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Circle Geometry"
+  ) {
+    return (
+      "Circle Geometry (Tangents & Subtended Angles)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Simultaneous Linear Equations"
+  ) {
+    return "Simultaneous Linear Equations"
+  }
+
+  if (
+    conceptFamily ===
+    "Probability"
+  ) {
+    return (
+      "Probability (Calculation and Interpretation)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Mensuration"
+  ) {
+    return (
+      "Mensuration (Area, Perimeter, Surface Area and Volume)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Financial Mathematics"
+  ) {
+    return "Financial Mathematics"
+  }
+
+  if (
+    conceptFamily ===
+    "Trigonometry"
+  ) {
+    return "Trigonometry"
+  }
+
+  if (
+    conceptFamily ===
+    "Algebraic Manipulation and Equations"
+  ) {
+    if (
+      /\bfactor/.test(
+        combined
+      )
+    ) {
+      return (
+        "Algebraic Factorisation and Manipulation"
+      )
+    }
+
+    if (
+      /\bquadratic\b/.test(
+        combined
+      )
+    ) {
+      return "Quadratic Equations"
+    }
+
+    return (
+      "Algebraic Manipulation and Equations"
+    )
+  }
+
+  const supplied =
+    cleanText(
+      question.question_family
+    )
+
+  return (
+    supplied ||
+    cleanText(
+      question.subtopic
+    ) ||
+    cleanText(
+      question.question_type
+    ) ||
+    conceptFamily ||
+    "General"
+  )
+}
+
+/*
+ * ============================================================
+ * QUESTION LABEL
+ * ============================================================
+ *
+ * Examples:
+ *
+ * 22       -> Q22
+ * Q22      -> Q22
+ * 11(b)    -> Q11(b)
+ * Q11(b)   -> Q11(b)
+ * (b)      -> Q? not used because question_number remains
+ * authoritative.
+ * ============================================================
+ */
+
+function normaliseQuestionLabel(
+  value: unknown,
+  questionNumber: number
+): string {
+  const label =
+    cleanText(value)
+
+  if (!label) {
+    return `Q${questionNumber}`
+  }
+
+  if (
+    /^q/i.test(label)
+  ) {
+    return label
+  }
+
+  if (
+    /^\d/.test(label)
+  ) {
+    return `Q${label}`
+  }
+
+  return label
+}
+
+/*
+ * ============================================================
+ * NORMALISERS
+ * ============================================================
+ */
+
+function normaliseDifficulty(
+  value: unknown
+): string {
+  const clean =
+    cleanText(value)
+
+  const match =
+    VALID_DIFFICULTIES.find(
+      (item) =>
+        lower(item) ===
+        lower(clean)
+    )
+
+  return (
+    match ||
+    "Moderate"
+  )
+}
+
+function normaliseDiagramDependency(
+  value: unknown
+): string {
+  const clean =
+    cleanText(value)
+
+  const match =
+    VALID_DIAGRAM_DEPENDENCIES.find(
+      (item) =>
+        lower(item) ===
+        lower(clean)
+    )
+
+  return (
+    match ||
+    "None"
+  )
+}
+
+function normalisePositionBand(
+  value: unknown
+): string {
+  const clean =
+    cleanText(value)
+
+  const match =
+    VALID_POSITION_BANDS.find(
+      (item) =>
+        lower(item) ===
+        lower(clean)
+    )
+
+  return (
+    match ||
+    "Middle"
+  )
+}
+
+function normaliseQuestionType(
+  value: unknown
+): string {
+  const clean =
+    cleanText(value)
+
+  const match =
+    VALID_QUESTION_TYPES.find(
+      (item) =>
+        lower(item) ===
+        lower(clean)
+    )
+
+  return (
+    match ||
+    "Mixed"
+  )
+}
+
+function normaliseMarks(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null
+  }
+
+  const numeric =
+    typeof value === "number"
+      ? value
+      : Number(value)
+
+  if (
+    !Number.isFinite(
+      numeric
+    )
+  ) {
+    return null
+  }
+
+  if (
+    numeric < 0
+  ) {
+    return null
+  }
+
+  return Math.round(
+    numeric
+  )
+}
+
+function normaliseConfidence(
+  value: unknown
+): number {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : Number(value)
+
+  if (
+    !Number.isFinite(
+      numeric
+    )
+  ) {
+    return 70
+  }
+
+  return Math.round(
+    clamp(
+      numeric
+    )
+  )
+}
+
+function normalisePage(
+  value: unknown
+): number | null {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : Number(value)
+
+  if (
+    !Number.isFinite(
+      numeric
+    ) ||
+    numeric <= 0
+  ) {
+    return null
+  }
+
+  return Math.round(
+    numeric
+  )
+}
+
+/*
+ * ============================================================
+ * NORMALISE ONE QUESTION
+ * ============================================================
+ */
+
+function normaliseQuestion(
+  question: any
+): ExtractedMathQuestion | null {
+  if (
+    !question ||
+    typeof question !== "object"
+  ) {
+    return null
+  }
+
+  const questionNumber =
+    Number(
+      question.question_number
+    )
+
+  if (
+    !Number.isFinite(
+      questionNumber
+    ) ||
+    questionNumber <= 0
+  ) {
+    return null
+  }
+
+  const questionText =
+    cleanText(
+      question.question_text
+    )
+
+  if (!questionText) {
+    return null
+  }
+
+  const topic =
+    canonicalTopic(
+      question
+    )
+
+  const conceptFamily =
+    canonicalConceptFamily(
+      question,
+      topic
+    )
+
+  const questionFamily =
+    canonicalQuestionFamily(
+      question,
+      conceptFamily
+    )
+
+  const suppliedSubtopic =
+    cleanText(
+      question.subtopic
+    )
+
+  /*
+   * If Gemini gives a useful subtopic, keep it.
+   *
+   * Otherwise use the canonical question family.
+   */
+  const subtopic =
+    suppliedSubtopic ||
+    questionFamily
+
+  return {
+    question_number:
+      Math.round(
+        questionNumber
+      ),
+
+    question_label:
+      normaliseQuestionLabel(
+        question.question_label,
+        Math.round(
+          questionNumber
+        )
+      ),
+
+    question_text:
+      questionText,
+
+    topic,
+
+    subtopic,
+
+    concept_family:
+      conceptFamily,
+
+    question_family:
+      questionFamily,
+
+    variation_patterns:
+      uniqueStrings(
+        question.variation_patterns
+      ).slice(
+        0,
+        8
+      ),
+
+    skills:
+      uniqueStrings(
+        question.skills
+      ).slice(
+        0,
+        10
+      ),
+
+    question_type:
+      normaliseQuestionType(
+        question.question_type
+      ),
+
+    difficulty:
+      normaliseDifficulty(
+        question.difficulty
+      ),
+
+    marks:
+      normaliseMarks(
+        question.marks
+      ),
+
+    paper_section:
+      cleanText(
+        question.paper_section
+      ) || undefined,
+
+    mathematical_objects:
+      uniqueStrings(
+        question.mathematical_objects
+      ).slice(
+        0,
+        10
+      ),
+
+    diagram_dependency:
+      normaliseDiagramDependency(
+        question.diagram_dependency
+      ),
+
+    position_band:
+      normalisePositionBand(
+        question.position_band
+      ),
+
+    source_page_start:
+      normalisePage(
+        question.source_page_start
+      ),
+
+    source_page_end:
+      normalisePage(
+        question.source_page_end
+      ),
+
+    classification_confidence:
+      normaliseConfidence(
+        question.classification_confidence
+      ),
+  }
+}
+
+/*
+ * ============================================================
+ * VALIDATION
+ * ============================================================
+ */
 
 function validateQuestion(
   question: unknown
 ): question is ExtractedMathQuestion {
-  if (!question || typeof question !== "object") {
+  if (
+    !question ||
+    typeof question !== "object"
+  ) {
     return false
   }
 
-  const q =
-    question as Record<string, unknown>
+  const candidate =
+    question as ExtractedMathQuestion
 
-  return (
-    typeof q.question_number === "number" &&
-    typeof q.question_text === "string" &&
-    q.question_text.trim().length > 0 &&
-    typeof q.topic === "string" &&
-    q.topic.trim().length > 0
+  if (
+    !Number.isFinite(
+      candidate.question_number
+    ) ||
+    candidate.question_number <= 0
+  ) {
+    return false
+  }
+
+  if (
+    !cleanText(
+      candidate.question_text
+    )
+  ) {
+    return false
+  }
+
+  if (
+    !cleanText(
+      candidate.topic
+    ) &&
+    !cleanText(
+      candidate.subtopic
+    ) &&
+    !cleanText(
+      candidate.concept_family
+    )
+  ) {
+    return false
+  }
+
+  return true
+}
+
+/*
+ * ============================================================
+ * DEDUPLICATE QUESTIONS
+ * ============================================================
+ *
+ * Gemini can occasionally return the same question twice.
+ *
+ * We keep the first occurrence for a question number unless
+ * another version has a more complete question label/text.
+ * ============================================================
+ */
+
+function deduplicateQuestions(
+  questions: ExtractedMathQuestion[]
+): ExtractedMathQuestion[] {
+  const map =
+    new Map<
+      number,
+      ExtractedMathQuestion
+    >()
+
+  for (
+    const question of
+    questions
+  ) {
+    const existing =
+      map.get(
+        question.question_number
+      )
+
+    if (!existing) {
+      map.set(
+        question.question_number,
+        question
+      )
+
+      continue
+    }
+
+    const existingLength =
+      existing.question_text.length
+
+    const currentLength =
+      question.question_text.length
+
+    if (
+      currentLength >
+      existingLength
+    ) {
+      map.set(
+        question.question_number,
+        question
+      )
+    }
+  }
+
+  return Array.from(
+    map.values()
+  ).sort(
+    (a, b) =>
+      a.question_number -
+      b.question_number
   )
 }
 
-export async function analyseZimsecMathPaper(params: {
-  pdfBase64: string
-  examYear: number
-  session?: string
-  paper: "Paper 1" | "Paper 2"
-}) {
-  const model = getGeminiModelName()
+/*
+ * ============================================================
+ * POSITION BAND FALLBACK
+ * ============================================================
+ */
+
+function calculatePositionBand(
+  questionNumber: number
+): string {
+  if (
+    questionNumber <= 5
+  ) {
+    return "Early"
+  }
+
+  if (
+    questionNumber <= 10
+  ) {
+    return "Early-Middle"
+  }
+
+  if (
+    questionNumber <= 15
+  ) {
+    return "Middle"
+  }
+
+  if (
+    questionNumber <= 20
+  ) {
+    return "Middle-Late"
+  }
+
+  return "Late"
+}
+
+/*
+ * ============================================================
+ * MAIN INGESTION FUNCTION
+ * ============================================================
+ */
+
+export async function analyseZimsecMathPaper(
+  params: {
+    pdfBase64: string
+    examYear: number
+    session?: string
+    paper: "Paper 1" | "Paper 2"
+  }
+): Promise<ExtractedMathPaper> {
+  if (
+    !params.pdfBase64
+  ) {
+    throw new Error(
+      "A Mathematics PDF is required for analysis."
+    )
+  }
+
+  if (
+    !Number.isFinite(
+      params.examYear
+    )
+  ) {
+    throw new Error(
+      "A valid Mathematics examination year is required."
+    )
+  }
+
+  const model =
+    getGeminiModelName()
+
+  /*
+   * ==========================================================
+   * EXTRACTION PROMPT
+   * ==========================================================
+   */
 
   const prompt = `
-You are the ZIMSEC O-Level Mathematics
-knowledge-base ingestion engine for GlobeDk AI.
+You are an expert ZIMSEC O-Level Mathematics examination analyst.
 
-Your task is to READ the supplied ZIMSEC
-Mathematics examination PDF and convert it
-into structured examination data.
+You are analysing ONE historical ZIMSEC O-Level Mathematics examination paper.
 
-This is NOT an examination prediction task.
-
-You are building historical knowledge that
-another AI system will later use to analyse
-ZIMSEC examination patterns.
-
-The most important purpose of this classification
-is to allow the system to recognise recurring
-MATHEMATICAL CONCEPTS and QUESTION FAMILIES
-even when ZIMSEC changes the wording, numbers,
-context, diagrams, or exact question format.
-
-==================================================
-PAPER INFORMATION
-==================================================
-
-Exam year:
+EXAMINATION YEAR:
 ${params.examYear}
 
-Session:
+SESSION:
 ${params.session || "Unknown"}
 
-Paper:
+PAPER:
 ${params.paper}
 
-==================================================
-IMPORTANT INSTRUCTIONS
-==================================================
+Your job is to extract EVERY ACTUAL MATHEMATICS QUESTION contained in the PDF.
 
-1. Read the entire supplied PDF.
+============================================================
+PRIMARY OBJECTIVE
+============================================================
 
-2. Identify every question that appears in
-   the examination paper.
+The extracted data will be stored in a historical database.
 
-3. Preserve the original question number.
+The database will later be used to identify recurring ZIMSEC question patterns.
 
-4. Preserve the mathematical meaning of every
-   question.
+Therefore:
 
-5. Include meaningful subparts such as (a),
-   (b), (c), etc. inside question_text.
+DO NOT invent questions.
 
-6. Do not invent missing questions.
+DO NOT merge unrelated questions.
 
-7. Do not invent marks.
+DO NOT omit actual questions.
 
-8. If marks are not visible, use null.
+DO NOT create hypothetical questions.
 
-9. If a diagram is required to understand a
-   question, describe the relevant mathematical
-   information from the diagram.
+DO NOT summarise an entire paper as one question.
 
-10. Use the visual content of the PDF where
-    necessary.
+Every actual numbered question must become one question record.
 
-11. Identify the main mathematical topic.
+============================================================
+QUESTION NUMBERING
+============================================================
 
-12. Identify the most specific useful subtopic.
-
-13. Identify the broader mathematical concept
-    family being tested.
-
-14. Identify the specific recurring question
-    family or question structure.
-
-15. Identify the mathematical skills being tested.
-
-16. Identify the type of question.
-
-17. Estimate difficulty using only the question
-    itself.
-
-18. Identify important mathematical objects.
-
-19. Identify whether a diagram is important
-    to solving the question.
-
-20. Identify the broad position of the question
-    within the paper.
-
-21. Identify common variations of this question
-    structure that could test the SAME underlying
-    mathematical concept.
-
-22. Give a classification confidence from 0 to 100.
-
-==================================================
-CRITICAL CONCEPT-LEVEL RULE
-==================================================
-
-Do NOT treat the exact wording, numbers, names,
-or diagrams of a historical question as the
-important information.
-
-The important information is the underlying
-mathematical concept and question structure.
-
-For example, these questions:
-
-2025:
-Find the inverse of a particular matrix.
-
-2024:
-Given a different matrix, calculate its inverse.
-
-2023:
-Determine whether a different matrix is singular.
-
-These may belong to the same broader concept
-family:
-
-"Matrix Operations"
-
-and related question families may include:
-
-- Matrix inverse
-- Determinant
-- Singular matrix
-- Matrix multiplication
-- Matrix equations
-
-Do NOT create a separate unrelated concept merely
-because the numerical values or wording differ.
-
-==================================================
-QUESTION FAMILY RULE
-==================================================
-
-The question_family should describe WHAT TYPE
-OF MATHEMATICAL TASK is being performed.
+Preserve the original question number exactly.
 
 Examples:
 
-Matrices:
-- Matrix inverse / determinant
-- Matrix multiplication
-- Singular matrix
-- Matrix equation
+22
+22(a)
+22(b)
+22(c)
 
-Sets:
-- Venn diagram / set operations
-- Union and intersection
-- Complement
-- Cardinality of sets
+should belong to question_number 22.
 
-Functions:
-- Function evaluation
-- Composite functions
-- Inverse functions
-- Solving function equations
-- Exponential function
+Use:
 
-Statistics:
-- Mean from frequency table
-- Median and mode
-- Statistical graph interpretation
-- Cumulative frequency
-- Data interpretation
+question_number: 22
 
-Kinematics:
-- Velocity-time graph interpretation
-- Distance from graph
-- Acceleration / deceleration
-- Average speed
-- Motion graph interpretation
+and, when identifiable:
 
-Geometry:
-- Similar triangles
-- Congruent triangles
-- Circle theorems
-- Bearings
-- Angle properties
+question_label: "Q22"
 
-Number:
-- Number bases
-- Mixed-base arithmetic
-- Conversion between bases
-- Standard form
-- Number properties
+or:
 
-Mensuration:
-- Area
-- Surface area
-- Volume
-- Scale and area
-- Composite shapes
+question_label: "Q22(b)"
 
-Do NOT make the question_family unnecessarily
-specific to the exact numbers or names in the
-question.
+The question_label is for preserving meaningful sub-question references.
 
-==================================================
-CONCEPT FAMILY RULE
-==================================================
+Do not create artificial question numbers.
 
-The concept_family must be broader than
-question_family.
+============================================================
+QUESTION TEXT
+============================================================
 
-Examples:
+Preserve the actual mathematical content.
 
-Topic:
+Include:
+
+- numbers
+- equations
+- expressions
+- matrices
+- diagrams described sufficiently
+- graphs
+- tables
+- coordinates
+- geometric information
+- units
+- instructions
+- meaningful subparts
+
+Do not replace a question with a vague summary such as:
+
+"Calculate the matrix."
+
+Instead preserve enough of the actual question so the historical record is useful.
+
+============================================================
+IMPORTANT VISUAL INFORMATION
+============================================================
+
+Use the PDF visually where necessary.
+
+Pay special attention to:
+
+- matrices
+- graphs
+- geometric diagrams
+- tables
+- number lines
+- transformations
+- constructions
+- coordinate diagrams
+- statistical charts
+
+If a question depends on a diagram, classify:
+
+None
+Helpful
+Essential
+
+Do not ignore diagrams.
+
+============================================================
+CLASSIFICATION HIERARCHY
+============================================================
+
+Every question should have:
+
+Topic
+Concept Family
+Question Family
+Variation Patterns
+Skills
+
+Use this hierarchy:
+
+Topic
+→ Concept Family
+→ Question Family
+→ Variation Patterns
+
+The Question Family must be broader than an individual wording.
+
+For example:
+
+Matrix multiplication
+Matrix inverse
+Singular matrix
+Matrix transformation
+
+should NOT become four unrelated families.
+
+They should be grouped as:
+
+Concept Family:
 Matrices
 
-Concept family:
-Matrix Operations
+Question Family:
+Matrices (Operations, Inverse and Singular)
 
-Question family:
-Matrix inverse / determinant
+Likewise:
 
----
+Number-base conversion
+Mixed-base arithmetic
+Binary arithmetic
 
-Topic:
-Sets
+should be grouped under:
 
-Concept family:
-Set Theory and Venn Diagrams
+Concept Family:
+Number Bases and Mixed Base Arithmetic
 
-Question family:
-Venn diagram / set operations
+Question Family:
+Number Bases & Mixed Base Arithmetic
 
----
+============================================================
+CANONICAL CONCEPT FAMILIES
+============================================================
 
-Topic:
-Functions
+Prefer these exact names whenever applicable:
 
-Concept family:
-Functions and Relations
+Number Bases and Mixed Base Arithmetic
 
-Question family:
-Function evaluation and inverse
+Matrices
 
----
+Set Theory and Venn
 
-Topic:
 Statistics
 
-Concept family:
-Statistical Data Analysis
-
-Question family:
-Mean / median / mode from data
-
----
-
-Topic:
-Kinematics
-
-Concept family:
 Motion and Kinematics
 
-Question family:
-Velocity-time graph interpretation
+Similarity and Congruency
 
----
+Functions and Exponential
 
-Topic:
-Geometry
+Map Scales and Measurement
 
-Concept family:
-Similarity and Congruence
+Bearings
 
-Question family:
-Similar triangles
+Vectors
 
-==================================================
-VARIATION PATTERNS
-==================================================
+Circle Geometry
 
-For every question, identify realistic ways
-ZIMSEC could test the SAME concept differently.
+Simultaneous Linear Equations
 
-Examples:
+Trigonometry
 
-Matrix inverse:
-[
-"calculate the inverse of a matrix",
-"find determinant before finding inverse",
-"determine whether a matrix is singular",
-"use a matrix inverse to solve equations"
-]
+Probability
 
-Venn diagrams:
-[
-"find intersection",
-"find union",
-"find complement",
-"calculate number of elements",
-"complete a Venn diagram",
-"solve a word problem using sets"
-]
+Mensuration
 
-Kinematics:
-[
-"find acceleration from gradient",
-"find distance from area under graph",
-"calculate average speed",
-"interpret a velocity-time graph",
-"interpret a displacement-time graph"
-]
+Financial Mathematics
 
-Similar triangles:
-[
-"find a missing length",
-"identify similar triangles",
-"calculate scale factor",
-"calculate area ratio",
-"compare corresponding sides"
-]
+Algebraic Manipulation and Equations
 
-Functions:
-[
-"evaluate a function",
-"solve f(x)=k",
-"find inverse function",
-"evaluate a composite function",
-"solve an exponential equation"
-]
+============================================================
+MATRIX RULE
+============================================================
 
-These are examples only.
+Any question involving:
 
-Identify the variations that are actually
-mathematically appropriate for the question.
+- matrix operations
+- matrix multiplication
+- matrix addition/subtraction
+- determinant
+- inverse matrix
+- singular matrix
+- matrix equations
+- matrix transformations
 
-Do not invent unrelated variations.
+must use:
 
-==================================================
-TOPIC CLASSIFICATION
-==================================================
-
-Use meaningful ZIMSEC O-Level Mathematics
-topics such as:
-
-- Number
-- Fractions
-- Decimals
-- Percentages
-- Ratio and Proportion
-- Indices
-- Surds
-- Algebra
-- Factorisation
-- Equations
-- Simultaneous Equations
-- Inequalities
-- Sequences
-- Functions
-- Graphs
-- Coordinate Geometry
-- Geometry
-- Circle Geometry
-- Angles
-- Constructions
-- Transformations
-- Vectors
-- Matrices
-- Mensuration
-- Trigonometry
-- Statistics
-- Probability
-- Sets
-- Financial Mathematics
-- Measurement
-- Other
-
-Do not force an incorrect topic.
-
-==================================================
-SUBTOPIC CLASSIFICATION
-==================================================
-
-Use the most specific useful mathematical
-subtopic supported by the actual question.
-
-Examples:
-
-Topic:
+topic:
 Matrices
 
-Subtopic:
-Matrix inverse
+concept_family:
+Matrices
 
-Topic:
+question_family:
+Matrices (Operations, Inverse and Singular)
+
+This is extremely important.
+
+============================================================
+NUMBER BASE RULE
+============================================================
+
+Questions involving:
+
+- binary
+- denary
+- base arithmetic
+- number bases
+- mixed bases
+- conversion between bases
+
+should use:
+
+topic:
+Number
+
+concept_family:
+Number Bases and Mixed Base Arithmetic
+
+question_family:
+Number Bases & Mixed Base Arithmetic
+
+============================================================
+SETS RULE
+============================================================
+
+Questions involving:
+
+- Venn diagrams
+- union
+- intersection
+- complement
+- universal set
+- set notation
+
+should use:
+
+topic:
 Sets
 
-Subtopic:
-Venn diagrams
+concept_family:
+Set Theory and Venn
 
-Topic:
-Functions
+question_family:
+Set Theory and Venn Diagrams
 
-Subtopic:
-Inverse functions
+============================================================
+STATISTICS RULE
+============================================================
 
-Topic:
+Questions involving:
+
+- mean
+- median
+- mode
+- frequency tables
+- grouped data
+- cumulative frequency
+- histograms
+- box plots
+- statistical interpretation
+
+should use:
+
+topic:
 Statistics
 
-Subtopic:
-Mean from frequency table
+concept_family:
+Statistics
 
-Topic:
-Geometry
+question_family:
+Statistics (Mean, Median, Mode and Data Interpretation)
 
-Subtopic:
-Similar triangles
+============================================================
+KINEMATICS RULE
+============================================================
 
-Topic:
+Questions involving:
+
+- speed
+- velocity
+- acceleration
+- displacement
+- motion
+- velocity-time graphs
+- speed-time graphs
+
+should use:
+
+topic:
 Kinematics
 
-Subtopic:
-Velocity-time graphs
+concept_family:
+Motion and Kinematics
 
-Do not make the subtopic excessively specific
-to the exact numbers or names in the question.
+question_family:
+Kinematics (Velocity/Speed-Time Graphs, Motion and Acceleration)
 
-==================================================
-QUESTION TYPES
-==================================================
+============================================================
+FUNCTION RULE
+============================================================
 
-Examples include:
+Questions involving:
 
-- Multiple Choice
-- Short Answer
-- Structured Problem
-- Calculation
-- Proof
-- Construction
-- Graph Interpretation
-- Data Interpretation
-- Word Problem
-- Application
-- Mixed
+- f(x)
+- functions
+- inverse functions
+- composite functions
+- exponential functions
+- index/exponential equations
 
-Choose the most appropriate type.
+should use:
 
-==================================================
+concept_family:
+Functions and Exponential
+
+Use a suitable question family such as:
+
+Functions (Evaluation, Inverse and Composite)
+
+or:
+
+Functions and Index/Exponential Equations
+
+============================================================
+POSITION
+============================================================
+
+Classify question position as:
+
+Early
+Early-Middle
+Middle
+Middle-Late
+Late
+
+based on the question number.
+
+============================================================
+QUESTION TYPE
+============================================================
+
+Use only:
+
+Multiple Choice
+Short Answer
+Structured Problem
+Calculation
+Proof
+Construction
+Graph Interpretation
+Data Interpretation
+Word Problem
+Application
+Mixed
+
+============================================================
 DIFFICULTY
-==================================================
+============================================================
 
-Use exactly one:
+Use only:
 
 Easy
 Moderate
 Difficult
 Very Difficult
 
-If uncertain, use Moderate.
-
-Difficulty should be based on mathematical
-complexity, number of reasoning steps,
-interpretation required, and prerequisite skills.
-
-Do not assume that a question is difficult
-merely because it has many marks.
-
-==================================================
-DIAGRAM DEPENDENCY
-==================================================
-
-Use exactly one of:
-
-- None
-- Helpful
-- Essential
-
-Use:
-
-None
-when no diagram is required.
-
-Helpful
-when the diagram assists understanding but
-the mathematical information can still be
-understood from the text.
-
-Essential
-when the diagram contains information required
-to solve the question.
-
-==================================================
-POSITION BAND
-==================================================
-
-Identify the broad position of the question
-within THIS paper.
-
-Use exactly one:
-
-- Early
-- Early-Middle
-- Middle
-- Middle-Late
-- Late
-
-Do not claim that this is a guaranteed future
-position.
-
-This is historical position information only.
-
-==================================================
-MATHEMATICAL OBJECTS
-==================================================
-
-Identify important mathematical objects such as:
-
-- matrices
-- determinants
-- vectors
-- equations
-- graphs
-- frequency tables
-- Venn diagrams
-- triangles
-- circles
-- bearings
-- coordinates
-- functions
-- inequalities
-- ratios
-- scale drawings
-- probability trees
-- geometric shapes
-
-Only include objects actually relevant to
-the question.
-
-==================================================
-SKILLS
-==================================================
-
-Identify the actual mathematical skills being
-tested.
-
-Examples:
-
-- algebraic manipulation
-- substitution
-- solving equations
-- factorisation
-- calculating determinant
-- finding matrix inverse
-- interpreting graphs
-- calculating gradient
-- calculating area
-- applying circle theorems
-- using similarity
-- converting number bases
-- calculating mean
-- interpreting frequency tables
-
-Do not simply repeat the topic name as a skill.
-
-==================================================
-PAPER 1 VS PAPER 2
-==================================================
-
-Treat Paper 1 and Paper 2 as separate examination
-structures.
-
-Do not assume that a concept appearing in
-Paper 1 has the same position, mark allocation,
-or question style in Paper 2.
-
-The paper field supplied above determines the
-paper being analysed.
-
-==================================================
-HISTORICAL PATTERN PURPOSE
-==================================================
-
-The resulting information will later be used
-to compare multiple ZIMSEC papers.
-
-Therefore classification must be CONSISTENT.
-
-For example, if one paper contains:
-
-"Calculate the inverse of matrix A"
-
-and another contains:
-
-"Find A^-1"
-
-both should normally be classified under
-the same concept family and question family.
-
-Similarly:
-
-"Use the Venn diagram to find n(A ∩ B)"
-
-and
-
-"Determine the number of learners belonging
-to both sets"
-
-may belong to the same broader concept family.
-
-The goal is to recognise mathematical structure,
-not superficial wording.
-
-==================================================
-IMPORTANT ANTI-COPYING RULE
-==================================================
-
-Historical questions are KNOWLEDGE DATA.
-
-They are NOT templates that the future prediction
-system should reproduce word-for-word.
-
-Do not create classifications based on:
-
-- exact numerical values
-- exact names
-- exact wording
-- exact answer choices
-- exact diagram labels
-- exact historical scenario
-
-Instead classify:
-
-- mathematical concept
-- mathematical skill
-- question family
-- common variations
-- difficulty
-- position band
-- mark allocation
-- mathematical objects
-
-==================================================
+============================================================
 OUTPUT
-==================================================
+============================================================
 
 Return ONLY valid JSON.
 
-Do not use Markdown.
+Do not include markdown.
 
-Do not write explanations before or after
-the JSON.
+Do not include explanations.
 
-The JSON must have this structure:
+Use exactly this structure:
 
 {
   "exam_year": ${params.examYear},
-  "session": "${params.session || ""}",
+  "session": "${cleanText(params.session || "")}",
   "paper": "${params.paper}",
   "questions": [
     {
       "question_number": 1,
-      "question_label": "1",
+      "question_label": "Q1",
       "question_text": "...",
-
-      "topic": "Algebra",
-
-      "subtopic": "Simultaneous equations",
-
-      "concept_family": "Simultaneous Linear Equations",
-
-      "question_family": "Solving simultaneous equations",
-
-      "variation_patterns": [
-        "solve two linear equations",
-        "solve a word problem using simultaneous equations",
-        "solve equations involving different coefficients"
-      ],
-
-      "skills": [
-        "algebraic manipulation",
-        "solving equations",
-        "substitution"
-      ],
-
-      "question_type": "Structured Problem",
-
+      "topic": "...",
+      "subtopic": "...",
+      "concept_family": "...",
+      "question_family": "...",
+      "variation_patterns": [],
+      "skills": [],
+      "question_type": "Calculation",
       "difficulty": "Moderate",
-
-      "marks": 8,
-
-      "paper_section": "Section B",
-
-      "mathematical_objects": [
-        "linear equations"
-      ],
-
+      "marks": 2,
+      "paper_section": "...",
+      "mathematical_objects": [],
       "diagram_dependency": "None",
-
-      "position_band": "Middle",
-
-      "source_page_start": 3,
-
-      "source_page_end": 4,
-
-      "classification_confidence": 96
+      "position_band": "Early",
+      "source_page_start": 1,
+      "source_page_end": 1,
+      "classification_confidence": 95
     }
   ]
 }
+
+IMPORTANT:
+
+Return EVERY actual question.
+
+Do not stop after the first page.
+
+Read the entire PDF before producing the JSON.
+
+Do not invent marks when marks are not visible.
+
+If marks cannot be determined, use null.
+
+If a field cannot be determined, use a sensible empty value.
+
+============================================================
+FINAL QUALITY CHECK
+============================================================
+
+Before returning JSON:
+
+1. Check that every actual numbered question was extracted.
+2. Check that question numbers are correct.
+3. Check that no duplicate question numbers were accidentally created.
+4. Check that matrices are classified as Matrices.
+5. Check that number bases are classified as Number Bases and Mixed Base Arithmetic.
+6. Check that Venn/set questions are classified as Set Theory and Venn.
+7. Check that statistics questions are classified as Statistics.
+8. Check that kinematics questions are classified as Motion and Kinematics.
+9. Check that coordinate geometry is not incorrectly classified merely as Graphs.
+10. Check that meaningful subparts are preserved in question_label/question_text.
 `
 
   /*
-   * Gemini Interactions API.
-   *
-   * The PDF is supplied directly as a document.
+   * ==========================================================
+   * SEND PDF + PROMPT TO GEMINI
+   * ==========================================================
    */
 
   const interaction =
     await gemini.interactions.create({
       model,
+
       input: [
         {
           type: "document",
           data: params.pdfBase64,
-          mime_type: "application/pdf",
+          mime_type:
+            "application/pdf",
         },
+
         {
           type: "text",
           text: prompt,
@@ -851,33 +1946,36 @@ The JSON must have this structure:
       ],
     })
 
-  /*
-   * The current Interactions API exposes
-   * model output through output_text.
-   */
+  const rawOutput =
+    cleanText(
+      interaction.output_text
+    )
 
-  const responseText =
-    interaction.output_text
-
-  if (
-    !responseText ||
-    responseText.trim().length === 0
-  ) {
+  if (!rawOutput) {
     throw new Error(
-      "Gemini returned an empty response while analysing the Mathematics paper."
+      "Gemini returned an empty Mathematics paper analysis."
     )
   }
 
-  let parsed: ExtractedMathPaper
+  /*
+   * ==========================================================
+   * PARSE JSON
+   * ==========================================================
+   */
+
+  let parsed: any
 
   try {
-    parsed = JSON.parse(
-      cleanJson(responseText)
-    ) as ExtractedMathPaper
+    parsed =
+      JSON.parse(
+        cleanJson(
+          rawOutput
+        )
+      )
   } catch (error) {
     console.error(
-      "Gemini returned invalid JSON:",
-      responseText
+      "Invalid ZIMSEC Mathematics JSON returned by Gemini:",
+      rawOutput
     )
 
     throw new Error(
@@ -887,31 +1985,107 @@ The JSON must have this structure:
 
   if (
     !parsed ||
-    !Array.isArray(parsed.questions)
+    typeof parsed !== "object"
   ) {
     throw new Error(
-      "Gemini returned an invalid Mathematics paper structure."
+      "Gemini returned an invalid Mathematics paper object."
     )
   }
+
+  if (
+    !Array.isArray(
+      parsed.questions
+    )
+  ) {
+    throw new Error(
+      "Gemini did not return a valid Mathematics questions array."
+    )
+  }
+
+  /*
+   * ==========================================================
+   * NORMALISE QUESTIONS
+   * ==========================================================
+   */
+
+  const normalised =
+    parsed.questions
+      .map(
+        (question: any) =>
+          normaliseQuestion(
+            question
+          )
+      )
+      .filter(
+        (
+          question
+        ): question is ExtractedMathQuestion =>
+          Boolean(question) &&
+          validateQuestion(
+            question
+          )
+      )
+
+  /*
+   * ==========================================================
+   * DEDUPLICATE
+   * ==========================================================
+   */
 
   const validQuestions =
-    parsed.questions.filter(
-      validateQuestion
+    deduplicateQuestions(
+      normalised
     )
 
-  if (validQuestions.length === 0) {
+  if (
+    validQuestions.length ===
+    0
+  ) {
     throw new Error(
-      "Gemini could not identify any Mathematics questions in the supplied paper."
+      "No valid Mathematics questions were extracted from the PDF."
     )
   }
 
+  /*
+   * ==========================================================
+   * FINAL POSITION FALLBACK
+   * ==========================================================
+   */
+
+  for (
+    const question of
+    validQuestions
+  ) {
+    if (
+      !question.position_band ||
+      !VALID_POSITION_BANDS.includes(
+        question.position_band as any
+      )
+    ) {
+      question.position_band =
+        calculatePositionBand(
+          question.question_number
+        )
+    }
+  }
+
+  /*
+   * ==========================================================
+   * RETURN STRUCTURED PAPER
+   * ==========================================================
+   */
+
   return {
-    exam_year: params.examYear,
+    exam_year:
+      params.examYear,
 
-    session: params.session,
+    session:
+      params.session,
 
-    paper: params.paper,
+    paper:
+      params.paper,
 
-    questions: validQuestions,
+    questions:
+      validQuestions,
   }
 }

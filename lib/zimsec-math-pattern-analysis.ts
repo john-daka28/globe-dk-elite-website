@@ -1,15 +1,38 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import {
+  supabaseAdmin,
+} from "@/lib/supabase-admin"
+
+/*
+ * ============================================================
+ * ZIMSEC MATHEMATICS PATTERN ANALYSIS
+ * ============================================================
+ *
+ * Pipeline:
+ *
+ * ai_zimsec_math_papers
+ *        ↓
+ * ai_zimsec_math_questions
+ *        ↓
+ * question-level patterns
+ *        ↓
+ * broad historical aggregates
+ *        ↓
+ * ai_zimsec_math_pattern_analysis
+ *
+ * The aggregate table is the authoritative historical evidence
+ * used by the AI predictor.
+ *
+ * ============================================================
+ */
 
 type PaperRow = {
   id: string
-  subject: string
-  level: string
-  curriculum: string
   exam_year: number
   session: string | null
   paper: "Paper 1" | "Paper 2"
-  title: string | null
-  extraction_status: string | null
+  subject: string
+  level: string
+  curriculum: string
 }
 
 type QuestionRow = {
@@ -20,18 +43,17 @@ type QuestionRow = {
   question_text: string
   topic: string | null
   subtopic: string | null
-  concept_family: string | null
-  question_family: string | null
-  variation_patterns: string[] | null
   skills: string[] | null
   question_type: string | null
   difficulty: string | null
   marks: number | null
   paper_section: string | null
   mathematical_objects: string[] | null
+  concept_family: string | null
+  question_family: string | null
+  variation_patterns: string[] | null
   diagram_dependency: string | null
   position_band: string | null
-  ai_classification_confidence: number | null
 }
 
 type QuestionPatternRow = {
@@ -40,52 +62,56 @@ type QuestionPatternRow = {
   pattern_value: string
 }
 
+/*
+ * ============================================================
+ * HISTORICAL PAPER OCCURRENCE
+ * ============================================================
+ */
+
+export type PaperOccurrenceQuestion = {
+  question_id: string
+  question_number: number
+  question_label: string | null
+  reference: string
+  marks: number | null
+}
+
+export type PaperOccurrence = {
+  paper_id: string
+  exam_year: number
+  session: string | null
+  paper: "Paper 1" | "Paper 2"
+  display_label: string
+  questions: PaperOccurrenceQuestion[]
+}
+
 type Aggregate = {
   paper: "Paper 1" | "Paper 2"
 
   topic: string
-  subtopic: string | null
+  subtopic: string
 
-  conceptFamily: string
-  questionFamily: string | null
+  concept_family: string
+  question_family: string
 
-  patternType: "Concept Family" | "Question Family"
-  patternValue: string
-
-  questionCount: number
-  papers: Set<string>
-
-  years: Set<number>
-  positions: number[]
-  positionBands: Set<string>
+  questions: QuestionRow[]
+  papers: PaperRow[]
 
   styles: Set<string>
   skills: Set<string>
-
-  totalMarks: number
-  exampleQuestionIds: string[]
-
-  topicCounts: Map<string, number>
-  subtopicCounts: Map<string, number>
-
-  frequencyScore: number
-  recencyScore: number
-  positionScore: number
-  variationScore: number
-  skillScore: number
-  markWeightScore: number
-  coverageScore: number
-  predictionScore: number
-
-  patternStrength: "Weak" | "Moderate" | "Strong"
+  variations: Set<string>
+  positionBands: Set<string>
 }
 
 export type PatternAnalysisResult = {
   success: boolean
+
   papersAnalysed: number
   questionsAnalysed: number
+
   questionPatternsCreated: number
   aggregatePatternsCreated: number
+
   paperResults: Array<{
     paper: string
     papers: number
@@ -94,1671 +120,2730 @@ export type PatternAnalysisResult = {
   }>
 }
 
-const CONCEPT_FAMILIES = [
-  "Matrices",
-  "Set Theory and Venn",
-  "Functions and Exponential",
-  "Motion and Kinematics",
-  "Similarity and Congruency",
-  "Statistics",
-  "Bearings",
-  "Vectors",
-  "Number Bases and Mixed Base Arithmetic",
-  "Map Scales and Measurement",
-  "Circle Geometry",
-  "Simultaneous Linear Equations",
-]
+/*
+ * ============================================================
+ * BASIC HELPERS
+ * ============================================================
+ */
 
-function cleanText(value: unknown): string {
+function cleanText(
+  value: unknown
+): string {
   return String(value ?? "")
     .trim()
     .replace(/\s+/g, " ")
 }
 
-function normalizeText(value: unknown): string {
-  return cleanText(value).toLowerCase()
+function lower(
+  value: unknown
+): string {
+  return cleanText(
+    value
+  ).toLowerCase()
 }
 
-function cleanArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
+function uniqueStrings(
+  values: unknown
+): string[] {
+  if (
+    !Array.isArray(
+      values
+    )
+  ) {
     return []
   }
 
-  return value
-    .map((item) => cleanText(item))
-    .filter(Boolean)
-}
-
-function uniqueStrings(values: string[]): string[] {
   return Array.from(
     new Set(
       values
-        .map((value) => cleanText(value))
-        .filter(Boolean),
-    ),
+        .map(
+          (value) =>
+            cleanText(
+              value
+            )
+        )
+        .filter(Boolean)
+    )
   )
 }
 
-function canonicalize(value: string): string {
-  return normalizeText(value)
-    .replace(/&/g, "and")
-    .replace(/[()[\]{}:,/\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
+function clamp(
+  value: number,
+  min = 0,
+  max = 100
+): number {
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  )
 }
 
-function mostCommon(values: string[]): string | null {
-  const cleaned = values
-    .map((value) => cleanText(value))
-    .filter(Boolean)
+/*
+ * ============================================================
+ * PAPER DISPLAY HELPERS
+ * ============================================================
+ */
 
-  if (!cleaned.length) {
-    return null
-  }
-
-  const counts = new Map<string, number>()
-
-  for (const value of cleaned) {
-    counts.set(value, (counts.get(value) ?? 0) + 1)
-  }
-
-  return Array.from(counts.entries())
-    .sort((a, b) => {
-      if (b[1] !== a[1]) {
-        return b[1] - a[1]
-      }
-
-      return a[0].localeCompare(b[0])
-    })[0][0]
+function shortPaperName(
+  paper: PaperRow
+): string {
+  return paper.paper ===
+    "Paper 1"
+    ? "P1"
+    : "P2"
 }
 
-function normalizeConceptFamily(question: QuestionRow): string {
-  const supplied = cleanText(question.concept_family)
+function normaliseSessionMonth(
+  session: string
+): string {
+  const value =
+    lower(
+      session
+    )
 
-  if (supplied) {
-    const normalized = canonicalize(supplied)
-
-    const mappings: Record<string, string> = {
-      matrices: "Matrices",
-      matrix: "Matrices",
-      "matrix algebra": "Matrices",
-
-      "set theory": "Set Theory and Venn",
-      "set theory and venn": "Set Theory and Venn",
-      sets: "Set Theory and Venn",
-      venn: "Set Theory and Venn",
-      "venn diagrams": "Set Theory and Venn",
-
-      functions: "Functions and Exponential",
-      "functions and exponential": "Functions and Exponential",
-      exponential: "Functions and Exponential",
-      "exponential functions": "Functions and Exponential",
-
-      kinematics: "Motion and Kinematics",
-      motion: "Motion and Kinematics",
-      "motion and kinematics": "Motion and Kinematics",
-
-      similarity: "Similarity and Congruency",
-      congruency: "Similarity and Congruency",
-      congruence: "Similarity and Congruency",
-      "similarity and congruency": "Similarity and Congruency",
-
-      statistics: "Statistics",
-
-      bearings: "Bearings",
-
-      vectors: "Vectors",
-
-      "number bases": "Number Bases and Mixed Base Arithmetic",
-      "number bases and mixed base arithmetic":
-        "Number Bases and Mixed Base Arithmetic",
-      "mixed base arithmetic": "Number Bases and Mixed Base Arithmetic",
-      "mixed bases": "Number Bases and Mixed Base Arithmetic",
-
-      "map scales": "Map Scales and Measurement",
-      "map scales and measurement": "Map Scales and Measurement",
-      scale: "Map Scales and Measurement",
-      scales: "Map Scales and Measurement",
-
-      "circle geometry": "Circle Geometry",
-      circles: "Circle Geometry",
-      "circle theorems": "Circle Geometry",
-
-      "simultaneous equations": "Simultaneous Linear Equations",
-      "simultaneous linear equations": "Simultaneous Linear Equations",
-    }
-
-    if (mappings[normalized]) {
-      return mappings[normalized]
-    }
-
-    for (const family of CONCEPT_FAMILIES) {
-      if (canonicalize(family) === normalized) {
-        return family
-      }
-    }
-
-    return supplied
+  if (
+    value.includes(
+      "november"
+    ) ||
+    value === "nov" ||
+    value.includes(
+      " nov"
+    )
+  ) {
+    return "Nov"
   }
 
-  const combined = canonicalize(
+  if (
+    value.includes(
+      "june"
+    ) ||
+    value === "jun" ||
+    value.includes(
+      " jun"
+    )
+  ) {
+    return "June"
+  }
+
+  if (
+    value.includes(
+      "may"
+    )
+  ) {
+    return "May"
+  }
+
+  if (
+    value.includes(
+      "march"
+    ) ||
+    value === "mar"
+  ) {
+    return "Mar"
+  }
+
+  if (
+    value.includes(
+      "february"
+    ) ||
+    value === "feb"
+  ) {
+    return "Feb"
+  }
+
+  if (
+    value.includes(
+      "january"
+    ) ||
+    value === "jan"
+  ) {
+    return "Jan"
+  }
+
+  return cleanText(
+    session
+  )
+}
+
+function extractSyllabus(
+  session: string
+): string | null {
+  const match =
+    session.match(
+      /(?:syllabus|syll\.?)\s*[-:]?\s*([ab])/i
+    )
+
+  if (
+    match?.[1]
+  ) {
+    return match[1].toUpperCase()
+  }
+
+  return null
+}
+
+function formatPaperLabel(
+  paper: PaperRow
+): string {
+  const session =
+    cleanText(
+      paper.session
+    )
+
+  const sessionLower =
+    lower(
+      session
+    )
+
+  const paperName =
+    shortPaperName(
+      paper
+    )
+
+  if (
+    sessionLower.includes(
+      "specimen"
+    )
+  ) {
+    const syllabus =
+      extractSyllabus(
+        session
+      )
+
+    return (
+      `Specimen ${paperName}` +
+      (
+        syllabus
+          ? ` (Syll. ${syllabus})`
+          : ""
+      )
+    )
+  }
+
+  const month =
+    normaliseSessionMonth(
+      session
+    )
+
+  if (
+    month
+  ) {
+    return (
+      `${month} ${paper.exam_year} ${paperName}`
+    )
+  }
+
+  return (
+    `${paper.exam_year} ${paperName}`
+  )
+}
+
+/*
+ * ============================================================
+ * QUESTION DISPLAY HELPERS
+ * ============================================================
+ */
+
+function formatQuestionReference(
+  question: QuestionRow
+): string {
+  const label =
+    cleanText(
+      question.question_label
+    )
+
+  if (
+    label
+  ) {
+    if (
+      /^q/i.test(
+        label
+      )
+    ) {
+      return label
+    }
+
+    if (
+      /^\d/.test(
+        label
+      )
+    ) {
+      return `Q${label}`
+    }
+
+    return label
+  }
+
+  return (
+    `Q${question.question_number}`
+  )
+}
+
+/*
+ * ============================================================
+ * HISTORICAL OCCURRENCES
+ * ============================================================
+ */
+
+function buildPaperOccurrences(
+  questions: QuestionRow[],
+  paperMap: Map<string, PaperRow>
+): PaperOccurrence[] {
+  const occurrenceMap =
+    new Map<
+      string,
+      PaperOccurrence
+    >()
+
+  for (
+    const question of
+    questions
+  ) {
+    const paper =
+      paperMap.get(
+        question.paper_id
+      )
+
+    if (
+      !paper
+    ) {
+      continue
+    }
+
+    const questionEntry:
+      PaperOccurrenceQuestion =
+      {
+        question_id:
+          question.id,
+
+        question_number:
+          question.question_number,
+
+        question_label:
+          question.question_label,
+
+        reference:
+          formatQuestionReference(
+            question
+          ),
+
+        marks:
+          question.marks,
+      }
+
+    const existing =
+      occurrenceMap.get(
+        paper.id
+      )
+
+    if (
+      existing
+    ) {
+      existing.questions.push(
+        questionEntry
+      )
+    } else {
+      occurrenceMap.set(
+        paper.id,
+        {
+          paper_id:
+            paper.id,
+
+          exam_year:
+            paper.exam_year,
+
+          session:
+            paper.session,
+
+          paper:
+            paper.paper,
+
+          display_label:
+            formatPaperLabel(
+              paper
+            ),
+
+          questions: [
+            questionEntry,
+          ],
+        }
+      )
+    }
+  }
+
+  const occurrences =
+    Array.from(
+      occurrenceMap.values()
+    )
+
+  for (
+    const occurrence of
+    occurrences
+  ) {
+    occurrence.questions.sort(
+      (a, b) => {
+        if (
+          a.question_number !==
+          b.question_number
+        ) {
+          return (
+            a.question_number -
+            b.question_number
+          )
+        }
+
+        return (
+          a.reference.localeCompare(
+            b.reference,
+            undefined,
+            {
+              numeric:
+                true,
+            }
+          )
+        )
+      }
+    )
+  }
+
+  /*
+   * Most recent examination first.
+   *
+   * Specimen papers remain at the bottom.
+   */
+  occurrences.sort(
+    (a, b) => {
+      const aSpecimen =
+        lower(
+          a.session
+        ).includes(
+          "specimen"
+        )
+
+      const bSpecimen =
+        lower(
+          b.session
+        ).includes(
+          "specimen"
+        )
+
+      if (
+        aSpecimen !==
+        bSpecimen
+      ) {
+        return aSpecimen
+          ? 1
+          : -1
+      }
+
+      if (
+        a.exam_year !==
+        b.exam_year
+      ) {
+        return (
+          b.exam_year -
+          a.exam_year
+        )
+      }
+
+      const aSession =
+        lower(
+          a.session
+        )
+
+      const bSession =
+        lower(
+          b.session
+        )
+
+      const aNovember =
+        aSession.includes(
+          "nov"
+        )
+
+      const bNovember =
+        bSession.includes(
+          "nov"
+        )
+
+      if (
+        aNovember !==
+        bNovember
+      ) {
+        return aNovember
+          ? -1
+          : 1
+      }
+
+      return (
+        a.display_label.localeCompare(
+          b.display_label
+        )
+      )
+    }
+  )
+
+  return occurrences
+}
+
+/*
+ * ============================================================
+ * CANONICAL CONCEPT
+ * ============================================================
+ */
+
+function canonicalConcept(
+  question: QuestionRow
+): string {
+  const supplied =
+    cleanText(
+      question.concept_family
+    )
+
+  const searchText =
     [
+      supplied,
       question.topic,
       question.subtopic,
       question.question_family,
-      question.question_type,
       question.question_text,
     ]
-      .filter(Boolean)
-      .join(" "),
-  )
+      .map(lower)
+      .join(" ")
+
+  /*
+   * Specific concepts FIRST.
+   */
 
   if (
-    combined.includes("matrix") ||
-    combined.includes("determinant") ||
-    combined.includes("inverse matrix")
+    searchText.includes(
+      "number base"
+    ) ||
+    searchText.includes(
+      "mixed base"
+    ) ||
+    searchText.includes(
+      "base arithmetic"
+    ) ||
+    /\bbinary\b/.test(
+      searchText
+    )
+  ) {
+    return (
+      "Number Bases and Mixed Base Arithmetic"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "matrix"
+    ) ||
+    searchText.includes(
+      "matrices"
+    ) ||
+    searchText.includes(
+      "determinant"
+    )
   ) {
     return "Matrices"
   }
 
   if (
-    combined.includes("venn") ||
-    combined.includes("set theory") ||
-    combined.includes("universal set") ||
-    combined.includes("complement")
+    searchText.includes(
+      "venn"
+    ) ||
+    searchText.includes(
+      "set theory"
+    ) ||
+    /\bsets\b/.test(
+      searchText
+    ) ||
+    searchText.includes(
+      "union"
+    ) ||
+    searchText.includes(
+      "intersection"
+    )
   ) {
-    return "Set Theory and Venn"
+    return (
+      "Set Theory and Venn"
+    )
   }
 
   if (
-    combined.includes("function") ||
-    combined.includes("exponential") ||
-    combined.includes("inverse function")
-  ) {
-    return "Functions and Exponential"
-  }
-
-  if (
-    combined.includes("kinematic") ||
-    combined.includes("velocity") ||
-    combined.includes("acceleration") ||
-    combined.includes("speed time") ||
-    combined.includes("distance time")
-  ) {
-    return "Motion and Kinematics"
-  }
-
-  if (
-    combined.includes("similar triangle") ||
-    combined.includes("similarity") ||
-    combined.includes("congruen")
-  ) {
-    return "Similarity and Congruency"
-  }
-
-  if (
-    combined.includes("statistics") ||
-    combined.includes("frequency table") ||
-    combined.includes("median") ||
-    combined.includes("mode")
+    searchText.includes(
+      "statistic"
+    ) ||
+    searchText.includes(
+      "mean"
+    ) ||
+    searchText.includes(
+      "median"
+    ) ||
+    searchText.includes(
+      "mode"
+    ) ||
+    searchText.includes(
+      "frequency table"
+    ) ||
+    searchText.includes(
+      "histogram"
+    )
   ) {
     return "Statistics"
   }
 
-  if (combined.includes("bearing")) {
+  if (
+    searchText.includes(
+      "kinematic"
+    ) ||
+    searchText.includes(
+      "velocity-time"
+    ) ||
+    searchText.includes(
+      "speed-time"
+    ) ||
+    searchText.includes(
+      "acceleration"
+    ) ||
+    searchText.includes(
+      "motion"
+    )
+  ) {
+    return (
+      "Motion and Kinematics"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "similar triangle"
+    ) ||
+    searchText.includes(
+      "similarity"
+    ) ||
+    searchText.includes(
+      "congru"
+    )
+  ) {
+    return (
+      "Similarity and Congruency"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "function"
+    ) ||
+    searchText.includes(
+      "exponential"
+    ) ||
+    searchText.includes(
+      "index equation"
+    ) ||
+    searchText.includes(
+      "indices"
+    )
+  ) {
+    return (
+      "Functions and Exponential"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "map scale"
+    ) ||
+    searchText.includes(
+      "area scale"
+    ) ||
+    searchText.includes(
+      "scale drawing"
+    )
+  ) {
+    return (
+      "Map Scales and Measurement"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "bearing"
+    )
+  ) {
     return "Bearings"
   }
 
-  if (combined.includes("vector")) {
+  if (
+    searchText.includes(
+      "vector"
+    )
+  ) {
     return "Vectors"
   }
 
   if (
-    combined.includes("base") &&
-    (combined.includes("binary") ||
-      combined.includes("ternary") ||
-      combined.includes("quaternary") ||
-      combined.includes("mixed"))
-  ) {
-    return "Number Bases and Mixed Base Arithmetic"
-  }
-
-  if (
-    combined.includes("map scale") ||
-    combined.includes("scale drawing") ||
-    combined.includes("map") ||
-    combined.includes("actual distance")
-  ) {
-    return "Map Scales and Measurement"
-  }
-
-  if (
-    combined.includes("circle theorem") ||
-    combined.includes("circle geometry") ||
-    combined.includes("angle at centre") ||
-    combined.includes("angle in a semicircle")
+    searchText.includes(
+      "circle theorem"
+    ) ||
+    searchText.includes(
+      "circle geometry"
+    ) ||
+    searchText.includes(
+      "tangent"
+    ) ||
+    searchText.includes(
+      "subtended"
+    )
   ) {
     return "Circle Geometry"
   }
 
   if (
-    combined.includes("simultaneous") ||
-    combined.includes("linear equations")
+    searchText.includes(
+      "simultaneous"
+    )
   ) {
-    return "Simultaneous Linear Equations"
+    return (
+      "Simultaneous Linear Equations"
+    )
   }
 
-  return cleanText(question.topic) || "Other"
+  if (
+    searchText.includes(
+      "trigonometry"
+    ) ||
+    searchText.includes(
+      "sine rule"
+    ) ||
+    searchText.includes(
+      "cosine rule"
+    )
+  ) {
+    return "Trigonometry"
+  }
+
+  if (
+    searchText.includes(
+      "probability"
+    )
+  ) {
+    return "Probability"
+  }
+
+  if (
+    searchText.includes(
+      "mensuration"
+    ) ||
+    searchText.includes(
+      "surface area"
+    ) ||
+    searchText.includes(
+      "volume"
+    )
+  ) {
+    return "Mensuration"
+  }
+
+  if (
+    searchText.includes(
+      "financial mathematics"
+    ) ||
+    searchText.includes(
+      "simple interest"
+    ) ||
+    searchText.includes(
+      "compound interest"
+    )
+  ) {
+    return (
+      "Financial Mathematics"
+    )
+  }
+
+  if (
+    searchText.includes(
+      "inequality"
+    ) ||
+    searchText.includes(
+      "inequalities"
+    )
+  ) {
+    return "Inequalities"
+  }
+
+  if (
+    searchText.includes(
+      "factorisation"
+    ) ||
+    searchText.includes(
+      "factorization"
+    )
+  ) {
+    return "Algebraic Manipulation and Equations"
+  }
+
+  if (
+    searchText.includes(
+      "sequence"
+    ) ||
+    searchText.includes(
+      "progression"
+    )
+  ) {
+    return "Sequences"
+  }
+
+  if (
+    searchText.includes(
+      "surds"
+    )
+  ) {
+    return "Surds"
+  }
+
+  if (
+    searchText.includes(
+      "indices"
+    )
+  ) {
+    return "Indices"
+  }
+
+  return (
+    supplied ||
+    cleanText(
+      question.topic
+    ) ||
+    "Other"
+  )
 }
 
-function normalizeQuestionFamily(question: QuestionRow): string | null {
-  const supplied = cleanText(question.question_family)
+/*
+ * ============================================================
+ * CANONICAL QUESTION FAMILY
+ * ============================================================
+ */
 
-  if (supplied) {
-    const normalized = canonicalize(supplied)
+function canonicalQuestionFamily(
+  question: QuestionRow,
+  conceptFamily: string
+): string {
+  const supplied =
+    cleanText(
+      question.question_family
+    )
 
-    const mappings: Record<string, string> = {
-      "matrix operations": "Matrix Operations",
-      "matrix operation": "Matrix Operations",
-      "matrix multiplication": "Matrix Operations",
-      "matrix addition": "Matrix Operations",
-      "matrix subtraction": "Matrix Operations",
-
-      "matrix inverse": "Matrix Inverse",
-      "inverse matrix": "Matrix Inverse",
-
-      determinant: "Determinant",
-      determinants: "Determinant",
-
-      "singular matrix": "Singular Matrix",
-      "singular matrices": "Singular Matrix",
-
-      "venn diagram": "Venn Diagram",
-      "venn diagrams": "Venn Diagram",
-      "set operations": "Set Operations",
-      "set operation": "Set Operations",
-
-      "function evaluation": "Function Evaluation",
-      "evaluating functions": "Function Evaluation",
-
-      "solving function equations": "Function Equation Solving",
-      "function equation solving": "Function Equation Solving",
-
-      "inverse function": "Inverse Function",
-
-      "statistics frequency table": "Statistics from Frequency Table",
-      "frequency table statistics": "Statistics from Frequency Table",
-
-      "statistics graph": "Statistics from Graph",
-      "statistics from graph": "Statistics from Graph",
-
-      "kinematics graph": "Kinematics Graph",
-      "velocity time graph": "Kinematics Graph",
-      "speed time graph": "Kinematics Graph",
-      "distance time graph": "Kinematics Graph",
-
-      "similar triangles": "Similar Triangles",
-      "triangle similarity": "Similar Triangles",
-
-      "bearing calculation": "Bearing Calculation",
-      "bearing calculations": "Bearing Calculation",
-
-      "vector calculation": "Vector Calculation",
-      "vector calculations": "Vector Calculation",
-
-      "mixed base arithmetic": "Mixed Base Arithmetic",
-      "base conversion": "Base Conversion",
-
-      "map scale calculation": "Map Scale Calculation",
-      "map scales": "Map Scale Calculation",
-
-      "circle theorem": "Circle Theorem",
-      "circle theorems": "Circle Theorem",
-
-      "simultaneous linear equations": "Simultaneous Linear Equations",
-    }
-
-    if (mappings[normalized]) {
-      return mappings[normalized]
-    }
-
-    return supplied
-  }
-
-  const conceptFamily = normalizeConceptFamily(question)
-  const combined = canonicalize(
+  const searchText =
     [
+      supplied,
       question.subtopic,
       question.question_type,
       question.question_text,
     ]
-      .filter(Boolean)
-      .join(" "),
+      .map(lower)
+      .join(" ")
+
+  if (
+    conceptFamily ===
+    "Matrices"
+  ) {
+    return (
+      "Matrices (Operations, Inverse and Singular)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Number Bases and Mixed Base Arithmetic"
+  ) {
+    return (
+      "Number Bases & Mixed Base Arithmetic"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Set Theory and Venn"
+  ) {
+    return (
+      "Set Theory and Venn Diagrams"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Functions and Exponential"
+  ) {
+    if (
+      /\binverse function\b|\bcomposite function\b/.test(
+        searchText
+      )
+    ) {
+      return (
+        "Functions (Evaluation, Inverse and Composite)"
+      )
+    }
+
+    return (
+      "Functions and Index/Exponential Equations"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Statistics"
+  ) {
+    return (
+      "Statistics (Mean, Median, Mode and Data Interpretation)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Motion and Kinematics"
+  ) {
+    return (
+      "Kinematics (Velocity/Speed-Time Graphs, Motion and Acceleration)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Similarity and Congruency"
+  ) {
+    return (
+      "Similar Triangles and Scale Factors"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Map Scales and Measurement"
+  ) {
+    return (
+      "Map Scales & Area Scale Conversions"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Bearings"
+  ) {
+    return "Bearings & Navigation"
+  }
+
+  if (
+    conceptFamily ===
+    "Vectors"
+  ) {
+    return (
+      "Vectors (Column Vectors, Magnitude & Geometry)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Circle Geometry"
+  ) {
+    return (
+      "Circle Geometry (Tangents & Subtended Angles)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Simultaneous Linear Equations"
+  ) {
+    return (
+      "Simultaneous Linear Equations"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Probability"
+  ) {
+    return (
+      "Probability (Calculation and Interpretation)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Mensuration"
+  ) {
+    return (
+      "Mensuration (Area, Perimeter, Surface Area and Volume)"
+    )
+  }
+
+  if (
+    conceptFamily ===
+    "Trigonometry"
+  ) {
+    return "Trigonometry"
+  }
+
+  if (
+    conceptFamily ===
+    "Financial Mathematics"
+  ) {
+    return "Financial Mathematics"
+  }
+
+  if (
+    conceptFamily ===
+    "Algebraic Manipulation and Equations"
+  ) {
+    if (
+      /\bfactor/.test(
+        searchText
+      )
+    ) {
+      return (
+        "Algebraic Factorisation and Manipulation"
+      )
+    }
+
+    if (
+      /\bquadratic\b/.test(
+        searchText
+      )
+    ) {
+      return "Quadratic Equations"
+    }
+
+    return (
+      "Algebraic Manipulation and Equations"
+    )
+  }
+
+  return (
+    supplied ||
+    cleanText(
+      question.subtopic
+    ) ||
+    cleanText(
+      question.question_type
+    ) ||
+    conceptFamily ||
+    "General"
   )
-
-  if (conceptFamily === "Matrices") {
-    if (
-      combined.includes("inverse") &&
-      !combined.includes("determinant")
-    ) {
-      return "Matrix Inverse"
-    }
-
-    if (combined.includes("singular")) {
-      return "Singular Matrix"
-    }
-
-    if (combined.includes("determinant")) {
-      return "Determinant"
-    }
-
-    if (
-      combined.includes("multiply") ||
-      combined.includes("multiplication") ||
-      combined.includes("add") ||
-      combined.includes("addition") ||
-      combined.includes("subtract") ||
-      combined.includes("subtraction")
-    ) {
-      return "Matrix Operations"
-    }
-
-    return "Matrix Operations"
-  }
-
-  if (conceptFamily === "Set Theory and Venn") {
-    if (combined.includes("venn")) {
-      return "Venn Diagram"
-    }
-
-    return "Set Operations"
-  }
-
-  if (conceptFamily === "Functions and Exponential") {
-    if (combined.includes("inverse")) {
-      return "Inverse Function"
-    }
-
-    if (
-      combined.includes("solve") ||
-      combined.includes("equation")
-    ) {
-      return "Function Equation Solving"
-    }
-
-    return "Function Evaluation"
-  }
-
-  if (conceptFamily === "Statistics") {
-    if (
-      combined.includes("frequency") ||
-      combined.includes("table")
-    ) {
-      return "Statistics from Frequency Table"
-    }
-
-    if (
-      combined.includes("graph") ||
-      combined.includes("bar chart") ||
-      combined.includes("histogram")
-    ) {
-      return "Statistics from Graph"
-    }
-
-    return "Statistics Calculation"
-  }
-
-  if (conceptFamily === "Motion and Kinematics") {
-    if (
-      combined.includes("graph") ||
-      combined.includes("velocity time") ||
-      combined.includes("speed time") ||
-      combined.includes("distance time")
-    ) {
-      return "Kinematics Graph"
-    }
-
-    return "Kinematics Calculation"
-  }
-
-  if (conceptFamily === "Similarity and Congruency") {
-    return "Similar Triangles"
-  }
-
-  if (conceptFamily === "Bearings") {
-    return "Bearing Calculation"
-  }
-
-  if (conceptFamily === "Vectors") {
-    return "Vector Calculation"
-  }
-
-  if (conceptFamily === "Number Bases and Mixed Base Arithmetic") {
-    if (
-      combined.includes("convert") ||
-      combined.includes("conversion")
-    ) {
-      return "Base Conversion"
-    }
-
-    return "Mixed Base Arithmetic"
-  }
-
-  if (conceptFamily === "Map Scales and Measurement") {
-    return "Map Scale Calculation"
-  }
-
-  if (conceptFamily === "Circle Geometry") {
-    return "Circle Theorem"
-  }
-
-  if (conceptFamily === "Simultaneous Linear Equations") {
-    return "Simultaneous Linear Equations"
-  }
-
-  return cleanText(question.question_type) || null
 }
 
-function calculatePositionBand(questionNumber: number): string {
-  if (questionNumber <= 5) {
+/*
+ * ============================================================
+ * POSITION BAND
+ * ============================================================
+ */
+
+function positionBand(
+  question: QuestionRow
+): string {
+  const stored =
+    cleanText(
+      question.position_band
+    )
+
+  if (
+    stored
+  ) {
+    /*
+     * Normalise old values created by previous versions.
+     */
+    if (
+      stored === "Early-Mid"
+    ) {
+      return "Early-Middle"
+    }
+
+    if (
+      stored === "Mid"
+    ) {
+      return "Middle"
+    }
+
+    if (
+      stored === "Mid-Late"
+    ) {
+      return "Middle-Late"
+    }
+
+    if (
+      stored === "Very Late"
+    ) {
+      return "Late"
+    }
+
+    return stored
+  }
+
+  const number =
+    Number(
+      question.question_number
+    )
+
+  if (
+    number <= 5
+  ) {
     return "Early"
   }
 
-  if (questionNumber <= 10) {
+  if (
+    number <= 10
+  ) {
     return "Early-Middle"
   }
 
-  if (questionNumber <= 15) {
+  if (
+    number <= 15
+  ) {
     return "Middle"
   }
 
-  if (questionNumber <= 20) {
+  if (
+    number <= 20
+  ) {
     return "Middle-Late"
   }
 
   return "Late"
 }
 
-function normalizePositionBand(
-  question: QuestionRow,
-): string {
-  const supplied = cleanText(question.position_band)
+/*
+ * ============================================================
+ * SCORING
+ * ============================================================
+ */
 
-  if (supplied) {
-    const normalized = canonicalize(supplied)
-
-    if (
-      normalized === "early" ||
-      normalized.includes("1 5")
-    ) {
-      return "Early"
-    }
-
-    if (
-      normalized === "early middle" ||
-      normalized.includes("6 10")
-    ) {
-      return "Early-Middle"
-    }
-
-    if (
-      normalized === "middle" ||
-      normalized.includes("11 15")
-    ) {
-      return "Middle"
-    }
-
-    if (
-      normalized === "middle late" ||
-      normalized.includes("16 20")
-    ) {
-      return "Middle-Late"
-    }
-
-    if (
-      normalized === "late" ||
-      normalized.includes("21 25") ||
-      normalized.includes("21 30")
-    ) {
-      return "Late"
-    }
-
-    return supplied
-  }
-
-  return calculatePositionBand(question.question_number)
-}
-
-function getQuestionPatterns(
-  question: QuestionRow,
-): QuestionPatternRow[] {
-  const patterns: QuestionPatternRow[] = []
-
-  const conceptFamily = normalizeConceptFamily(question)
-  const questionFamily = normalizeQuestionFamily(question)
-
-  patterns.push({
-    question_id: question.id,
-    pattern_type: "Concept Family",
-    pattern_value: conceptFamily,
-  })
-
-  if (questionFamily) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Question Family",
-      pattern_value: questionFamily,
-    })
-  }
-
-  const subtopic = cleanText(question.subtopic)
-
-  if (subtopic) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Subtopic",
-      pattern_value: subtopic,
-    })
-  }
-
-  const questionType = cleanText(question.question_type)
-
-  if (questionType) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Question Type",
-      pattern_value: questionType,
-    })
-  }
-
-  for (const skill of uniqueStrings(cleanArray(question.skills))) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Skill",
-      pattern_value: skill,
-    })
-  }
-
-  for (const variation of uniqueStrings(
-    cleanArray(question.variation_patterns),
-  )) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Variation",
-      pattern_value: variation,
-    })
-  }
-
-  const diagramDependency = cleanText(
-    question.diagram_dependency,
-  )
-
-  if (diagramDependency) {
-    patterns.push({
-      question_id: question.id,
-      pattern_type: "Diagram Dependency",
-      pattern_value: diagramDependency,
-    })
-  }
-
-  patterns.push({
-    question_id: question.id,
-    pattern_type: "Position Band",
-    pattern_value: normalizePositionBand(question),
-  })
-
-  return patterns
-}
-
-function frequencyScore(
-  questionCount: number,
-  papersAppeared: number,
-  totalPapers: number,
+function positionScore(
+  questions: QuestionRow[]
 ): number {
-  if (totalPapers <= 0) {
-    return 0
-  }
-
-  const paperCoverage =
-    (papersAppeared / totalPapers) * 100
-
-  const questionDepth = Math.min(
-    100,
-    (questionCount / Math.max(1, totalPapers * 2)) * 100,
-  )
-
-  return Math.min(
-    100,
-    paperCoverage * 0.75 + questionDepth * 0.25,
-  )
-}
-
-function recencyScore(
-  years: number[],
-  latestYear: number,
-): number {
-  if (!years.length || !latestYear) {
-    return 0
-  }
-
-  const latestSeen = Math.max(...years)
-  const age = Math.max(0, latestYear - latestSeen)
-
-  if (age === 0) {
+  if (
+    questions.length <= 1
+  ) {
     return 100
   }
 
-  if (age === 1) {
+  const positions =
+    questions.map(
+      (question) =>
+        question.question_number
+    )
+
+  const minimum =
+    Math.min(
+      ...positions
+    )
+
+  const maximum =
+    Math.max(
+      ...positions
+    )
+
+  const spread =
+    maximum -
+    minimum
+
+  if (
+    spread <= 2
+  ) {
+    return 100
+  }
+
+  if (
+    spread <= 5
+  ) {
     return 90
   }
 
-  if (age === 2) {
-    return 80
+  if (
+    spread <= 8
+  ) {
+    return 78
   }
 
-  if (age === 3) {
+  if (
+    spread <= 12
+  ) {
     return 65
   }
 
-  if (age === 4) {
+  if (
+    spread <= 16
+  ) {
     return 50
-  }
-
-  if (age === 5) {
-    return 40
-  }
-
-  return Math.max(10, 40 - (age - 5) * 5)
-}
-
-function positionScore(
-  positions: number[],
-  bands: Set<string>,
-): number {
-  if (!positions.length) {
-    return 0
-  }
-
-  const bandCount = bands.size
-
-  const bandConsistency =
-    bandCount === 1
-      ? 100
-      : bandCount === 2
-        ? 80
-        : bandCount === 3
-          ? 60
-          : 40
-
-  const averagePosition =
-    positions.reduce((sum, value) => sum + value, 0) /
-    positions.length
-
-  const positionalPreference =
-    averagePosition <= 5
-      ? 85
-      : averagePosition <= 10
-        ? 90
-        : averagePosition <= 15
-          ? 95
-          : averagePosition <= 20
-            ? 90
-            : 85
-
-  return Math.round(
-    bandConsistency * 0.7 +
-      positionalPreference * 0.3,
-  )
-}
-
-function variationScore(
-  styles: Set<string>,
-  questionCount: number,
-): number {
-  if (questionCount <= 0) {
-    return 0
-  }
-
-  const distinctStyles = styles.size
-
-  if (distinctStyles >= 6) {
-    return 100
-  }
-
-  if (distinctStyles === 5) {
-    return 90
-  }
-
-  if (distinctStyles === 4) {
-    return 80
-  }
-
-  if (distinctStyles === 3) {
-    return 70
-  }
-
-  if (distinctStyles === 2) {
-    return 55
   }
 
   return 35
 }
 
-function skillScore(
-  skills: Set<string>,
+function recencyScore(
+  questions: QuestionRow[],
+  paperMap: Map<
+    string,
+    PaperRow
+  >
 ): number {
-  if (!skills.size) {
-    return 0
-  }
+  const years =
+    questions
+      .map(
+        (question) =>
+          paperMap.get(
+            question.paper_id
+          )?.exam_year
+      )
+      .filter(
+        (
+          year
+        ): year is number =>
+          typeof year ===
+          "number"
+      )
 
-  if (skills.size >= 6) {
-    return 100
-  }
-
-  if (skills.size === 5) {
-    return 90
-  }
-
-  if (skills.size === 4) {
-    return 80
-  }
-
-  if (skills.size === 3) {
-    return 70
-  }
-
-  if (skills.size === 2) {
-    return 55
-  }
-
-  return 40
-}
-
-function markWeightScore(
-  totalMarks: number,
-  questionCount: number,
-  maximumAverageMarks: number,
-): number {
   if (
-    questionCount <= 0 ||
-    maximumAverageMarks <= 0
+    years.length === 0
   ) {
     return 0
   }
 
-  const averageMarks = totalMarks / questionCount
+  const latest =
+    Math.max(
+      ...years
+    )
 
-  return Math.min(
-    100,
-    (averageMarks / maximumAverageMarks) * 100,
-  )
-}
+  const allYears =
+    Array.from(
+      paperMap.values()
+    )
+      .map(
+        (paper) =>
+          paper.exam_year
+      )
 
-/**
- * Measures how much evidence exists across different examination papers.
- *
- * This is intentionally different from frequencyScore.
- *
- * frequencyScore asks:
- *   "How often does this pattern appear?"
- *
- * coverageScore asks:
- *   "How broadly is this pattern represented across the historical dataset?"
- */
-function coverageScore(
-  papersAppeared: number,
-  totalPapers: number,
-): number {
-  if (totalPapers <= 0) {
+  if (
+    allYears.length === 0
+  ) {
     return 0
   }
 
-  return Math.min(
-    100,
-    (papersAppeared / totalPapers) * 100,
+  const datasetLatest =
+    Math.max(
+      ...allYears
+    )
+
+  const age =
+    Math.max(
+      datasetLatest -
+        latest,
+      0
+    )
+
+  if (
+    age === 0
+  ) {
+    return 100
+  }
+
+  if (
+    age === 1
+  ) {
+    return 80
+  }
+
+  if (
+    age === 2
+  ) {
+    return 65
+  }
+
+  if (
+    age === 3
+  ) {
+    return 52
+  }
+
+  return clamp(
+    52 -
+      (age - 3) * 8,
+    25,
+    52
   )
 }
 
-function getPatternStrength(
-  predictionScore: number,
-): "Weak" | "Moderate" | "Strong" {
-  if (predictionScore >= 70) {
+function variationScore(
+  aggregate: Aggregate
+): number {
+  const styles =
+    aggregate.styles.size
+
+  const skills =
+    aggregate.skills.size
+
+  const variations =
+    aggregate.variations.size
+
+  return clamp(
+    styles * 15 +
+      skills * 8 +
+      variations * 10
+  )
+}
+
+function skillScore(
+  aggregate: Aggregate
+): number {
+  return clamp(
+    aggregate.skills.size *
+      15
+  )
+}
+
+function markWeightScore(
+  aggregate: Aggregate,
+  paperQuestions: QuestionRow[]
+): number {
+  const totalMarks =
+    aggregate.questions.reduce(
+      (
+        sum,
+        question
+      ) =>
+        sum +
+        Math.max(
+          Number(
+            question.marks
+          ) || 0,
+          0
+        ),
+      0
+    )
+
+  const paperMarks =
+    paperQuestions.reduce(
+      (
+        sum,
+        question
+      ) =>
+        sum +
+        Math.max(
+          Number(
+            question.marks
+          ) || 0,
+          0
+        ),
+      0
+    )
+
+  if (
+    paperMarks <= 0
+  ) {
+    return 0
+  }
+
+  return clamp(
+    (
+      totalMarks /
+      paperMarks
+    ) *
+      100 *
+      4
+  )
+}
+
+function patternStrength(
+  score: number
+): "Strong" | "Moderate" | "Weak" {
+  if (
+    score >= 70
+  ) {
     return "Strong"
   }
 
-  if (predictionScore >= 45) {
+  if (
+    score >= 50
+  ) {
     return "Moderate"
   }
 
   return "Weak"
 }
 
-function calculatePredictionScore(
-  frequency: number,
-  recency: number,
-  position: number,
-  variation: number,
-  skills: number,
-  marks: number,
-  coverage: number,
-): number {
-  /*
-   * Important:
-   *
-   * We do NOT count "frequency" twice.
-   *
-   * The predictor is based on evidence:
-   *
-   * Frequency       25%
-   * Recency         10%
-   * Position        15%
-   * Variation       15%
-   * Skills          10%
-   * Marks            5%
-   * Coverage        20%
-   *
-   * Total           100%
-   */
-  const score =
-    frequency * 0.25 +
-    recency * 0.10 +
-    position * 0.15 +
-    variation * 0.15 +
-    skills * 0.10 +
-    marks * 0.05 +
-    coverage * 0.20
+/*
+ * ============================================================
+ * QUESTION-LEVEL PATTERN ROWS
+ * ============================================================
+ *
+ * NOTE:
+ *
+ * This function is intentionally called
+ * buildQuestionPatternRows()
+ *
+ * so it cannot collide with the local array variable later.
+ * ============================================================
+ */
 
-  return Math.round(
-    Math.max(0, Math.min(100, score)) * 100,
-  ) / 100
-}
-
-function getAggregateKey(
-  paper: string,
-  patternType: string,
-  conceptFamily: string,
-  questionFamily: string | null,
-): string {
-  /*
-   * IMPORTANT:
-   *
-   * Do not include topic/subtopic in this key.
-   *
-   * Gemini may classify the same conceptual family with slightly
-   * different topic/subtopic names between papers.
-   *
-   * The predictor should therefore aggregate by:
-   *
-   * Paper + Concept Family + Question Family
-   */
-  return [
-    paper,
-    patternType,
-    canonicalize(conceptFamily),
-    canonicalize(questionFamily ?? ""),
-  ].join("::")
-}
-
-function createAggregate(
-  paper: "Paper 1" | "Paper 2",
-  conceptFamily: string,
-  questionFamily: string | null,
-  patternType: "Concept Family" | "Question Family",
-  patternValue: string,
-): Aggregate {
-  return {
-    paper,
-
-    topic: conceptFamily,
-    subtopic: null,
-
-    conceptFamily,
-    questionFamily,
-
-    patternType,
-    patternValue,
-
-    questionCount: 0,
-    papers: new Set<string>(),
-
-    years: new Set<number>(),
-    positions: [],
-    positionBands: new Set<string>(),
-
-    styles: new Set<string>(),
-    skills: new Set<string>(),
-
-    totalMarks: 0,
-    exampleQuestionIds: [],
-
-    topicCounts: new Map<string, number>(),
-    subtopicCounts: new Map<string, number>(),
-
-    frequencyScore: 0,
-    recencyScore: 0,
-    positionScore: 0,
-    variationScore: 0,
-    skillScore: 0,
-    markWeightScore: 0,
-    coverageScore: 0,
-    predictionScore: 0,
-
-    patternStrength: "Weak",
-  }
-}
-
-function addQuestionToAggregate(
-  aggregate: Aggregate,
+function buildQuestionPatternRows(
   question: QuestionRow,
-  paper: PaperRow,
-): void {
-  aggregate.questionCount += 1
+  conceptFamily: string,
+  questionFamily: string
+): QuestionPatternRow[] {
+  const rows:
+    QuestionPatternRow[] =
+    []
 
-  aggregate.papers.add(paper.id)
-  aggregate.years.add(paper.exam_year)
+  rows.push({
+    question_id:
+      question.id,
 
-  aggregate.positions.push(
-    question.question_number,
-  )
+    pattern_type:
+      "Concept Family",
 
-  aggregate.positionBands.add(
-    normalizePositionBand(question),
-  )
+    pattern_value:
+      conceptFamily,
+  })
 
-  const topic = cleanText(question.topic)
+  rows.push({
+    question_id:
+      question.id,
 
-  if (topic) {
-    aggregate.topicCounts.set(
-      topic,
-      (aggregate.topicCounts.get(topic) ?? 0) + 1,
+    pattern_type:
+      "Question Family",
+
+    pattern_value:
+      questionFamily,
+  })
+
+  const subtopic =
+    cleanText(
+      question.subtopic
     )
-  }
-
-  const subtopic = cleanText(question.subtopic)
-
-  if (subtopic) {
-    aggregate.subtopicCounts.set(
-      subtopic,
-      (aggregate.subtopicCounts.get(subtopic) ?? 0) + 1,
-    )
-  }
-
-  const variations = cleanArray(
-    question.variation_patterns,
-  )
-
-  for (const variation of variations) {
-    aggregate.styles.add(variation)
-  }
-
-  const questionType = cleanText(
-    question.question_type,
-  )
-
-  if (questionType) {
-    aggregate.styles.add(questionType)
-  }
-
-  const family = normalizeQuestionFamily(question)
-
-  if (family) {
-    aggregate.styles.add(family)
-  }
-
-  for (const skill of cleanArray(question.skills)) {
-    aggregate.skills.add(skill)
-  }
 
   if (
-    typeof question.marks === "number" &&
-    Number.isFinite(question.marks)
+    subtopic
   ) {
-    aggregate.totalMarks += question.marks
+    rows.push({
+      question_id:
+        question.id,
+
+      pattern_type:
+        "Subtopic",
+
+      pattern_value:
+        subtopic,
+    })
   }
+
+  const questionType =
+    cleanText(
+      question.question_type
+    )
 
   if (
-    aggregate.exampleQuestionIds.length < 8 &&
-    !aggregate.exampleQuestionIds.includes(question.id)
+    questionType
   ) {
-    aggregate.exampleQuestionIds.push(question.id)
+    rows.push({
+      question_id:
+        question.id,
+
+      pattern_type:
+        "Question Type",
+
+      pattern_value:
+        questionType,
+    })
   }
+
+  for (
+    const skill of
+    uniqueStrings(
+      question.skills
+    )
+  ) {
+    rows.push({
+      question_id:
+        question.id,
+
+      pattern_type:
+        "Skill",
+
+      pattern_value:
+        skill,
+    })
+  }
+
+  for (
+    const variation of
+    uniqueStrings(
+      question.variation_patterns
+    )
+  ) {
+    rows.push({
+      question_id:
+        question.id,
+
+      pattern_type:
+        "Variation",
+
+      pattern_value:
+        variation,
+    })
+  }
+
+  const diagram =
+    cleanText(
+      question.diagram_dependency
+    )
+
+  if (
+    diagram
+  ) {
+    rows.push({
+      question_id:
+        question.id,
+
+      pattern_type:
+        "Diagram Dependency",
+
+      pattern_value:
+        diagram,
+    })
+  }
+
+  rows.push({
+    question_id:
+      question.id,
+
+    pattern_type:
+      "Position Band",
+
+    pattern_value:
+      positionBand(
+        question
+      ),
+  })
+
+  return rows
 }
 
-function finalizeAggregate(
-  aggregate: Aggregate,
-  totalPapers: number,
-  latestYear: number,
-): void {
-  const maximumAverageMarks = 6
-
-  aggregate.topic =
-    mostCommon(
-      Array.from(aggregate.topicCounts.entries()).flatMap(
-        ([value, count]) =>
-          Array.from({ length: count }, () => value),
-      ),
-    ) ??
-    aggregate.conceptFamily
-
-  aggregate.subtopic =
-    mostCommon(
-      Array.from(aggregate.subtopicCounts.entries()).flatMap(
-        ([value, count]) =>
-          Array.from({ length: count }, () => value),
-      ),
-    )
-
-  aggregate.frequencyScore = frequencyScore(
-    aggregate.questionCount,
-    aggregate.papers.size,
-    totalPapers,
-  )
-
-  aggregate.recencyScore = recencyScore(
-    Array.from(aggregate.years),
-    latestYear,
-  )
-
-  aggregate.positionScore = positionScore(
-    aggregate.positions,
-    aggregate.positionBands,
-  )
-
-  aggregate.variationScore = variationScore(
-    aggregate.styles,
-    aggregate.questionCount,
-  )
-
-  aggregate.skillScore = skillScore(
-    aggregate.skills,
-  )
-
-  aggregate.markWeightScore = markWeightScore(
-    aggregate.totalMarks,
-    aggregate.questionCount,
-    maximumAverageMarks,
-  )
-
-  aggregate.coverageScore = coverageScore(
-    aggregate.papers.size,
-    totalPapers,
-  )
-
-  aggregate.predictionScore =
-    calculatePredictionScore(
-      aggregate.frequencyScore,
-      aggregate.recencyScore,
-      aggregate.positionScore,
-      aggregate.variationScore,
-      aggregate.skillScore,
-      aggregate.markWeightScore,
-      aggregate.coverageScore,
-    )
-
-  aggregate.patternStrength =
-    getPatternStrength(
-      aggregate.predictionScore,
-    )
-}
+/*
+ * ============================================================
+ * MAIN FUNCTION
+ * ============================================================
+ */
 
 export async function generateZimsecMathPatternAnalysis(
   options?: {
-    paper?: "Paper 1" | "Paper 2" | "Both"
-  },
+    paper?:
+      | "Paper 1"
+      | "Paper 2"
+      | "Both"
+  }
 ): Promise<PatternAnalysisResult> {
   const requestedPaper =
-    options?.paper ?? "Both"
+    options?.paper ||
+    "Both"
 
-  let paperQuery = supabaseAdmin
-    .from("ai_zimsec_math_papers")
-    .select(
-      [
-        "id",
+  /*
+   * ==========================================================
+   * 1. GET COMPLETED PAPERS
+   * ==========================================================
+   */
+
+  let paperQuery =
+    supabaseAdmin
+      .from(
+        "ai_zimsec_math_papers"
+      )
+      .select(
+        `
+          id,
+          exam_year,
+          session,
+          paper,
+          subject,
+          level,
+          curriculum
+        `
+      )
+      .eq(
         "subject",
+        "Mathematics"
+      )
+      .eq(
         "level",
+        "O-Level"
+      )
+      .eq(
         "curriculum",
-        "exam_year",
-        "session",
-        "paper",
-        "title",
+        "ZIMSEC"
+      )
+      .eq(
         "extraction_status",
-      ].join(", "),
-    )
-    .eq("subject", "Mathematics")
-    .eq("level", "O-Level")
-    .eq("curriculum", "ZIMSEC")
-    .eq("extraction_status", "completed")
-    .order("exam_year", {
-      ascending: true,
-    })
+        "completed"
+      )
+      .order(
+        "exam_year",
+        {
+          ascending:
+            true,
+        }
+      )
 
-  if (requestedPaper !== "Both") {
-    paperQuery = paperQuery.eq(
-      "paper",
-      requestedPaper,
-    )
+  if (
+    requestedPaper !==
+    "Both"
+  ) {
+    paperQuery =
+      paperQuery.eq(
+        "paper",
+        requestedPaper
+      )
   }
 
   const {
-    data: papers,
-    error: papersError,
-  } = await paperQuery
+    data: rawPapers,
+    error: paperError,
+  } =
+    await paperQuery
 
-  if (papersError) {
+  if (
+    paperError
+  ) {
     throw new Error(
-      `Failed to retrieve completed Mathematics papers: ${papersError.message}`,
+      `Failed to retrieve Mathematics papers for pattern analysis: ${paperError.message}`
     )
   }
 
-  const typedPapers =
-    (papers ?? []) as PaperRow[]
+  const papers =
+    (rawPapers ||
+      []) as PaperRow[]
 
-  if (!typedPapers.length) {
+  if (
+    papers.length ===
+    0
+  ) {
     return {
       success: true,
-      papersAnalysed: 0,
-      questionsAnalysed: 0,
-      questionPatternsCreated: 0,
-      aggregatePatternsCreated: 0,
+
+      papersAnalysed:
+        0,
+
+      questionsAnalysed:
+        0,
+
+      questionPatternsCreated:
+        0,
+
+      aggregatePatternsCreated:
+        0,
+
       paperResults: [],
     }
   }
 
-  const paperIds = typedPapers.map(
-    (paper) => paper.id,
-  )
+  const paperMap =
+    new Map<
+      string,
+      PaperRow
+    >(
+      papers.map(
+        (paper) => [
+          paper.id,
+          paper,
+        ]
+      )
+    )
+
+  /*
+   * ==========================================================
+   * 2. GET ALL QUESTIONS
+   * ==========================================================
+   */
+
+  const paperIds =
+    papers.map(
+      (paper) =>
+        paper.id
+    )
 
   const {
-    data: questions,
-    error: questionsError,
-  } = await supabaseAdmin
-    .from("ai_zimsec_math_questions")
-    .select(
-      [
-        "id",
+    data: rawQuestions,
+    error: questionError,
+  } =
+    await supabaseAdmin
+      .from(
+        "ai_zimsec_math_questions"
+      )
+      .select(
+        `
+          id,
+          paper_id,
+          question_number,
+          question_label,
+          question_text,
+          topic,
+          subtopic,
+          skills,
+          question_type,
+          difficulty,
+          marks,
+          paper_section,
+          mathematical_objects,
+          concept_family,
+          question_family,
+          variation_patterns,
+          diagram_dependency,
+          position_band
+        `
+      )
+      .in(
         "paper_id",
+        paperIds
+      )
+      .order(
         "question_number",
-        "question_label",
-        "question_text",
-        "topic",
-        "subtopic",
-        "concept_family",
-        "question_family",
-        "variation_patterns",
-        "skills",
-        "question_type",
-        "difficulty",
-        "marks",
-        "paper_section",
-        "mathematical_objects",
-        "diagram_dependency",
-        "position_band",
-        "ai_classification_confidence",
-      ].join(", "),
-    )
-    .in("paper_id", paperIds)
-    .order("question_number", {
-      ascending: true,
-    })
+        {
+          ascending:
+            true,
+        }
+      )
 
-  if (questionsError) {
+  if (
+    questionError
+  ) {
     throw new Error(
-      `Failed to retrieve Mathematics questions: ${questionsError.message}`,
+      `Failed to retrieve Mathematics questions for pattern analysis: ${questionError.message}`
     )
   }
 
-  const typedQuestions =
-    (questions ?? []) as QuestionRow[]
-
-  const questionsByPaper = new Map<
-    string,
-    QuestionRow[]
-  >()
-
-  for (const question of typedQuestions) {
-    const existing =
-      questionsByPaper.get(question.paper_id) ?? []
-
-    existing.push(question)
-
-    questionsByPaper.set(
-      question.paper_id,
-      existing,
-    )
-  }
+  const questions =
+    (rawQuestions ||
+      []) as QuestionRow[]
 
   /*
-   * ----------------------------------------------------------
-   * 1. Rebuild question-level patterns
-   * ----------------------------------------------------------
+   * ==========================================================
+   * 3. REBUILD QUESTION-LEVEL PATTERNS
+   * ==========================================================
    */
 
-  if (paperIds.length) {
-    const { error: deletePatternsError } =
+  const questionIds =
+    questions.map(
+      (question) =>
+        question.id
+    )
+
+  if (
+    questionIds.length >
+    0
+  ) {
+    const {
+      error:
+        deleteQuestionPatternsError,
+    } =
       await supabaseAdmin
-        .from("ai_zimsec_math_question_patterns")
+        .from(
+          "ai_zimsec_math_question_patterns"
+        )
         .delete()
-        .in("question_id", typedQuestions.map(
-          (question) => question.id,
-        ))
-
-    if (deletePatternsError) {
-      throw new Error(
-        `Failed to clear old question patterns: ${deletePatternsError.message}`,
-      )
-    }
-  }
-
-  const questionPatternRows: QuestionPatternRow[] = []
-
-  for (const question of typedQuestions) {
-    const patterns =
-      getQuestionPatterns(question)
-
-    questionPatternRows.push(
-      ...patterns,
-    )
-  }
-
-  if (questionPatternRows.length) {
-    const { error: insertPatternsError } =
-      await supabaseAdmin
-        .from("ai_zimsec_math_question_patterns")
-        .insert(questionPatternRows)
-
-    if (insertPatternsError) {
-      throw new Error(
-        `Failed to create question patterns: ${insertPatternsError.message}`,
-      )
-    }
-  }
-
-  /*
-   * ----------------------------------------------------------
-   * 2. Build aggregate concept/question-family analysis
-   * ----------------------------------------------------------
-   */
-
-  const aggregates = new Map<
-    string,
-    Aggregate
-  >()
-
-  const latestYear =
-    Math.max(
-      ...typedPapers.map(
-        (paper) => paper.exam_year,
-      ),
-    )
-
-  /*
-   * Papers are intentionally counted separately.
-   *
-   * Paper 1 evidence never gets mixed into Paper 2.
-   */
-  const paperGroups = new Map<
-    "Paper 1" | "Paper 2",
-    PaperRow[]
-  >()
-
-  for (const paper of typedPapers) {
-    const group =
-      paperGroups.get(paper.paper) ?? []
-
-    group.push(paper)
-
-    paperGroups.set(
-      paper.paper,
-      group,
-    )
-  }
-
-  for (const paper of typedPapers) {
-    const paperQuestions =
-      questionsByPaper.get(paper.id) ?? []
-
-    const totalPapersForThisPaper =
-      paperGroups.get(paper.paper)?.length ?? 0
-
-    for (const question of paperQuestions) {
-      const conceptFamily =
-        normalizeConceptFamily(question)
-
-      const questionFamily =
-        normalizeQuestionFamily(question)
-
-      /*
-       * Concept Family aggregate
-       */
-      const conceptKey =
-        getAggregateKey(
-          paper.paper,
-          "Concept Family",
-          conceptFamily,
-          null,
+        .in(
+          "question_id",
+          questionIds
         )
 
-      let conceptAggregate =
-        aggregates.get(conceptKey)
+    if (
+      deleteQuestionPatternsError
+    ) {
+      throw new Error(
+        `Failed to rebuild question patterns: ${deleteQuestionPatternsError.message}`
+      )
+    }
+  }
 
-      if (!conceptAggregate) {
-        conceptAggregate =
-          createAggregate(
-            paper.paper,
-            conceptFamily,
-            null,
-            "Concept Family",
-            conceptFamily,
+  /*
+   * FIX:
+   *
+   * The original file used questionPatternRows both as:
+   *
+   * function questionPatternRows()
+   *
+   * and:
+   *
+   * const questionPatternRows = ...
+   *
+   * This version uses buildQuestionPatternRows()
+   * for the function and questionPatternRowsToInsert
+   * for the array.
+   */
+
+  const questionPatternRowsToInsert =
+    questions.flatMap(
+      (question) => {
+        const concept =
+          canonicalConcept(
+            question
           )
 
-        aggregates.set(
-          conceptKey,
-          conceptAggregate,
+        const family =
+          canonicalQuestionFamily(
+            question,
+            concept
+          )
+
+        return buildQuestionPatternRows(
+          question,
+          concept,
+          family
+        )
+      }
+    )
+
+  if (
+    questionPatternRowsToInsert.length >
+    0
+  ) {
+    const {
+      error:
+        insertQuestionPatternsError,
+    } =
+      await supabaseAdmin
+        .from(
+          "ai_zimsec_math_question_patterns"
+        )
+        .insert(
+          questionPatternRowsToInsert
+        )
+
+    if (
+      insertQuestionPatternsError
+    ) {
+      throw new Error(
+        `Failed to insert question patterns: ${insertQuestionPatternsError.message}`
+      )
+    }
+  }
+
+  /*
+   * ==========================================================
+   * 4. BUILD BROAD CONCEPT AGGREGATES
+   * ==========================================================
+   *
+   * IMPORTANT:
+   *
+   * We group by:
+   *
+   * Paper + Concept Family
+   *
+   * NOT by individual wording.
+   *
+   * Therefore:
+   *
+   * Matrix operations
+   * Matrix inverse
+   * Singular matrices
+   *
+   * remain one broad historical Matrix pattern.
+   */
+
+  const aggregateMap =
+    new Map<
+      string,
+      Aggregate
+    >()
+
+  for (
+    const question of
+    questions
+  ) {
+    const paper =
+      paperMap.get(
+        question.paper_id
+      )
+
+    if (
+      !paper
+    ) {
+      continue
+    }
+
+    const concept =
+      canonicalConcept(
+        question
+      )
+
+    const family =
+      canonicalQuestionFamily(
+        question,
+        concept
+      )
+
+    /*
+     * IMPORTANT:
+     *
+     * Use the canonical concept as the primary aggregate key.
+     *
+     * This prevents:
+     *
+     * Matrices
+     * Matrix Operations
+     * Matrix Inverse
+     *
+     * from becoming separate prediction patterns.
+     */
+
+    const key =
+      [
+        paper.paper,
+        concept.toLowerCase(),
+      ].join("|")
+
+    const existing =
+      aggregateMap.get(
+        key
+      )
+
+    if (
+      existing
+    ) {
+      existing.questions.push(
+        question
+      )
+
+      if (
+        !existing.papers.some(
+          (item) =>
+            item.id ===
+            paper.id
+        )
+      ) {
+        existing.papers.push(
+          paper
         )
       }
 
-      addQuestionToAggregate(
-        conceptAggregate,
-        question,
-        paper,
-      )
+      const questionStyles =
+        [
+          question.question_type,
+          ...uniqueStrings(
+            question.variation_patterns
+          ),
+          family,
+        ]
 
-      /*
-       * Question Family aggregate
-       */
-      if (questionFamily) {
-        const familyKey =
-          getAggregateKey(
-            paper.paper,
-            "Question Family",
-            conceptFamily,
-            questionFamily,
+      for (
+        const style of
+        questionStyles
+      ) {
+        const clean =
+          cleanText(
+            style
           )
 
-        let familyAggregate =
-          aggregates.get(familyKey)
-
-        if (!familyAggregate) {
-          familyAggregate =
-            createAggregate(
-              paper.paper,
-              conceptFamily,
-              questionFamily,
-              "Question Family",
-              questionFamily,
-            )
-
-          aggregates.set(
-            familyKey,
-            familyAggregate,
+        if (
+          clean
+        ) {
+          existing.styles.add(
+            clean
           )
         }
+      }
 
-        addQuestionToAggregate(
-          familyAggregate,
-          question,
-          paper,
+      for (
+        const skill of
+        uniqueStrings(
+          question.skills
+        )
+      ) {
+        existing.skills.add(
+          skill
         )
       }
 
-      /*
-       * Keep the variable referenced so the intent remains clear:
-       * scores are calculated against the complete historical paper
-       * set for the same paper type.
-       */
-      void totalPapersForThisPaper
+      for (
+        const variation of
+        uniqueStrings(
+          question.variation_patterns
+        )
+      ) {
+        existing.variations.add(
+          variation
+        )
+      }
+
+      existing.positionBands.add(
+        positionBand(
+          question
+        )
+      )
+    } else {
+      const aggregate:
+        Aggregate =
+        {
+          paper:
+            paper.paper,
+
+          topic:
+            cleanText(
+              question.topic
+            ) ||
+            concept,
+
+          subtopic:
+            cleanText(
+              question.subtopic
+            ) ||
+            "General",
+
+          concept_family:
+            concept,
+
+          question_family:
+            family,
+
+          questions: [
+            question,
+          ],
+
+          papers: [
+            paper,
+          ],
+
+          styles:
+            new Set(
+              [
+                question.question_type,
+                family,
+                ...uniqueStrings(
+                  question.variation_patterns
+                ),
+              ]
+                .map(
+                  (value) =>
+                    cleanText(
+                      value
+                    )
+                )
+                .filter(
+                  Boolean
+                )
+            ),
+
+          skills:
+            new Set(
+              uniqueStrings(
+                question.skills
+              )
+            ),
+
+          variations:
+            new Set(
+              uniqueStrings(
+                question.variation_patterns
+              )
+            ),
+
+          positionBands:
+            new Set([
+              positionBand(
+                question
+              ),
+            ]),
+        }
+
+      aggregateMap.set(
+        key,
+        aggregate
+      )
     }
   }
 
   /*
-   * Calculate scores separately for Paper 1 and Paper 2.
+   * ==========================================================
+   * 5. PAPER QUESTION GROUPS
+   * ==========================================================
    */
-  for (const aggregate of aggregates.values()) {
-    const totalPapersForPaper =
-      paperGroups.get(
-        aggregate.paper,
-      )?.length ?? 0
 
-    finalizeAggregate(
-      aggregate,
-      totalPapersForPaper,
-      latestYear,
-    )
+  const paperGroups =
+    new Map<
+      string,
+      QuestionRow[]
+    >()
+
+  for (
+    const question of
+    questions
+  ) {
+    const paper =
+      paperMap.get(
+        question.paper_id
+      )
+
+    if (
+      !paper
+    ) {
+      continue
+    }
+
+    const existing =
+      paperGroups.get(
+        paper.paper
+      )
+
+    if (
+      existing
+    ) {
+      existing.push(
+        question
+      )
+    } else {
+      paperGroups.set(
+        paper.paper,
+        [
+          question,
+        ]
+      )
+    }
   }
 
   /*
-   * ----------------------------------------------------------
-   * 3. Replace aggregate analysis
-   * ----------------------------------------------------------
+   * ==========================================================
+   * 6. BUILD FINAL AGGREGATE ROWS
+   * ==========================================================
    */
 
-  let deleteAggregateQuery =
-    supabaseAdmin
-      .from("ai_zimsec_math_pattern_analysis")
-      .delete()
-      .eq("subject", "Mathematics")
-      .eq("level", "O-Level")
-      .eq("curriculum", "ZIMSEC")
+  const finalRows:
+    any[] =
+    []
 
-  if (requestedPaper !== "Both") {
-    deleteAggregateQuery =
-      deleteAggregateQuery.eq(
+  for (
+    const aggregate of
+    aggregateMap.values()
+  ) {
+    const paperQuestions =
+      paperGroups.get(
+        aggregate.paper
+      ) ||
+      []
+
+    const questionCount =
+      aggregate.questions.length
+
+    const papersAppeared =
+      new Set(
+        aggregate.papers.map(
+          (paper) =>
+            paper.id
+        )
+      ).size
+
+    const totalPapersForPaper =
+      papers.filter(
+        (paper) =>
+          paper.paper ===
+          aggregate.paper
+      ).length
+
+    /*
+     * --------------------------------------------------------
+     * FREQUENCY
+     * --------------------------------------------------------
+     */
+
+    const frequencyReference =
+      Math.max(
+        1,
+        ...Array.from(
+          aggregateMap.values()
+        )
+          .filter(
+            (item) =>
+              item.paper ===
+              aggregate.paper
+          )
+          .map(
+            (item) =>
+              item.questions.length
+          )
+      )
+
+    const frequencyScore =
+      clamp(
+        (
+          questionCount /
+          frequencyReference
+        ) *
+          100
+      )
+
+    /*
+     * --------------------------------------------------------
+     * COVERAGE
+     * --------------------------------------------------------
+     */
+
+    const coverageScore =
+      totalPapersForPaper >
+      0
+        ? clamp(
+            (
+              papersAppeared /
+              totalPapersForPaper
+            ) *
+              100
+          )
+        : 0
+
+    /*
+     * --------------------------------------------------------
+     * POSITION
+     * --------------------------------------------------------
+     */
+
+    const positionScoreValue =
+      positionScore(
+        aggregate.questions
+      )
+
+    /*
+     * --------------------------------------------------------
+     * VARIATION
+     * --------------------------------------------------------
+     */
+
+    const variationScoreValue =
+      variationScore(
+        aggregate
+      )
+
+    /*
+     * --------------------------------------------------------
+     * RECENCY
+     * --------------------------------------------------------
+     */
+
+    const recencyScoreValue =
+      recencyScore(
+        aggregate.questions,
+        paperMap
+      )
+
+    /*
+     * --------------------------------------------------------
+     * SKILLS
+     * --------------------------------------------------------
+     */
+
+    const skillScoreValue =
+      skillScore(
+        aggregate
+      )
+
+    /*
+     * --------------------------------------------------------
+     * MARK WEIGHT
+     * --------------------------------------------------------
+     */
+
+    const markScore =
+      markWeightScore(
+        aggregate,
+        paperQuestions
+      )
+
+    /*
+     * --------------------------------------------------------
+     * FINAL PREDICTION SCORE
+     * --------------------------------------------------------
+     *
+     * This is a ranking score.
+     *
+     * It is NOT a probability.
+     */
+
+    const predictionScore =
+      Math.round(
+        frequencyScore *
+          0.25 +
+          coverageScore *
+          0.20 +
+          positionScoreValue *
+          0.15 +
+          variationScoreValue *
+          0.15 +
+          recencyScoreValue *
+          0.10 +
+          skillScoreValue *
+          0.10 +
+          markScore *
+          0.05
+      )
+
+    /*
+     * --------------------------------------------------------
+     * YEARS
+     * --------------------------------------------------------
+     */
+
+    const yearsSeen =
+      Array.from(
+        new Set(
+          aggregate.papers.map(
+            (paper) =>
+              paper.exam_year
+          )
+        )
+      ).sort(
+        (a, b) =>
+          a - b
+      )
+
+    /*
+     * --------------------------------------------------------
+     * POSITIONS
+     * --------------------------------------------------------
+     */
+
+    const positions =
+      aggregate.questions
+        .map(
+          (question) =>
+            question.question_number
+        )
+        .sort(
+          (a, b) =>
+            a - b
+        )
+
+    /*
+     * --------------------------------------------------------
+     * MARKS
+     * --------------------------------------------------------
+     */
+
+    const marks =
+      aggregate.questions.map(
+        (question) =>
+          Math.max(
+            Number(
+              question.marks
+            ) || 0,
+            0
+          )
+      )
+
+    const totalMarks =
+      marks.reduce(
+        (
+          sum,
+          mark
+        ) =>
+          sum + mark,
+        0
+      )
+
+    const averageMarks =
+      questionCount >
+      0
+        ? totalMarks /
+          questionCount
+        : 0
+
+    /*
+     * --------------------------------------------------------
+     * EXAMPLE QUESTION IDS
+     * --------------------------------------------------------
+     *
+     * Keep the newest real historical questions.
+     */
+
+    const exampleQuestionIds =
+      aggregate.questions
+        .slice()
+        .sort(
+          (a, b) => {
+            const paperA =
+              paperMap.get(
+                a.paper_id
+              )
+
+            const paperB =
+              paperMap.get(
+                b.paper_id
+              )
+
+            const yearA =
+              paperA?.exam_year ||
+              0
+
+            const yearB =
+              paperB?.exam_year ||
+              0
+
+            if (
+              yearB !==
+              yearA
+            ) {
+              return (
+                yearB -
+                yearA
+              )
+            }
+
+            return (
+              a.question_number -
+              b.question_number
+            )
+          }
+        )
+        .slice(
+          0,
+          8
+        )
+        .map(
+          (question) =>
+            question.id
+        )
+
+    /*
+     * --------------------------------------------------------
+     * PAPER OCCURRENCES
+     * --------------------------------------------------------
+     */
+
+    const paperOccurrences =
+      buildPaperOccurrences(
+        aggregate.questions,
+        paperMap
+      )
+
+    /*
+     * --------------------------------------------------------
+     * FINAL DATABASE ROW
+     * --------------------------------------------------------
+     */
+
+    finalRows.push({
+      subject:
+        "Mathematics",
+
+      level:
+        "O-Level",
+
+      curriculum:
+        "ZIMSEC",
+
+      paper:
+        aggregate.paper,
+
+      topic:
+        aggregate.topic,
+
+      subtopic:
+        aggregate.subtopic,
+
+      pattern_type:
+        "Question Family",
+
+      pattern_value:
+        aggregate.question_family,
+
+      concept_family:
+        aggregate.concept_family,
+
+      position_min:
+        positions.length >
+        0
+          ? Math.min(
+              ...positions
+            )
+          : null,
+
+      position_max:
+        positions.length >
+        0
+          ? Math.max(
+              ...positions
+            )
+          : null,
+
+      position_average:
+        positions.length >
+        0
+          ? positions.reduce(
+              (
+                sum,
+                value
+              ) =>
+                sum + value,
+              0
+            ) /
+            positions.length
+          : null,
+
+      question_count:
+        questionCount,
+
+      papers_appeared:
+        papersAppeared,
+
+      appearance_rate:
+        totalPapersForPaper >
+        0
+          ? (
+              (
+                papersAppeared /
+                totalPapersForPaper
+              ) *
+              100
+            )
+          : 0,
+
+      total_marks:
+        totalMarks,
+
+      average_marks:
+        Number(
+          averageMarks.toFixed(
+            2
+          )
+        ),
+
+      years_seen:
+        yearsSeen,
+
+      question_positions:
+        positions,
+
+      question_styles:
+        Array.from(
+          aggregate.styles
+        ).slice(
+          0,
+          20
+        ),
+
+      skills:
+        Array.from(
+          aggregate.skills
+        ).slice(
+          0,
+          30
+        ),
+
+      example_question_ids:
+        exampleQuestionIds,
+
+      /*
+       * Exact historical mapping.
+       */
+      paper_occurrences:
+        paperOccurrences,
+
+      frequency_score:
+        Math.round(
+          frequencyScore
+        ),
+
+      recency_score:
+        Math.round(
+          recencyScoreValue
+        ),
+
+      position_score:
+        Math.round(
+          positionScoreValue
+        ),
+
+      style_score:
+        Math.round(
+          variationScoreValue
+        ),
+
+      skill_score:
+        Math.round(
+          skillScoreValue
+        ),
+
+      mark_weight_score:
+        Math.round(
+          markScore
+        ),
+
+      prediction_score:
+        clamp(
+          predictionScore
+        ),
+
+      pattern_strength:
+        patternStrength(
+          predictionScore
+        ),
+
+      updated_at:
+        new Date().toISOString(),
+    })
+  }
+
+  /*
+   * ==========================================================
+   * 7. REPLACE AGGREGATE ANALYSIS
+   * ==========================================================
+   *
+   * This guarantees that when papers/questions are reprocessed,
+   * old aggregate rows do not remain.
+   */
+
+  let deleteQuery =
+    supabaseAdmin
+      .from(
+        "ai_zimsec_math_pattern_analysis"
+      )
+      .delete()
+      .eq(
+        "subject",
+        "Mathematics"
+      )
+      .eq(
+        "level",
+        "O-Level"
+      )
+      .eq(
+        "curriculum",
+        "ZIMSEC"
+      )
+
+  if (
+    requestedPaper !==
+    "Both"
+  ) {
+    deleteQuery =
+      deleteQuery.eq(
         "paper",
-        requestedPaper,
+        requestedPaper
       )
   }
 
   const {
-    error: deleteAggregateError,
-  } = await deleteAggregateQuery
+    error:
+      deleteAggregateError,
+  } =
+    await deleteQuery
 
-  if (deleteAggregateError) {
+  if (
+    deleteAggregateError
+  ) {
     throw new Error(
-      `Failed to clear old aggregate pattern analysis: ${deleteAggregateError.message}`,
+      `Failed to clear previous aggregate pattern analysis: ${deleteAggregateError.message}`
     )
   }
 
-  const aggregateRows = Array.from(
-    aggregates.values(),
-  ).map((aggregate) => ({
-    subject: "Mathematics",
-    level: "O-Level",
-    curriculum: "ZIMSEC",
+  if (
+    finalRows.length >
+    0
+  ) {
+    const {
+      error:
+        insertAggregateError,
+    } =
+      await supabaseAdmin
+        .from(
+          "ai_zimsec_math_pattern_analysis"
+        )
+        .insert(
+          finalRows
+        )
 
-    paper: aggregate.paper,
-
-    topic: aggregate.topic,
-    subtopic: aggregate.subtopic,
-
-    pattern_type: aggregate.patternType,
-    pattern_value: aggregate.patternValue,
-
-    position_min:
-      aggregate.positions.length
-        ? Math.min(...aggregate.positions)
-        : null,
-
-    position_max:
-      aggregate.positions.length
-        ? Math.max(...aggregate.positions)
-        : null,
-
-    position_average:
-      aggregate.positions.length
-        ? Number(
-            (
-              aggregate.positions.reduce(
-                (sum, value) =>
-                  sum + value,
-                0,
-              ) /
-              aggregate.positions.length
-            ).toFixed(2),
-          )
-        : null,
-
-    question_count:
-      aggregate.questionCount,
-
-    papers_appeared:
-      aggregate.papers.size,
-
-    appearance_rate:
-      aggregate.papers.size > 0
-        ? Number(
-            (
-              (aggregate.papers.size /
-                (paperGroups.get(
-                  aggregate.paper,
-                )?.length ?? 1)) *
-              100
-            ).toFixed(2),
-          )
-        : 0,
-
-    total_marks:
-      aggregate.totalMarks,
-
-    average_marks:
-      aggregate.questionCount > 0
-        ? Number(
-            (
-              aggregate.totalMarks /
-              aggregate.questionCount
-            ).toFixed(2),
-          )
-        : 0,
-
-    years_seen:
-      Array.from(
-        aggregate.years,
-      ).sort((a, b) => a - b),
-
-    question_positions:
-      aggregate.positions.sort(
-        (a, b) => a - b,
-      ),
-
-    question_styles:
-      Array.from(
-        aggregate.styles,
-      ).slice(0, 30),
-
-    skills:
-      Array.from(
-        aggregate.skills,
-      ).slice(0, 30),
-
-    example_question_ids:
-      aggregate.exampleQuestionIds,
-
-    frequency_score:
-      aggregate.frequencyScore,
-
-    recency_score:
-      aggregate.recencyScore,
-
-    position_score:
-      aggregate.positionScore,
-
-    style_score:
-      aggregate.variationScore,
-
-    skill_score:
-      aggregate.skillScore,
-
-    mark_weight_score:
-      aggregate.markWeightScore,
-
-    prediction_score:
-      aggregate.predictionScore,
-
-    pattern_strength:
-      aggregate.patternStrength,
-
-    updated_at: new Date().toISOString(),
-  }))
-
-  if (aggregateRows.length) {
-    /*
-     * Insert in batches to avoid oversized requests when many
-     * historical papers/questions exist.
-     */
-    const batchSize = 100
-
-    for (
-      let index = 0;
-      index < aggregateRows.length;
-      index += batchSize
+    if (
+      insertAggregateError
     ) {
-      const batch =
-        aggregateRows.slice(
-          index,
-          index + batchSize,
-        )
-
-      const {
-        error: aggregateInsertError,
-      } = await supabaseAdmin
-        .from("ai_zimsec_math_pattern_analysis")
-        .insert(batch)
-
-      if (aggregateInsertError) {
-        throw new Error(
-          `Failed to save aggregate pattern analysis: ${aggregateInsertError.message}`,
-        )
-      }
+      throw new Error(
+        `Failed to save aggregate pattern analysis: ${insertAggregateError.message}`
+      )
     }
   }
 
   /*
-   * ----------------------------------------------------------
-   * 4. Per-paper summary
-   * ----------------------------------------------------------
+   * ==========================================================
+   * 8. PER-PAPER SUMMARY
+   * ==========================================================
    */
 
   const paperResults =
-    typedPapers.map((paper) => {
-      const paperQuestions =
-        questionsByPaper.get(paper.id) ?? []
+    (
+      [
+        "Paper 1",
+        "Paper 2",
+      ] as const
+    )
+      .map(
+        (paper) => {
+          const paperRows =
+            papers.filter(
+              (item) =>
+                item.paper ===
+                paper
+            )
 
-      const paperQuestionIds =
-        new Set(
-          paperQuestions.map(
-            (question) => question.id,
-          ),
-        )
+          const paperQuestions =
+            questions.filter(
+              (question) =>
+                paperMap.get(
+                  question.paper_id
+                )?.paper ===
+                paper
+            )
 
-      const paperPatternCount =
-        questionPatternRows.filter(
-          (pattern) =>
-            paperQuestionIds.has(
-              pattern.question_id,
-            ),
-        ).length
+          const patternCount =
+            finalRows.filter(
+              (row) =>
+                row.paper ===
+                paper
+            ).length
 
-      return {
-        paper: `${paper.exam_year} ${paper.session ?? ""} ${paper.paper}`.trim(),
-        papers: 1,
-        questions: paperQuestions.length,
-        patterns: paperPatternCount,
-      }
-    })
+          return {
+            paper,
+
+            papers:
+              paperRows.length,
+
+            questions:
+              paperQuestions.length,
+
+            patterns:
+              patternCount,
+          }
+        }
+      )
+      .filter(
+        (result) =>
+          result.papers >
+          0
+      )
+
+  /*
+   * ==========================================================
+   * 9. RETURN
+   * ==========================================================
+   */
 
   return {
     success: true,
 
     papersAnalysed:
-      typedPapers.length,
+      papers.length,
 
     questionsAnalysed:
-      typedQuestions.length,
+      questions.length,
 
     questionPatternsCreated:
-      questionPatternRows.length,
+      questionPatternRowsToInsert.length,
 
     aggregatePatternsCreated:
-      aggregateRows.length,
+      finalRows.length,
 
     paperResults,
   }
