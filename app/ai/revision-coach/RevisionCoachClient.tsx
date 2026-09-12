@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Lightbulb,
   Loader2,
+  LogOut,
   Menu,
   MessageCircle,
   MoreVertical,
@@ -24,11 +25,15 @@ import {
 
 import {
   FormEvent,
+  type ElementType,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react"
+
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 type Student = {
   id: string
@@ -320,6 +325,8 @@ function renderMessageText(
 }
 
 export default function RevisionCoachClient() {
+  const router = useRouter()
+
   const [
     student,
     setStudent,
@@ -399,6 +406,16 @@ export default function RevisionCoachClient() {
   const [
     mobileSidebarOpen,
     setMobileSidebarOpen,
+  ] = useState(false)
+
+  const [
+    mobileDashboardSidebarOpen,
+    setMobileDashboardSidebarOpen,
+  ] = useState(false)
+
+  const [
+    signingOut,
+    setSigningOut,
   ] = useState(false)
 
   const [
@@ -1074,6 +1091,36 @@ export default function RevisionCoachClient() {
     }
   }
 
+  function openFeature(path: string) {
+    setMobileDashboardSidebarOpen(false)
+    setMobileSidebarOpen(false)
+    router.push(path)
+  }
+
+  async function handleSignOut() {
+    try {
+      setSigningOut(true)
+
+      await fetch(
+        "/api/ai/auth/signout",
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      )
+
+      router.replace("/ai/signin")
+      router.refresh()
+    } catch (signOutError) {
+      console.error(
+        "Sign out error:",
+        signOutError
+      )
+
+      setSigningOut(false)
+    }
+  }
+
   /**
    * ----------------------------------------------------------
    * SELECT MODE
@@ -1140,6 +1187,129 @@ export default function RevisionCoachClient() {
 
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-slate-900">
+      {/* AI HUB MOBILE SIDEBAR */}
+      {mobileDashboardSidebarOpen && (
+        <div className="fixed inset-0 z-[70] lg:hidden">
+          <button
+            type="button"
+            aria-label="Close AI Hub sidebar"
+            onClick={() =>
+              setMobileDashboardSidebarOpen(false)
+            }
+            className="absolute inset-0 bg-[#10243d]/50"
+          />
+
+          <aside className="relative flex h-full w-[290px] flex-col bg-[#10243d] px-5 py-6 shadow-2xl">
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                  <Image
+                    src="/Logo.png"
+                    alt="GlobeDk Elite Academy"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <div>
+                  <p className="text-lg font-black tracking-tight text-white">
+                    GlobeDk AI
+                  </p>
+                  <p className="text-xs text-white/60">
+                    Learning Hub
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileDashboardSidebarOpen(false)
+                }
+                className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="space-y-2">
+              <MobileNavItem
+                icon={GraduationCap}
+                label="Dashboard"
+                onClick={() =>
+                  openFeature("/ai/dashboard")
+                }
+              />
+              <MobileNavItem
+                icon={Sparkles}
+                label="Exam Predictor"
+                onClick={() =>
+                  openFeature("/ai/exam-predictor")
+                }
+              />
+              <MobileNavItem
+                icon={BookOpen}
+                label="Mock Lab"
+                onClick={() =>
+                  openFeature("/ai/mock-lab")
+                }
+              />
+              <MobileNavItem
+                icon={Target}
+                label="Revision Coach"
+                active
+                onClick={() =>
+                  setMobileDashboardSidebarOpen(false)
+                }
+              />
+              <MobileNavItem
+                icon={Trophy}
+                label="My Progress"
+                onClick={() =>
+                  openFeature("/ai/progress")
+                }
+              />
+            </nav>
+
+            <div className="mt-auto border-t border-white/10 pt-5">
+              {student && (
+                <div className="mb-3 rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-black text-[#e3a56f]">
+                      {initials(student)}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">
+                        {student.firstName}{" "}
+                        {student.lastName}
+                      </p>
+
+                      <p className="truncate text-xs text-white/50">
+                        {student.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                <LogOut className="h-5 w-5" />
+                {signingOut
+                  ? "Signing out..."
+                  : "Sign out"}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* MOBILE OVERLAY */}
       {mobileSidebarOpen && (
         <button
@@ -1154,9 +1324,105 @@ export default function RevisionCoachClient() {
         />
       )}
 
+      {/* AI HUB DESKTOP SIDEBAR */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[250px] border-r border-white/10 bg-[#10243d] lg:flex lg:flex-col">
+        <div className="mb-8 flex items-center px-5 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+              <Image
+                src="/Logo.png"
+                alt="GlobeDk Elite Academy"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            <div>
+              <p className="text-lg font-black tracking-tight text-white">
+                GlobeDk AI
+              </p>
+              <p className="text-xs text-white/60">
+                Learning Hub
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1 px-4 py-6">
+          <SidebarItem
+            icon={GraduationCap}
+            label="Dashboard"
+            onClick={() =>
+              openFeature("/ai/dashboard")
+            }
+          />
+          <SidebarItem
+            icon={Sparkles}
+            label="Exam Predictor"
+            onClick={() =>
+              openFeature("/ai/exam-predictor")
+            }
+          />
+          <SidebarItem
+            icon={BookOpen}
+            label="Mock Lab"
+            onClick={() =>
+              openFeature("/ai/mock-lab")
+            }
+          />
+          <SidebarItem
+            icon={Target}
+            label="Revision Coach"
+            active
+            onClick={() => {}}
+          />
+          <SidebarItem
+            icon={Trophy}
+            label="My Progress"
+            onClick={() =>
+              openFeature("/ai/progress")
+            }
+          />
+        </nav>
+
+        <div className="border-t border-white/10 p-4">
+          {student && (
+            <div className="mb-3 rounded-xl bg-white/5 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-black text-[#e3a56f]">
+                  {initials(student)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">
+                    {student.firstName}{" "}
+                    {student.lastName}
+                  </p>
+                  <p className="truncate text-xs text-white/50">
+                    {student.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+          >
+            <LogOut className="h-5 w-5" />
+            {signingOut
+              ? "Signing out..."
+              : "Sign out"}
+          </button>
+        </div>
+      </aside>
+
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col bg-[#10243d] px-5 py-6 shadow-2xl transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col bg-[#10243d] px-5 py-6 shadow-2xl transition-transform duration-300 lg:left-[250px] lg:translate-x-0 ${
           mobileSidebarOpen
             ? "translate-x-0"
             : "-translate-x-full"
@@ -1355,22 +1621,36 @@ export default function RevisionCoachClient() {
       </aside>
 
       {/* MAIN */}
-      <main className="min-h-screen lg:pl-[300px]">
+      <main className="min-h-screen lg:pl-[550px]">
         {/* HEADER */}
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-[#f4f1ea]/95 backdrop-blur">
           <div className="flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setMobileSidebarOpen(
-                    true
-                  )
-                }
-                className="rounded-xl border border-slate-200 bg-white p-2.5 text-[#10243d] shadow-sm lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileDashboardSidebarOpen(true)
+                  }
+                  className="rounded-xl border border-slate-200 bg-white p-2.5 text-[#10243d] shadow-sm"
+                  aria-label="Open AI Hub navigation"
+                >
+                  <GraduationCap className="h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileSidebarOpen(
+                      true
+                    )
+                  }
+                  className="rounded-xl border border-slate-200 bg-white p-2.5 text-[#10243d] shadow-sm"
+                  aria-label="Open Revision Coach sidebar"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -2214,5 +2494,67 @@ export default function RevisionCoachClient() {
         </div>
       )}
     </div>
+  )
+}
+
+/* =============================================================
+   AI HUB SIDEBAR ITEM
+============================================================= */
+
+function SidebarItem({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: ElementType
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? "flex w-full items-center gap-3 rounded-xl bg-[#e3a56f] px-4 py-3 text-sm font-black text-[#10243d] shadow-sm"
+          : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
+      }
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      <span>{label}</span>
+    </button>
+  )
+}
+
+/* =============================================================
+   AI HUB MOBILE NAV ITEM
+============================================================= */
+
+function MobileNavItem({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: ElementType
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? "flex w-full items-center gap-3 rounded-xl bg-[#e3a56f] px-4 py-3 text-sm font-black text-[#10243d]"
+          : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
+      }
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      {label}
+    </button>
   )
 }
