@@ -81,6 +81,11 @@ type HistoricalEvidence = {
   exam_label?: string | null
 }
 
+type ConfidenceLevel =
+  | "Low"
+  | "Medium"
+  | "High"
+
 type Prediction = {
   paper: "Paper 1" | "Paper 2"
 
@@ -98,8 +103,30 @@ type Prediction = {
 
   prediction_reason: string
 
-  confidence: number
+  /*
+   * IMPORTANT:
+   *
+   * The backend returns categorical confidence:
+   *
+   * "High"
+   * "Medium"
+   * "Low"
+   *
+   * It is NOT a probability percentage.
+   */
+  confidence:
+    | ConfidenceLevel
+    | string
+    | null
+    | undefined
 
+  /*
+   * prediction_score is the actual numerical
+   * ranking score returned by the backend.
+   *
+   * IMPORTANT:
+   * This is NOT a probability.
+   */
   prediction_score?: number
 
   historical_frequency?: number
@@ -367,7 +394,7 @@ export default function AIExamPredictorPage() {
         requestBody
       )
 
-      /* 
+      /*
        * The backend is responsible for:
        *
        * 1. Authenticating the AI student.
@@ -428,9 +455,46 @@ export default function AIExamPredictorPage() {
           : 0
       )
 
+      /*
+       * IMPORTANT CONFIDENCE DEBUGGING
+       *
+       * We deliberately inspect the raw confidence value
+       * and its JavaScript type.
+       *
+       * Expected backend values:
+       *
+       * "High"
+       * "Medium"
+       * "Low"
+       */
       if (
         Array.isArray(data.predictions)
       ) {
+        console.log(
+          "[AI Exam Predictor] RAW CONFIDENCE VALUES FROM BACKEND:",
+          data.predictions.map(
+            (
+              prediction,
+              index
+            ) => ({
+              prediction:
+                index + 1,
+
+              confidence:
+                prediction.confidence,
+
+              confidenceType:
+                typeof prediction.confidence,
+
+              predictionScore:
+                prediction.prediction_score,
+
+              predictionScoreType:
+                typeof prediction.prediction_score,
+            })
+          )
+        )
+
         data.predictions.forEach(
           (
             prediction,
@@ -447,6 +511,45 @@ export default function AIExamPredictorPage() {
 
                 predictionQuestionNumber:
                   prediction.question_number,
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * Raw categorical confidence.
+                 */
+                rawConfidence:
+                  prediction.confidence,
+
+                confidenceType:
+                  typeof prediction.confidence,
+
+                /*
+                 * Clean categorical confidence
+                 * used by the UI.
+                 */
+                normalisedConfidence:
+                  normaliseConfidenceLabel(
+                    prediction.confidence
+                  ),
+
+                /*
+                 * Numerical prediction score
+                 * remains completely separate.
+                 */
+                predictionScore:
+                  prediction.prediction_score,
+
+                historicalFrequency:
+                  prediction.historical_frequency,
+
+                recencyScore:
+                  prediction.recency_score,
+
+                variationScore:
+                  prediction.variation_score,
+
+                markWeightScore:
+                  prediction.mark_weight_score,
 
                 historicalEvidenceCount:
                   prediction
@@ -632,6 +735,36 @@ export default function AIExamPredictorPage() {
           ? data.predictions
           : []
 
+      /*
+       * EXTRA CONFIDENCE DEBUG
+       */
+      console.log(
+        "[AI Exam Predictor] FINAL CONFIDENCE DEBUG BEFORE STATE UPDATE:",
+        receivedPredictions.map(
+          (
+            prediction,
+            index
+          ) => ({
+            index:
+              index + 1,
+
+            raw:
+              prediction.confidence,
+
+            type:
+              typeof prediction.confidence,
+
+            label:
+              normaliseConfidenceLabel(
+                prediction.confidence
+              ),
+
+            predictionScore:
+              prediction.prediction_score,
+          })
+        )
+      )
+
       console.log(
         "[AI Exam Predictor] Storing predictions in state:",
         {
@@ -649,6 +782,22 @@ export default function AIExamPredictorPage() {
 
           diagnostics:
             data.diagnostics,
+
+          confidenceValues:
+            receivedPredictions.map(
+              (prediction) => ({
+                raw:
+                  prediction.confidence,
+
+                type:
+                  typeof prediction.confidence,
+
+                label:
+                  normaliseConfidenceLabel(
+                    prediction.confidence
+                  ),
+              })
+            ),
         }
       )
 
@@ -790,21 +939,89 @@ export default function AIExamPredictorPage() {
      CONFIDENCE
   =========================================================== */
 
+  /*
+   * IMPORTANT:
+   *
+   * Confidence is categorical, not a percentage.
+   *
+   * We therefore determine the dominant confidence
+   * level instead of calculating a fake average percentage.
+   */
   const averageConfidence =
-    predictions.length
-      ? Math.round(
-          predictions.reduce(
-            (sum, item) =>
-              sum +
-              Number(
-                item.confidence ||
-                  0
-              ),
-            0
-          ) /
-            predictions.length
+    useMemo(
+      () => {
+        if (
+          predictions.length === 0
+        ) {
+          console.log(
+            "[AI Exam Predictor] Confidence overview: no predictions."
+          )
+
+          return "Low" as ConfidenceLevel
+        }
+
+        const counts: Record<
+          ConfidenceLevel,
+          number
+        > = {
+          High: 0,
+          Medium: 0,
+          Low: 0,
+        }
+
+        predictions.forEach(
+          (prediction) => {
+            const confidence =
+              normaliseConfidenceLabel(
+                prediction.confidence
+              )
+
+            counts[confidence] += 1
+          }
         )
-      : 0
+
+        let result:
+          ConfidenceLevel =
+          "Low"
+
+        if (
+          counts.High >=
+            counts.Medium &&
+          counts.High >=
+            counts.Low
+        ) {
+          result = "High"
+        } else if (
+          counts.Medium >=
+          counts.Low
+        ) {
+          result = "Medium"
+        }
+
+        console.log(
+          "[AI Exam Predictor] Confidence overview calculated:",
+          {
+            totalPredictions:
+              predictions.length,
+
+            high:
+              counts.High,
+
+            medium:
+              counts.Medium,
+
+            low:
+              counts.Low,
+
+            overall:
+              result,
+          }
+        )
+
+        return result
+      },
+      [predictions]
+    )
 
   /* ===========================================================
      LOADING
@@ -1780,8 +1997,8 @@ export default function AIExamPredictorPage() {
                 />
 
                 <ResultStat
-                  label="Average confidence"
-                  value={`${averageConfidence}%`}
+                  label="Overall confidence"
+                  value={`${averageConfidence}`}
                 />
 
               </div>
@@ -2622,6 +2839,180 @@ function formatSession(
 }
 
 /* =============================================================
+   NORMALISE CONFIDENCE LABEL
+============================================================= */
+
+/*
+ * IMPORTANT:
+ *
+ * Confidence is categorical.
+ *
+ * We DO NOT convert:
+ *
+ * High -> 85%
+ * Medium -> 65%
+ * Low -> 35%
+ *
+ * because those numbers would be invented probabilities.
+ *
+ * The backend explicitly returns confidence as:
+ *
+ * High
+ * Medium
+ * Low
+ *
+ * and prediction_score is a separate ranking score.
+ */
+function normaliseConfidenceLabel(
+  confidence:
+    | number
+    | string
+    | null
+    | undefined
+): ConfidenceLevel {
+  console.log(
+    "[AI Exam Predictor] normaliseConfidenceLabel input:",
+    {
+      confidence,
+      type:
+        typeof confidence,
+    }
+  )
+
+  if (
+    confidence === null ||
+    confidence === undefined
+  ) {
+    console.warn(
+      "[AI Exam Predictor] Confidence is missing. Defaulting to Low."
+    )
+
+    return "Low"
+  }
+
+  /*
+   * Compatibility:
+   *
+   * If an older API/database record somehow still
+   * returns a number, we interpret it only to preserve
+   * compatibility with the old format.
+   *
+   * New backend responses should return High/Medium/Low.
+   */
+  if (
+    typeof confidence === "number"
+  ) {
+    if (
+      !Number.isFinite(
+        confidence
+      )
+    ) {
+      console.warn(
+        "[AI Exam Predictor] Numeric confidence is not finite. Defaulting to Low:",
+        confidence
+      )
+
+      return "Low"
+    }
+
+    console.warn(
+      "[AI Exam Predictor] LEGACY numeric confidence detected:",
+      confidence
+    )
+
+    if (confidence >= 75) {
+      return "High"
+    }
+
+    if (confidence >= 50) {
+      return "Medium"
+    }
+
+    return "Low"
+  }
+
+  const value =
+    confidence
+      .trim()
+      .toLowerCase()
+
+  if (!value) {
+    console.warn(
+      "[AI Exam Predictor] Confidence string is empty. Defaulting to Low."
+    )
+
+    return "Low"
+  }
+
+  if (
+    value === "high" ||
+    value === "high confidence"
+  ) {
+    return "High"
+  }
+
+  if (
+    value === "medium" ||
+    value === "medium confidence" ||
+    value === "moderate" ||
+    value === "moderate confidence"
+  ) {
+    return "Medium"
+  }
+
+  if (
+    value === "low" ||
+    value === "low confidence"
+  ) {
+    return "Low"
+  }
+
+  /*
+   * Numeric strings are supported only for backwards
+   * compatibility with older API responses.
+   */
+  const numericValue =
+    Number(
+      value.replace(
+        "%",
+        ""
+      )
+    )
+
+  if (
+    Number.isFinite(
+      numericValue
+    )
+  ) {
+    console.warn(
+      "[AI Exam Predictor] LEGACY numeric-string confidence detected:",
+      confidence
+    )
+
+    if (numericValue >= 75) {
+      return "High"
+    }
+
+    if (numericValue >= 50) {
+      return "Medium"
+    }
+
+    return "Low"
+  }
+
+  console.error(
+    "[AI Exam Predictor] UNKNOWN CONFIDENCE VALUE RECEIVED:",
+    {
+      confidence,
+      type:
+        typeof confidence,
+    }
+  )
+
+  return "Low"
+}
+
+/* =============================================================
    MINI METRIC
 ============================================================= */
 
@@ -2654,30 +3045,42 @@ function MiniMetric({
 function ConfidenceBadge({
   confidence,
 }: {
-  confidence: number
+  confidence:
+    | number
+    | string
+    | null
+    | undefined
 }) {
-  const value =
-    Number(confidence || 0)
+  const label =
+    normaliseConfidenceLabel(
+      confidence
+    )
 
-  let label = "Low"
+  console.log(
+    "[AI Exam Predictor] Rendering ConfidenceBadge:",
+    {
+      rawConfidence:
+        confidence,
 
-  if (value >= 75) {
-    label = "High"
-  } else if (value >= 50) {
-    label = "Medium"
-  }
+      rawType:
+        typeof confidence,
+
+      displayedLabel:
+        label,
+    }
+  )
 
   return (
     <span
       className={
-        value >= 75
+        label === "High"
           ? "rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700"
-          : value >= 50
+          : label === "Medium"
             ? "rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700"
             : "rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600"
       }
     >
-      {label} confidence · {value}%
+      {label} confidence
     </span>
   )
 }
