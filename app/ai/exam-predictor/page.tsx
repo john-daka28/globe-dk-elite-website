@@ -1154,15 +1154,7 @@ export default function AIExamPredictorPage() {
                 }
               />
 
-              <MobileNavItem
-                icon={MessageCircle}
-                label="AI Tutor"
-                onClick={() =>
-                  openFeature(
-                    "/ai/tutor"
-                  )
-                }
-              />
+              
 
               <MobileNavItem
                 icon={TrendingUp}
@@ -1279,15 +1271,7 @@ export default function AIExamPredictorPage() {
             }
           />
 
-          <SidebarItem
-            icon={MessageCircle}
-            label="AI Tutor"
-            onClick={() =>
-              openFeature(
-                "/ai/tutor"
-              )
-            }
-          />
+          
 
           <SidebarItem
             icon={TrendingUp}
