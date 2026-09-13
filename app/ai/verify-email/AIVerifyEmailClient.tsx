@@ -1,8 +1,12 @@
+
 "use client"
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation"
 
 import {
   AlertCircle,
@@ -14,6 +18,7 @@ import {
 } from "lucide-react"
 
 export default function AIVerifyEmailClient() {
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   const token =
@@ -51,21 +56,31 @@ export default function AIVerifyEmailClient() {
       return
     }
 
+    let redirectTimer:
+      ReturnType<typeof setTimeout> | null =
+      null
+
     async function verifyEmail() {
       try {
-        const response = await fetch(
-          "/api/ai/auth/verify-email",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              token,
-            }),
-          }
-        )
+        setLoading(true)
+        setError("")
+
+        const response =
+          await fetch(
+            "/api/ai/auth/verify-email",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              credentials: "include",
+              cache: "no-store",
+              body: JSON.stringify({
+                token,
+              }),
+            }
+          )
 
         const data =
           await response.json()
@@ -78,9 +93,17 @@ export default function AIVerifyEmailClient() {
             data.error ||
               "Unable to verify your email."
           )
+
           return
         }
 
+        /*
+         * The verification API has now created
+         * the globedk_ai_session cookie.
+         *
+         * Give the user a short success message,
+         * then take them directly to the dashboard.
+         */
         setVerified(true)
 
         if (
@@ -88,7 +111,18 @@ export default function AIVerifyEmailClient() {
         ) {
           setAlreadyVerified(true)
         }
-      } catch {
+
+        redirectTimer =
+          setTimeout(() => {
+            router.replace("/ai")
+            router.refresh()
+          }, 1400)
+      } catch (error) {
+        console.error(
+          "AI email verification error:",
+          error
+        )
+
         setError(
           "Unable to connect to the server. Please try again."
         )
@@ -98,13 +132,22 @@ export default function AIVerifyEmailClient() {
     }
 
     verifyEmail()
-  }, [token])
+
+    return () => {
+      if (redirectTimer) {
+        clearTimeout(
+          redirectTimer
+        )
+      }
+    }
+  }, [token, router])
 
   async function handleResend() {
     if (!email) {
       setError(
         "Please enter your email address on the sign-up page or sign-in page to request a new confirmation email."
       )
+
       return
     }
 
@@ -122,6 +165,7 @@ export default function AIVerifyEmailClient() {
               "Content-Type":
                 "application/json",
             },
+            credentials: "include",
             body: JSON.stringify({
               email,
             }),
@@ -139,13 +183,19 @@ export default function AIVerifyEmailClient() {
           data.error ||
             "Unable to resend the confirmation email."
         )
+
         return
       }
 
       setResendMessage(
         "A new confirmation email has been sent. Please check your inbox."
       )
-    } catch {
+    } catch (error) {
+      console.error(
+        "AI resend verification error:",
+        error
+      )
+
       setError(
         "Unable to connect to the server. Please try again."
       )
@@ -157,7 +207,11 @@ export default function AIVerifyEmailClient() {
   return (
     <main className="min-h-screen bg-[#f4f1ea] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-5xl grid lg:grid-cols-2 bg-white rounded-3xl overflow-hidden shadow-xl">
-        
+
+        {/* =====================================================
+            DESKTOP BRAND PANEL
+        ====================================================== */}
+
         <div className="hidden lg:flex bg-[#10243d] text-white p-12 flex-col justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -197,9 +251,17 @@ export default function AIVerifyEmailClient() {
           </p>
         </div>
 
+        {/* =====================================================
+            MAIN CONTENT
+        ====================================================== */}
+
         <div className="p-6 sm:p-10 lg:p-12 flex items-center">
           <div className="w-full">
-            
+
+            {/* =================================================
+                MOBILE BRAND
+            ================================================== */}
+
             <div className="lg:hidden mb-8">
               <div className="flex items-center gap-3">
                 <div className="h-11 w-11 rounded-xl bg-[#10243d] flex items-center justify-center">
@@ -217,6 +279,10 @@ export default function AIVerifyEmailClient() {
                 </div>
               </div>
             </div>
+
+            {/* =================================================
+                LOADING
+            ================================================== */}
 
             {loading && (
               <div className="text-center">
@@ -236,6 +302,10 @@ export default function AIVerifyEmailClient() {
                 </p>
               </div>
             )}
+
+            {/* =================================================
+                SUCCESS
+            ================================================== */}
 
             {!loading &&
               verified && (
@@ -261,28 +331,31 @@ export default function AIVerifyEmailClient() {
                   <div className="mt-7 rounded-2xl border border-green-200 bg-green-50 p-5">
                     <Mail className="h-7 w-7 text-green-600 mx-auto mb-3" />
 
-                    <p className="text-sm text-green-800">
-                      Your account is now ready.
+                    <p className="text-sm font-semibold text-green-800">
+                      Your account is ready.
                     </p>
 
                     <p className="text-sm text-green-700 mt-1">
-                      Sign in with your email and
-                      password to continue.
+                      You are being taken directly
+                      to your AI Learning Hub dashboard.
                     </p>
                   </div>
 
-                  <Link
-                    href="/ai/signin"
-                    className="mt-7 w-full rounded-xl bg-[#10243d] text-white py-3.5 font-semibold flex items-center justify-center hover:bg-[#183452] transition"
-                  >
-                    Continue to sign in
-                  </Link>
+                  <div className="mt-7 flex items-center justify-center gap-2 text-sm font-semibold text-[#10243d]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Opening your dashboard...
+                  </div>
                 </div>
               )}
 
+            {/* =================================================
+                NO TOKEN
+            ================================================== */}
+
             {!loading &&
               !verified &&
-              !token && (
+              !token &&
+              !error && (
                 <div className="text-center">
                   <div className="flex justify-center mb-6">
                     <div className="h-20 w-20 rounded-full bg-[#f4f1ea] flex items-center justify-center">
@@ -314,7 +387,12 @@ export default function AIVerifyEmailClient() {
                 </div>
               )}
 
+            {/* =================================================
+                ERROR
+            ================================================== */}
+
             {!loading &&
+              !verified &&
               error && (
                 <div className="text-center">
                   <div className="flex justify-center mb-6">
@@ -366,6 +444,7 @@ export default function AIVerifyEmailClient() {
                   </Link>
                 </div>
               )}
+
           </div>
         </div>
       </div>
