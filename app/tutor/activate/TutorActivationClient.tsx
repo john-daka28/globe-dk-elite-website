@@ -182,7 +182,7 @@ export default function TutorActivationClient() {
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Excellence in Education. Success for Life.
+              Excellence in Education.Success for Life.
             </p>
           </div>
 
