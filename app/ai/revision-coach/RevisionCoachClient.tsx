@@ -1238,7 +1238,7 @@ export default function RevisionCoachClient() {
                 icon={GraduationCap}
                 label="Dashboard"
                 onClick={() =>
-                  openFeature("/ai/dashboard")
+                  openFeature("/ai")
                 }
               />
               <MobileNavItem
@@ -1354,7 +1354,7 @@ export default function RevisionCoachClient() {
             icon={GraduationCap}
             label="Dashboard"
             onClick={() =>
-              openFeature("/ai/dashboard")
+              openFeature("/ai")
             }
           />
           <SidebarItem
