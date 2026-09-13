@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -12,7 +11,6 @@ import {
   GraduationCap,
   LogOut,
   Menu,
-  MessageCircle,
   Play,
   Sparkles,
   Target,
@@ -42,12 +40,49 @@ type AIStudent = {
   curriculum: "ZIMSEC" | "Cambridge"
 }
 
-type MeResponse = {
+type DashboardActivity = {
+  id: string
+  type:
+    | "mock"
+    | "prediction"
+  title: string
+  description: string
+  createdAt: string
+  percentage?: number
+  status: string
+}
+
+type DashboardStatistics = {
+  overallPerformance: number | null
+  bestPerformance: number | null
+  totalMockAttempts: number
+  completedMockAttempts: number
+  predictionCount: number
+  totalStudyActivities: number
+  totalMarksScored: number
+  totalMarksAvailable: number
+  weakTopics: Array<{
+    topic: string
+    attempted: number
+    correct: number
+    accuracy: number
+    markAccuracy: number
+  }>
+}
+
+type DashboardResponse = {
   authenticated: boolean
+
   student?: AIStudent
+
   credits?: {
     balance: number
   }
+
+  statistics?: DashboardStatistics
+
+  recentActivity?: DashboardActivity[]
+
   error?: string
 }
 
@@ -59,6 +94,22 @@ export default function AIDashboardPage() {
 
   const [credits, setCredits] =
     useState(0)
+
+  const [statistics, setStatistics] =
+    useState<DashboardStatistics>({
+      overallPerformance: null,
+      bestPerformance: null,
+      totalMockAttempts: 0,
+      completedMockAttempts: 0,
+      predictionCount: 0,
+      totalStudyActivities: 0,
+      totalMarksScored: 0,
+      totalMarksAvailable: 0,
+      weakTopics: [],
+    })
+
+  const [recentActivity, setRecentActivity] =
+    useState<DashboardActivity[]>([])
 
   const [loading, setLoading] =
     useState(true)
@@ -78,7 +129,7 @@ export default function AIDashboardPage() {
       setLoading(true)
 
       const response = await fetch(
-        "/api/ai/auth/me",
+        "/api/ai/dashboard",
         {
           method: "GET",
           credentials: "include",
@@ -86,7 +137,7 @@ export default function AIDashboardPage() {
         }
       )
 
-      const data: MeResponse =
+      const data: DashboardResponse =
         await response.json()
 
       if (
@@ -102,6 +153,24 @@ export default function AIDashboardPage() {
 
       setCredits(
         data.credits?.balance ?? 0
+      )
+
+      setStatistics(
+        data.statistics ?? {
+          overallPerformance: null,
+          bestPerformance: null,
+          totalMockAttempts: 0,
+          completedMockAttempts: 0,
+          predictionCount: 0,
+          totalStudyActivities: 0,
+          totalMarksScored: 0,
+          totalMarksAvailable: 0,
+          weakTopics: [],
+        }
+      )
+
+      setRecentActivity(
+        data.recentActivity ?? []
       )
     } catch (error) {
       console.error(
@@ -169,6 +238,15 @@ export default function AIDashboardPage() {
   const fullName =
     `${student.firstName} ${student.lastName}`.trim()
 
+  const hasPerformance =
+    statistics.overallPerformance !== null
+
+  const hasWeakTopics =
+    statistics.weakTopics.length > 0
+
+  const hasStudyActivity =
+    statistics.totalStudyActivities > 0
+
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#10243d]">
 
@@ -190,52 +268,52 @@ export default function AIDashboardPage() {
 
             <div className="mb-8 flex items-center justify-between">
 
-  <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
 
-    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
-      <Image
-        src="/Logo.png"
-        alt="GlobeDk Elite Academy"
-        fill
-        className="object-contain"
-        priority
-      />
-    </div>
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                  <Image
+                    src="/Logo.png"
+                    alt="GlobeDk Elite Academy"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
 
-    <div>
-      <p className="text-lg font-black tracking-tight text-white">
-        GlobeDk AI
-      </p>
+                <div>
+                  <p className="text-lg font-black tracking-tight text-white">
+                    GlobeDk AI
+                  </p>
 
-      <p className="text-xs text-white/60">
-        Learning Hub
-      </p>
-    </div>
+                  <p className="text-xs text-white/60">
+                    Learning Hub
+                  </p>
+                </div>
 
-  </div>
+              </div>
 
-  <button
-    type="button"
-    onClick={() =>
-      setMobileMenuOpen(false)
-    }
-    className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
-  >
-    <X className="h-5 w-5" />
-  </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileMenuOpen(false)
+                }
+                className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
 
-</div>
+            </div>
 
             <nav className="space-y-2">
 
-             <MobileNavItem
-  icon={GraduationCap}
-  label="Dashboard"
-  active
-  onClick={() =>
-    setMobileMenuOpen(false)
-  }
-/>
+              <MobileNavItem
+                icon={GraduationCap}
+                label="Dashboard"
+                active
+                onClick={() =>
+                  setMobileMenuOpen(false)
+                }
+              />
 
               <MobileNavItem
                 icon={Sparkles}
@@ -267,8 +345,6 @@ export default function AIDashboardPage() {
                 }
               />
 
-            
-
               <MobileNavItem
                 icon={TrendingUp}
                 label="My Progress"
@@ -294,6 +370,7 @@ export default function AIDashboardPage() {
                 {signingOut
                   ? "Signing out..."
                   : "Sign out"}
+
               </button>
 
             </div>
@@ -310,35 +387,33 @@ export default function AIDashboardPage() {
 
         {/* Logo */}
 
-             <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between">
 
-  <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
 
-    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
-      <Image
-        src="/Logo.png"
-        alt="GlobeDk Elite Academy"
-        fill
-        className="object-contain"
-        priority
-      />
-    </div>
+            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+              <Image
+                src="/Logo.png"
+                alt="GlobeDk Elite Academy"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
 
-    <div>
-      <p className="text-lg font-black tracking-tight text-white">
-        GlobeDk AI
-      </p>
+            <div>
+              <p className="text-lg font-black tracking-tight text-white">
+                GlobeDk AI
+              </p>
 
-      <p className="text-xs text-white/60">
-        Learning Hub
-      </p>
-    </div>
+              <p className="text-xs text-white/60">
+                Learning Hub
+              </p>
+            </div>
 
-  </div>
+          </div>
 
-  
-
-</div>
+        </div>
 
         {/* Navigation */}
 
@@ -381,8 +456,6 @@ export default function AIDashboardPage() {
             }
           />
 
-     
-
           <SidebarItem
             icon={TrendingUp}
             label="My Progress"
@@ -422,6 +495,7 @@ export default function AIDashboardPage() {
             {signingOut
               ? "Signing out..."
               : "Sign out"}
+
           </button>
 
         </div>
@@ -455,6 +529,7 @@ export default function AIDashboardPage() {
               </button>
 
               <div className="lg:hidden">
+
                 <p className="font-black text-[#10243d]">
                   GlobeDk AI
                 </p>
@@ -462,6 +537,7 @@ export default function AIDashboardPage() {
                 <p className="text-[11px] text-[#10243d]/50">
                   Learning Hub
                 </p>
+
               </div>
 
               <div className="hidden lg:block">
@@ -493,7 +569,9 @@ export default function AIDashboardPage() {
               >
 
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e3a56f]/20">
+
                   <Zap className="h-4 w-4 text-[#b15d2b]" />
+
                 </div>
 
                 <div className="text-left">
@@ -522,7 +600,9 @@ export default function AIDashboardPage() {
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#10243d] text-sm font-black text-white shadow-sm transition hover:bg-[#183452]"
                 title={fullName}
               >
-                {firstName.charAt(0).toUpperCase()}
+                {firstName
+                  .charAt(0)
+                  .toUpperCase()}
               </button>
 
             </div>
@@ -586,7 +666,9 @@ export default function AIDashboardPage() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#e3a56f] px-5 py-3 text-sm font-black text-[#10243d] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#edb67f]"
                 >
                   <Sparkles className="h-4 w-4" />
+
                   Start Exam Predictor
+
                   <ArrowRight className="h-4 w-4" />
                 </button>
 
@@ -600,6 +682,7 @@ export default function AIDashboardPage() {
                   className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15"
                 >
                   <Play className="h-4 w-4" />
+
                   Open Mock Lab
                 </button>
 
@@ -639,8 +722,16 @@ export default function AIDashboardPage() {
             <StatCard
               icon={Trophy}
               label="Overall Performance"
-              value="--"
-              description="No results yet"
+              value={
+                hasPerformance
+                  ? `${statistics.overallPerformance}%`
+                  : "--"
+              }
+              description={
+                hasPerformance
+                  ? `${statistics.completedMockAttempts} completed mock${statistics.completedMockAttempts === 1 ? "" : "s"}`
+                  : "No results yet"
+              }
               action="View progress"
               onClick={() =>
                 openFeature(
@@ -652,8 +743,20 @@ export default function AIDashboardPage() {
             <StatCard
               icon={Target}
               label="Weak Topics"
-              value="--"
-              description="Build your first result"
+              value={
+                hasWeakTopics
+                  ? String(
+                      statistics.weakTopics.length
+                    )
+                  : "--"
+              }
+              description={
+                hasWeakTopics
+                  ? statistics.weakTopics.length === 1
+                    ? statistics.weakTopics[0].topic
+                    : `${statistics.weakTopics.length} areas to review`
+                  : "Build your first result"
+              }
               action="Find weak areas"
               onClick={() =>
                 openFeature(
@@ -665,8 +768,18 @@ export default function AIDashboardPage() {
             <StatCard
               icon={Clock3}
               label="Study Activity"
-              value="--"
-              description="No activity yet"
+              value={
+                hasStudyActivity
+                  ? String(
+                      statistics.totalStudyActivities
+                    )
+                  : "--"
+              }
+              description={
+                hasStudyActivity
+                  ? `${statistics.completedMockAttempts} mock${statistics.completedMockAttempts === 1 ? "" : "s"} • ${statistics.predictionCount} prediction${statistics.predictionCount === 1 ? "" : "s"}`
+                  : "No activity yet"
+              }
               action="View activity"
               onClick={() =>
                 openFeature(
@@ -729,8 +842,6 @@ export default function AIDashboardPage() {
                 }
               />
 
-             
-
             </div>
 
           </section>
@@ -781,8 +892,6 @@ export default function AIDashboardPage() {
                 }
               />
 
-              
-
             </div>
 
           </section>
@@ -827,43 +936,108 @@ export default function AIDashboardPage() {
 
               <div className="mt-6 rounded-2xl bg-[#f4f1ea] p-5">
 
-                <div className="flex items-center gap-4">
+                {hasPerformance ? (
 
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#10243d]">
-                    <GraduationCap className="h-7 w-7 text-[#e3a56f]" />
-                  </div>
+                  <>
 
-                  <div>
+                    <div className="flex items-center gap-4">
 
-                    <p className="font-black">
-                      Your performance profile
-                    </p>
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#10243d]">
+                        <Trophy className="h-7 w-7 text-[#e3a56f]" />
+                      </div>
 
-                    <p className="mt-1 text-sm text-[#10243d]/55">
-                      Complete a mock exam to begin
-                      building your performance data.
-                    </p>
+                      <div>
 
-                  </div>
+                        <p className="font-black">
+                          Your performance profile
+                        </p>
 
-                </div>
+                        <p className="mt-1 text-sm text-[#10243d]/55">
+                          Average mock performance:
+                          {" "}
+                          <span className="font-black text-[#b15d2b]">
+                            {statistics.overallPerformance}%
+                          </span>
+                        </p>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    openFeature(
-                      "/ai/mock-lab"
-                    )
-                  }
-                  className="mt-5 flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-sm transition hover:shadow-md"
-                >
-                  <span>
-                    Take your first mock exam
-                  </span>
+                        {statistics.bestPerformance !== null && (
+                          <p className="mt-1 text-xs text-[#10243d]/45">
+                            Best result:
+                            {" "}
+                            {statistics.bestPerformance}%
+                          </p>
+                        )}
 
-                  <ChevronRight className="h-4 w-4" />
+                      </div>
 
-                </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openFeature(
+                          "/ai/progress"
+                        )
+                      }
+                      className="mt-5 flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-sm transition hover:shadow-md"
+                    >
+
+                      <span>
+                        View your performance
+                      </span>
+
+                      <ChevronRight className="h-4 w-4" />
+
+                    </button>
+
+                  </>
+
+                ) : (
+
+                  <>
+
+                    <div className="flex items-center gap-4">
+
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#10243d]">
+                        <GraduationCap className="h-7 w-7 text-[#e3a56f]" />
+                      </div>
+
+                      <div>
+
+                        <p className="font-black">
+                          Your performance profile
+                        </p>
+
+                        <p className="mt-1 text-sm text-[#10243d]/55">
+                          Complete a mock exam to begin
+                          building your performance data.
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openFeature(
+                          "/ai/mock-lab"
+                        )
+                      }
+                      className="mt-5 flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-sm transition hover:shadow-md"
+                    >
+
+                      <span>
+                        Take your first mock exam
+                      </span>
+
+                      <ChevronRight className="h-4 w-4" />
+
+                    </button>
+
+                  </>
+
+                )}
 
               </div>
 
@@ -903,26 +1077,89 @@ export default function AIDashboardPage() {
 
               <div className="mt-6">
 
-                <div className="flex items-center gap-4 rounded-2xl border border-dashed border-[#10243d]/15 p-5">
+                {recentActivity.length > 0 ? (
 
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e3a56f]/20">
-                    <Clock3 className="h-5 w-5 text-[#b15d2b]" />
+                  <div className="space-y-3">
+
+                    {recentActivity.map(
+                      (activity) => (
+
+                        <div
+                          key={activity.id}
+                          className="flex items-center gap-4 rounded-2xl border border-[#10243d]/10 p-4"
+                        >
+
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e3a56f]/20">
+
+                            {activity.type ===
+                            "prediction" ? (
+                              <Sparkles className="h-5 w-5 text-[#b15d2b]" />
+                            ) : (
+                              <FileText className="h-5 w-5 text-[#b15d2b]" />
+                            )}
+
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+
+                            <p className="truncate text-sm font-black">
+                              {activity.title}
+                            </p>
+
+                            <p className="mt-0.5 truncate text-xs text-[#10243d]/50">
+                              {activity.description}
+                            </p>
+
+                          </div>
+
+                          <div className="shrink-0 text-right">
+
+                            {typeof activity.percentage ===
+                              "number" && (
+                              <p className="text-sm font-black text-[#b15d2b]">
+                                {activity.percentage}%
+                              </p>
+                            )}
+
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#10243d]/40">
+                              {activity.status}
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                      )
+                    )}
+
                   </div>
 
-                  <div>
+                ) : (
 
-                    <p className="font-bold">
-                      No recent activity
-                    </p>
+                  <div className="flex items-center gap-4 rounded-2xl border border-dashed border-[#10243d]/15 p-5">
 
-                    <p className="mt-1 text-sm text-[#10243d]/50">
-                      Your predictions, mocks and AI
-                      Tutor sessions will appear here.
-                    </p>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e3a56f]/20">
+
+                      <Clock3 className="h-5 w-5 text-[#b15d2b]" />
+
+                    </div>
+
+                    <div>
+
+                      <p className="font-bold">
+                        No recent activity
+                      </p>
+
+                      <p className="mt-1 text-sm text-[#10243d]/50">
+                        Your predictions, mocks and AI
+                        Tutor sessions will appear here.
+                      </p>
+
+                    </div>
 
                   </div>
 
-                </div>
+                )}
 
               </div>
 
@@ -949,7 +1186,9 @@ export default function AIDashboardPage() {
                 <div className="flex items-start gap-4">
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e3a56f]/25">
+
                     <Zap className="h-5 w-5 text-[#b15d2b]" />
+
                   </div>
 
                   <div>
@@ -979,6 +1218,7 @@ export default function AIDashboardPage() {
                   }
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#10243d] px-5 py-3 text-sm font-black text-white transition hover:bg-[#183452]"
                 >
+
                   {credits > 0
                     ? "Manage Credits"
                     : "Get AI Credits"}
@@ -1067,11 +1307,13 @@ function SidebarItem({
           : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
       }
     >
+
       <Icon className="h-5 w-5 shrink-0" />
 
       <span>
         {label}
       </span>
+
     </button>
   )
 }
@@ -1101,9 +1343,11 @@ function MobileNavItem({
           : "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/65 transition hover:bg-white/10 hover:text-white"
       }
     >
+
       <Icon className="h-5 w-5" />
 
       {label}
+
     </button>
   )
 }
@@ -1133,7 +1377,9 @@ function StatCard({
       <div className="flex items-start justify-between">
 
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e3a56f]/20">
+
           <Icon className="h-5 w-5 text-[#b15d2b]" />
+
         </div>
 
         <span className="text-2xl font-black">
@@ -1155,9 +1401,11 @@ function StatCard({
         onClick={onClick}
         className="mt-4 inline-flex items-center gap-1 text-xs font-black text-[#b15d2b] hover:underline"
       >
+
         {action}
 
         <ArrowRight className="h-3.5 w-3.5" />
+
       </button>
 
     </div>
@@ -1215,7 +1463,9 @@ function FeatureCard({
       <div className="flex items-start justify-between">
 
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10243d] transition group-hover:bg-[#e3a56f]">
+
           <Icon className="h-6 w-6 text-[#e3a56f] transition group-hover:text-[#10243d]" />
+
         </div>
 
         <span className="rounded-full bg-[#f4f1ea] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#10243d]/55">
@@ -1237,9 +1487,11 @@ function FeatureCard({
         onClick={onClick}
         className="mt-5 flex w-full items-center justify-between rounded-xl bg-[#10243d] px-4 py-3 text-sm font-black text-white transition hover:bg-[#183452]"
       >
+
         {button}
 
         <ArrowRight className="h-4 w-4" />
+
       </button>
 
     </div>
@@ -1269,7 +1521,9 @@ function QuickAction({
     >
 
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4f1ea] transition group-hover:bg-[#e3a56f]/25">
+
         <Icon className="h-5 w-5 text-[#10243d]" />
+
       </div>
 
       <div className="min-w-0 flex-1">
@@ -1289,4 +1543,3 @@ function QuickAction({
     </button>
   )
 }
-
