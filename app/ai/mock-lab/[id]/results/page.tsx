@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -68,10 +69,13 @@ type Question = {
 
 type Answer = {
   id: string
-  question_id: string
+  question_id?: string | null
+  mock_question_id?: string | null
   answer: string | null
   is_correct: boolean
   marks_awarded: number
+  ai_feedback?: string | null
+  ai_explanation?: string | null
 }
 
 type TopicPerformance = {
@@ -403,12 +407,14 @@ function formatMathText(value: string | null | undefined) {
     .replace(/\\vspace\{[^{}]*\}/g, " ")
 
   /* Remove remaining backslash commands */
+
   text = text.replace(
     /\\[a-zA-Z]+/g,
     ""
   )
 
   /* Remove leftover braces */
+
   text = text
     .replace(/[{}]/g, "")
     .replace(/\s+\n/g, "\n")
@@ -593,11 +599,13 @@ export default function MockResultsPage() {
 
         setMock(data.mock ?? null)
         setAttempt(data.attempt ?? null)
+
         setQuestions(
           Array.isArray(data.questions)
             ? data.questions
             : []
         )
+
         setAnswers(
           Array.isArray(data.answers)
             ? data.answers
@@ -622,6 +630,9 @@ export default function MockResultsPage() {
 
   /* ==========================================================
      ANSWER LOOKUP
+     Uses mock_question_id as the authoritative question
+     relationship, while remaining compatible with APIs that
+     already return question_id.
      ========================================================== */
 
   const answerMap = useMemo(() => {
@@ -631,10 +642,16 @@ export default function MockResultsPage() {
     >()
 
     for (const answer of answers) {
-      map.set(
-        answer.question_id,
-        answer
-      )
+      const questionId =
+        answer.question_id ??
+        answer.mock_question_id
+
+      if (questionId) {
+        map.set(
+          questionId,
+          answer
+        )
+      }
     }
 
     return map
@@ -943,7 +960,8 @@ export default function MockResultsPage() {
                   {attempt.score}
                   <span className="text-base text-slate-400">
                     {" "}
-                    /{" "}
+                    /
+                    {" "}
                     {attempt.total_marks}
                   </span>
                 </p>
@@ -1209,6 +1227,21 @@ export default function MockResultsPage() {
                     normalizeAnswer(
                       question.explanation ??
                         question.answer_explanation
+                    )
+
+                  const correction =
+                    normalizeAnswer(
+                      question.marking_guide
+                    )
+
+                  const aiFeedback =
+                    normalizeAnswer(
+                      answer?.ai_feedback
+                    )
+
+                  const aiExplanation =
+                    normalizeAnswer(
+                      answer?.ai_explanation
                     )
 
                   const isUnanswered =
@@ -1486,6 +1519,84 @@ export default function MockResultsPage() {
                             </span>
                           </div>
                         </div>
+
+                        {/* =================================================
+                            CORRECTION & WORKING
+                            Shows the stored marking guide / working
+                            generated when the mock question was created.
+                            ================================================= */}
+
+                        {correction && (
+                          <div className="mt-4 rounded-xl border border-[#10243d]/10 bg-[#10243d]/5 p-5">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#10243d]">
+                                <CheckCircle2 className="h-4 w-4 text-[#e3a56f]" />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#10243d]">
+                                  Correction & Working
+                                </p>
+
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                  Follow these steps to see how the answer should be worked out.
+                                </p>
+
+                                <div className="mt-3 whitespace-pre-wrap rounded-lg border border-[#10243d]/10 bg-white p-4 text-sm font-medium leading-7 text-[#10243d]">
+                                  {correction}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* =================================================
+                            AI FEEDBACK ON STUDENT ANSWER
+                            ================================================= */}
+
+                        {aiFeedback && (
+                          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                                <Target className="h-4 w-4 text-blue-700" />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">
+                                  Feedback on Your Answer
+                                </p>
+
+                                <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-[#10243d]">
+                                  {aiFeedback}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* =================================================
+                            AI EXPLANATION
+                            ================================================= */}
+
+                        {aiExplanation && (
+                          <div className="mt-4 rounded-xl border border-purple-200 bg-purple-50 p-5">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                                <BookOpen className="h-4 w-4 text-purple-700" />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-purple-700">
+                                  AI Explanation
+                                </p>
+
+                                <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-[#10243d]">
+                                  {aiExplanation}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* EXPLANATION */}
 

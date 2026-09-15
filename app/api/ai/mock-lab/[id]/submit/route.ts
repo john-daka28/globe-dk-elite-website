@@ -1,3 +1,4 @@
+
 import {
   NextRequest,
   NextResponse,
@@ -86,10 +87,6 @@ function answersMatch(
     return true
   }
 
-  /*
-   * Remove common punctuation / spacing
-   * differences.
-   */
   const clean = (
     value: string
   ) =>
@@ -249,7 +246,7 @@ async function getLinkedUserId(
 }
 
 /* ============================================================
-   GET LATEST SUBMITTED RESULT
+   GET SUBMITTED RESULT
    ============================================================ */
 
 export async function GET(
@@ -293,13 +290,7 @@ export async function GET(
 
     /* ========================================================
        LOAD MOCK EXAM
-       ========================================================
-       
-       ai_mock_exams does NOT contain:
-       
-       - total_questions
-       - updated_at
-       */
+       ======================================================== */
 
     const {
       data: mockExam,
@@ -512,23 +503,9 @@ export async function GET(
       )
     }
 
-    /*
-     * ========================================================
-     * FORMAT QUESTIONS
-     * ========================================================
-     *
-     * IMPORTANT:
-     *
-     * These are only returned after the mock has already been
-     * submitted. Therefore it is safe to expose:
-     *
-     * - correct_answer
-     * - marking_guide
-     * - explanation
-     *
-     * They are NOT returned by the normal mock-generation/
-     * test-taking endpoint.
-     */
+    /* ========================================================
+       FORMAT QUESTIONS
+       ======================================================== */
 
     const formattedQuestions =
       (
@@ -559,16 +536,15 @@ export async function GET(
             ),
 
           /*
-           * Correct answer shown only on the
-           * submitted results page.
+           * Only exposed after submission.
            */
           correct_answer:
             question.correct_answer ??
             null,
 
           /*
-           * Step-by-step marking guide /
-           * working.
+           * Step-by-step working /
+           * marking guidance.
            */
           marking_guide:
             question.marking_guide ??
@@ -582,7 +558,10 @@ export async function GET(
             null,
 
           marks:
-            question.marks,
+            Number(
+              question.marks ??
+                0
+            ),
 
           difficulty:
             getQuestionDifficulty(
@@ -643,6 +622,75 @@ export async function GET(
       )
     }
 
+    /*
+     * IMPORTANT FIX:
+     *
+     * The database's authoritative relationship is:
+     *
+     * ai_mock_answers.mock_question_id
+     *             ↓
+     * ai_mock_questions.id
+     *
+     * The frontend results page expects:
+     *
+     * question_id
+     * answer
+     *
+     * Therefore we explicitly transform the database
+     * row into the frontend format here.
+     */
+    const formattedAnswers =
+      (
+        answers ?? []
+      ).map(
+        answer => ({
+          id:
+            answer.id,
+
+          /*
+           * IMPORTANT:
+           * mock_question_id is the real FK.
+           */
+          question_id:
+            answer.mock_question_id ??
+            answer.question_id ??
+            null,
+
+          /*
+           * Student's actual submitted answer.
+           */
+          answer:
+            answer.answer_text ??
+            null,
+
+          /*
+           * Marking result.
+           */
+          is_correct:
+            Boolean(
+              answer.is_correct
+            ),
+
+          marks_awarded:
+            Number(
+              answer.marks_awarded ??
+                0
+            ),
+
+          /*
+           * Feedback generated/stored
+           * during submission.
+           */
+          ai_feedback:
+            answer.ai_feedback ??
+            null,
+
+          ai_explanation:
+            answer.ai_explanation ??
+            null,
+        })
+      )
+
     /* ========================================================
        FORMAT MOCK
        ======================================================== */
@@ -696,8 +744,12 @@ export async function GET(
         questions:
           formattedQuestions,
 
+        /*
+         * Return frontend-friendly answers,
+         * NOT the raw database shape.
+         */
         answers:
-          answers ?? [],
+          formattedAnswers,
       },
       {
         status: 200,
@@ -767,10 +819,7 @@ export async function POST(
 
     /* ========================================================
        GET LINKED NORMAL USER
-       ========================================================
-       
-       ai_mock_answers.user_id references users.id.
-       */
+       ======================================================== */
 
     const userId =
       await getLinkedUserId(
@@ -1124,10 +1173,6 @@ export async function POST(
 
     let unansweredCount = 0
 
-    /*
-     * This matches the ACTUAL ai_mock_answers schema.
-     */
-
     const answerRows: Array<{
       mock_question_id: string
       user_id: string
@@ -1193,12 +1238,9 @@ export async function POST(
         continue
       }
 
-      /*
-       * Current automatic marking.
-       *
-       * The expected answer is stored in
-       * ai_mock_questions.correct_answer.
-       */
+      /* ======================================================
+         AUTOMATIC MARKING
+         ====================================================== */
 
       const correctAnswer =
         String(
@@ -1229,12 +1271,9 @@ export async function POST(
       totalScore +=
         marksAwarded
 
-      /*
-       * Give a more useful stored feedback
-       * message. The detailed correction itself
-       * comes from correct_answer, marking_guide
-       * and explanation on the results page.
-       */
+      /* ======================================================
+         FEEDBACK
+         ====================================================== */
 
       answerRows.push({
         mock_question_id:
@@ -1308,7 +1347,7 @@ export async function POST(
             "Unable to save your answers.",
         },
         {
-          status: 500,
+          status: 500
         }
       )
     }
@@ -1462,11 +1501,6 @@ export async function POST(
         "Mock exam completion update error:",
         examUpdateError
       )
-
-      /*
-       * The attempt and answers have already
-       * been saved, so do not delete them.
-       */
     }
 
     /* ========================================================
@@ -1652,3 +1686,4 @@ export async function POST(
     )
   }
 }
+
