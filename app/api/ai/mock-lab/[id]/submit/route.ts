@@ -1,4 +1,3 @@
-
 import {
   NextRequest,
   NextResponse,
@@ -292,16 +291,15 @@ export async function GET(
       )
     }
 
-    /*
-     * ========================================================
-     * LOAD MOCK EXAM
-     * ========================================================
-     *
-     * ai_mock_exams does NOT contain:
-     *
-     * - total_questions
-     * - updated_at
-     */
+    /* ========================================================
+       LOAD MOCK EXAM
+       ========================================================
+       
+       ai_mock_exams does NOT contain:
+       
+       - total_questions
+       - updated_at
+       */
 
     const {
       data: mockExam,
@@ -479,6 +477,8 @@ export async function GET(
           question_text,
           question_type,
           question_data,
+          correct_answer,
+          marking_guide,
           explanation,
           marks
           `
@@ -512,6 +512,24 @@ export async function GET(
       )
     }
 
+    /*
+     * ========================================================
+     * FORMAT QUESTIONS
+     * ========================================================
+     *
+     * IMPORTANT:
+     *
+     * These are only returned after the mock has already been
+     * submitted. Therefore it is safe to expose:
+     *
+     * - correct_answer
+     * - marking_guide
+     * - explanation
+     *
+     * They are NOT returned by the normal mock-generation/
+     * test-taking endpoint.
+     */
+
     const formattedQuestions =
       (
         questions ?? []
@@ -540,8 +558,28 @@ export async function GET(
               question.question_data
             ),
 
+          /*
+           * Correct answer shown only on the
+           * submitted results page.
+           */
+          correct_answer:
+            question.correct_answer ??
+            null,
+
+          /*
+           * Step-by-step marking guide /
+           * working.
+           */
+          marking_guide:
+            question.marking_guide ??
+            null,
+
+          /*
+           * General explanation.
+           */
           explanation:
-            question.explanation,
+            question.explanation ??
+            null,
 
           marks:
             question.marks,
@@ -604,6 +642,10 @@ export async function GET(
         }
       )
     }
+
+    /* ========================================================
+       FORMAT MOCK
+       ======================================================== */
 
     const totalQuestions =
       formattedQuestions.length
@@ -723,13 +765,12 @@ export async function POST(
       )
     }
 
-    /*
-     * ========================================================
-     * GET LINKED NORMAL USER
-     * ========================================================
-     *
-     * ai_mock_answers.user_id references users.id.
-     */
+    /* ========================================================
+       GET LINKED NORMAL USER
+       ========================================================
+       
+       ai_mock_answers.user_id references users.id.
+       */
 
     const userId =
       await getLinkedUserId(
@@ -953,6 +994,7 @@ export async function POST(
           question_type,
           question_data,
           correct_answer,
+          marking_guide,
           explanation,
           marks
           `
@@ -1186,6 +1228,13 @@ export async function POST(
 
       totalScore +=
         marksAwarded
+
+      /*
+       * Give a more useful stored feedback
+       * message. The detailed correction itself
+       * comes from correct_answer, marking_guide
+       * and explanation on the results page.
+       */
 
       answerRows.push({
         mock_question_id:
